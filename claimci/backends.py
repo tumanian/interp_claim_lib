@@ -119,4 +119,18 @@ class CpuBackend(Backend):
         gc.collect()
 
 
+@dataclass
+class Ctx:
+    """What an interventional experiment gets: rerun the group's dataset with hooks."""
+    backend: Backend
+    handle: ModelHandle
+    dataset: Dataset
+    adapter: Any
+    passes: int = 0
+
+    def run(self, hooks: Iterable[Hook]) -> Acts:
+        self.passes += 1
+        return self.backend.run(self.handle, self.dataset, hooks)
+
+
 BACKENDS = {"cpu": CpuBackend}
