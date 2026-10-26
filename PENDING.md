@@ -50,3 +50,16 @@ canary -> `hook_leak`; two forced runs give identical values.
       and its dependent; editing `expect` re-evaluates holds without rerun
       (`tests/test_report.py`, synthetic ledger)
 - [ ] same three commands after the real step 6 runs
+
+## Step 8: the real run (not run; needs HF access)
+- [ ] `scripts/step8.sh` switches the claim files to pythia-160m, runs shared and naive
+      verification over the eight checkpoints, renders `matrix.png`, prints throughput,
+      then `scripts/check_step8.py` prints raw values and PASS/FAIL for each criterion:
+      wall clock < 15 min, step0 all fail, induction onset in [step1000, step16000] and
+      holding after. Commit the claim-file switch and matrix.png afterwards.
+- Dry run on synthetic weights: 8 checkpoints in 16 s excluding downloads; the check
+  script runs and correctly fails the onset criteria (random weights).
+- Note: when `mech.prev_token_head` does not hold at a checkpoint, the induction claims
+  there are `blocked` (per RUNNER.md) and have no raw value. If the onset check fails,
+  `claimci verify --claims mech.induction_head` won't help either, since ancestors are
+  included; we'd need to discuss whether to expose raw values for blocked claims.
