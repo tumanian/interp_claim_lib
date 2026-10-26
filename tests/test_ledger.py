@@ -88,3 +88,24 @@ def test_stale_per_revision(repo_copy):
     full_run(repo, led)
     assert led.stale(repo, "main") == []
     assert led.stale(repo, "step1000") == IDS
+
+
+def test_stale_reason_model_changed(repo_copy):
+    repo = load_repo(repo_copy)
+    led = Ledger.for_repo(repo)
+    full_run(repo, led)
+    p = repo_copy / "claims" / "mech.prev_token_head.yaml"
+    p.write_text(p.read_text().replace("pythia-70m", "pythia-160m"))
+    edited = load_repo(repo_copy)
+    assert "mech.prev_token_head" in led.stale(edited)
+    assert led.stale_reason(edited, "mech.prev_token_head") == "model changed"
+
+
+def test_malformed_ledger_row_names_the_line(repo_copy):
+    repo = load_repo(repo_copy)
+    led = Ledger.for_repo(repo)
+    led.put(row(repo, "mech.prev_token_head"))
+    with led.path.open("a") as f:
+        f.write('{"claim": "x"}\n')
+    with pytest.raises(ValueError, match="results.jsonl:2: malformed ledger row"):
+        Ledger.for_repo(repo)

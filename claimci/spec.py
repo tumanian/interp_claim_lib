@@ -179,6 +179,22 @@ class Repo:
             frontier = nxt
         return out
 
+    def earned_code(self, cid: str) -> "EvidenceCode | None":
+        """The evidence code a rerun earns: the claim's own if rerunnable, else the
+        source's stated_evidence (a proposed TAS/NAS claim with an attached experiment)."""
+        c = self.claims[cid]
+        code = self.evidence.get(c.evidence)
+        if code is None:
+            return None
+        if code.rerunnable:
+            return code
+        stated = (c.provenance.get("source") or {}).get("stated_evidence")
+        return self.evidence.get(stated) if c.code.get("entrypoint") and stated else None
+
+    def runnable(self, cid: str) -> bool:
+        code = self.earned_code(cid)
+        return bool(code and code.rerunnable and self.claims[cid].code.get("entrypoint"))
+
     def ancestors(self, cid: str) -> set[str]:
         out, frontier = set(), {cid}
         while frontier:

@@ -24,39 +24,51 @@ def load_claim(path: Path) -> Claim:
     if missing:
         raise SpecError(cid, f"missing fields {sorted(missing)} in {path.name}")
     d["qualifier"] = d.get("qualifier") or ""
-    for k in ("depends_on", "exports"):
-        d[k] = list(d.get(k) or [])
-    d["inputs"] = dict(d.get("inputs") or {})
-    d["provenance"] = dict(d.get("provenance") or {})
+    for k, t in (("depends_on", list), ("exports", list), ("inputs", dict), ("provenance", dict),
+                 ("subject", dict), ("code", dict), ("data", dict)):
+        d[k] = d.get(k) or t()
+        if not isinstance(d[k], t):
+            raise SpecError(cid, f"`{k}` must be a {t.__name__} in {path.name}")
+    model = d["subject"].get("model")
+    if not isinstance(model, dict) or not isinstance(model.get("hf"), str):
+        raise SpecError(cid, f"subject.model.hf (str) is required in {path.name}")
     return Claim(**d, path=path)
 
 
-def resolve_code(claim: Claim) -> None:
-    """Set code_version: git:<sha> as declared, or sha(source + params) for local entrypoints."""
+def _entrypoint_source(claim: Claim):
+    """(module source, function node) for a local entrypoint; raises SpecError if missing."""
     ep = claim.code.get("entrypoint")
-    ver = str(claim.code.get("version", "local"))
-    if ver.startswith("git:"):
-        claim.code_version, claim.code_version_kind = ver, "git"
-        return
-    if not ep:
-        return
     mod, _, fn = ep.partition(":")
     try:
         spec = importlib.util.find_spec(mod)
-    except ModuleNotFoundError:
+    except (ModuleNotFoundError, ValueError):
         spec = None
     if spec is None or not spec.origin:
         raise SpecError(claim.id, f"entrypoint module {mod!r} not found")
     src = Path(spec.origin).read_text()
     for node in ast.parse(src).body:
         if isinstance(node, ast.FunctionDef) and node.name == fn:
-            decos = [ast.unparse(d) for d in node.decorator_list]
-            seg = ast.get_source_segment(src, node)
-            claim.tags = frozenset(d.rsplit(".", 1)[-1] for d in decos)
-            claim.code_version = "src:" + sha({"decorators": decos, "source": seg, "params": claim.params})[:16]
-            claim.code_version_kind = "local"
-            return
+            return src, node
     raise SpecError(claim.id, f"entrypoint function {fn!r} not found in {mod}")
+
+
+def resolve_code(claim: Claim) -> None:
+    """Set code_version: git:<sha> as declared, else sha(module source + params).
+
+    The whole module is hashed, not just the entrypoint function, so editing a
+    helper the entrypoint calls also invalidates the claim. Tags (decorators on
+    the entrypoint) are read from source either way, without importing it.
+    """
+    if not claim.code.get("entrypoint"):
+        return
+    src, node = _entrypoint_source(claim)
+    claim.tags = frozenset(ast.unparse(d).rsplit(".", 1)[-1] for d in node.decorator_list)
+    ver = str(claim.code.get("version", "local"))
+    if ver.startswith("git:"):
+        claim.code_version, claim.code_version_kind = ver, "git"
+    else:
+        claim.code_version = "src:" + sha({"source": src, "params": claim.params})[:16]
+        claim.code_version_kind = "local"
 
 
 def _resolve_data(claims: dict[str, Claim], errors: list[str]) -> None:
@@ -65,7 +77,9 @@ def _resolve_data(claims: dict[str, Claim], errors: list[str]) -> None:
         if c.dataset:
             return c.dataset
         parent = c.data.get("inherit")
-        if parent:
+        if parent and ("hash" in c.data or "dataset" in c.data):
+            errors.append(f"claim {cid}: data.inherit cannot be combined with dataset/hash")
+        elif parent:
             if parent in seen:
                 errors.append(f"claim {cid}: data.inherit cycle: {' -> '.join(seen + (parent,))}")
                 return None
@@ -75,6 +89,10 @@ def _resolve_data(claims: dict[str, Claim], errors: list[str]) -> None:
             c.dataset = resolve(parent, seen + (parent,))
         elif "dataset" in c.data:
             ds = c.data["dataset"]
+            if not isinstance(ds, dict) or not isinstance(ds.get("gen"), str) \
+                    or not isinstance(ds.get("params", {}), dict):
+                errors.append(f"claim {cid}: data.dataset needs `gen` (str) and `params` (mapping)")
+                return None
             c.dataset = DataVersion(ds["gen"], dict(ds.get("params") or {}), c.data.get("hash"))
         else:
             errors.append(f"claim {cid}: data needs `dataset` or `inherit`")
@@ -100,6 +118,9 @@ def load_repo(root: Path | str = ".") -> Repo:
     questions = {}
     for p in sorted((root / "questions").glob("*.yaml")):
         d = yaml.safe_load(p.read_text())
+        if not isinstance(d, dict) or not isinstance(d.get("id"), str) or not isinstance(d.get("text"), str):
+            errors.append(f"question file {p.name}: needs `id` and `text`")
+            continue
         questions[d["id"]] = Question(d["id"], d["text"], d.get("status", "open"),
                                       list(d.get("claims") or []), d.get("parent"), p)
     _resolve_data(claims, errors)

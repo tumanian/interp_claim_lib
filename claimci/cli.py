@@ -54,13 +54,14 @@ def verify(repo, backend, revisions=None, claims=None, mode="shared", force=Fals
     log(f"executed: {len(results)}   ledger hits: {len(plan.skipped)}   "
         f"forward passes: {round(passes, 6):g}   wall: {time.perf_counter() - t0:.1f}s   run: {runner.run_id}")
     if promote:
+        # Promotion is judged at the claim's own subject revision (the paper's checkpoint).
         for r in results:
             c = repo.claims[r.claim]
-            if r.status == "ok" and r.reproduction and c.status == "proposed":
-                code = repo.evidence[c.evidence]
-                earned = c.evidence if code.rerunnable else c.provenance["source"].get("stated_evidence")
-                state = write_promotion(c, r.reproduction["within_tolerance"], earned)
-                log(f"{r.claim}: claim file set to {state} ({c.path}); commit it separately")
+            if r.status != "ok" or not r.reproduction or c.status != "proposed" or r.revision != c.revision:
+                continue
+            earned = repo.earned_code(r.claim)
+            c.status = write_promotion(c, r.reproduction["within_tolerance"], earned.id)
+            log(f"{r.claim}: claim file set to {c.status} ({c.path}); commit it separately")
     return plan, results
 
 
@@ -81,9 +82,23 @@ def cmd_verify(args) -> int:
     return 1 if any(r.status in ("error", "hook_leak") for r in results) else 0
 
 
+def _load_or_fail(root):
+    """Reports and status work on an unvalidated repo, but structural errors still end the command."""
+    from .spec import SpecError
+    repo = load_repo(root)
+    try:
+        for cid in repo.claims:
+            repo.claim_key(cid)
+    except SpecError as e:
+        raise SystemExit(f"error: {e}")
+    for e in repo.errors:
+        print(f"warning: {e}", file=sys.stderr)
+    return repo
+
+
 def cmd_matrix(args) -> int:
     from .report import matrix_markdown, matrix_png
-    repo = load_repo(args.root)
+    repo = _load_or_fail(args.root)
     if args.question not in repo.questions:
         print(f"error: unknown question {args.question}", file=sys.stderr)
         return 1
@@ -97,13 +112,13 @@ def cmd_matrix(args) -> int:
 
 def cmd_throughput(args) -> int:
     from .report import throughput_markdown
-    print(throughput_markdown(Ledger.for_repo(load_repo(args.root))))
+    print(throughput_markdown(Ledger.for_repo(_load_or_fail(args.root))))
     return 0
 
 
 def cmd_status(args) -> int:
     from .report import status_report
-    repo = load_repo(args.root)
+    repo = _load_or_fail(args.root)
     print(status_report(repo, Ledger.for_repo(repo), _csv(args.revisions)))
     return 0
 

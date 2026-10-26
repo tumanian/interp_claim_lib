@@ -8,7 +8,8 @@ from .spec import DataVersion, Repo
 
 
 def is_intervention(repo: Repo, cid: str) -> bool:
-    return repo.evidence[repo.claims[cid].evidence].causal
+    code = repo.earned_code(cid)
+    return bool(code and code.causal)
 
 
 def topo_order(repo: Repo, ids) -> list[str]:
@@ -96,8 +97,8 @@ def make_plan(repo: Repo, ledger: Ledger, revisions: list[str] | None = None,
         selected = set(claim_ids).union(*(repo.ancestors(c) for c in claim_ids))
     else:
         selected = set(repo.claims)
-    rerunnable = {c for c in selected if repo.evidence[repo.claims[c].evidence].rerunnable}
-    order = topo_order(repo, rerunnable)
+    order = topo_order(repo, {c for c in selected if repo.runnable(c)})
+    # Default: each claim at its own subject revision. Explicit --revisions apply to all.
     revs = revisions or sorted({repo.claims[c].revision for c in order})
     force = force or mode == "naive"  # naive is a baseline measurement: always executes
     groups: list[Group] = []
@@ -106,6 +107,8 @@ def make_plan(repo: Repo, ledger: Ledger, revisions: list[str] | None = None,
         by_key: dict[tuple, Group] = {}
         for cid in order:
             c = repo.claims[cid]
+            if revisions is None and c.revision != rev:
+                continue
             if not force and ledger.get(cid, repo.claim_key(cid, rev)):
                 skipped.append((cid, rev))
                 continue

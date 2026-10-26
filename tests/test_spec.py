@@ -151,3 +151,77 @@ def test_icp_under_imp(repo_copy):
 def test_observational_cannot_be_relabeled_causal(repo_copy):
     edit(repo_copy, "mech.prev_token_head", lambda d: d.update(evidence="IMP"))
     _expect_failure(repo_copy, "mech.prev_token_head", "requires an entrypoint tagged @intervention")
+
+
+# --- review round: helper edits, lifecycle rules, promotion path, crash cases ---
+
+def test_helper_edit_changes_key(repo_copy, tmp_path, monkeypatch):
+    mod = tmp_path / "exp_tmp_mod.py"
+    mod.write_text("def helper(a):\n    return a.loss.mean()\n\ndef score(acts):\n    return float(helper(acts)), {}\n")
+    monkeypatch.syspath_prepend(str(tmp_path))
+    edit(repo_copy, "mech.prev_token_head", lambda d: d["code"].update(entrypoint="exp_tmp_mod:score"))
+    before = load_repo(repo_copy).claim_key("mech.prev_token_head")
+    mod.write_text(mod.read_text().replace("a.loss.mean()", "a.loss.sum()"))
+    import importlib
+    importlib.invalidate_caches()
+    assert load_repo(repo_copy).claim_key("mech.prev_token_head") != before
+
+
+def test_default_plan_uses_each_claims_own_revision(repo_copy):
+    from claimci.ledger import Ledger
+    from claimci.planner import make_plan
+    edit(repo_copy, "mech.prev_token_head", lambda d: d["subject"]["model"].update(revision="step1000"))
+    repo = load_repo(repo_copy)
+    plan = make_plan(repo, Ledger.for_repo(repo))
+    assert {(g.revision, tuple(g.claims)) for g in plan.groups} == {
+        ("main", ("mech.induction_head", "causal.induction_head_ablation")),
+        ("step1000", ("mech.prev_token_head",))}
+
+
+def test_tas_claim_with_attached_experiment_is_runnable(repo_copy):
+    from claimci.ledger import Ledger
+    from claimci.planner import make_plan
+    d = _literature_claim("lit.ablation_tas", "TAS")
+    d.update(code={"entrypoint": "claimci.experiments.induction:ablate_head_loss_delta", "version": "local",
+                   "params": {"ablation": "zero"}},
+             metric="loss_delta_nats", expect={"op": ">=", "value": 0.3}, tolerance=0.05,
+             depends_on=["mech.induction_head"],
+             inputs={"layer": "mech.induction_head.layer", "head": "mech.induction_head.head"})
+    d["provenance"]["source"].update(stated_value=0.4, stated_evidence="IMP")
+    add_claim(repo_copy, d)
+    repo = load_repo(repo_copy)
+    assert validate(repo) == []
+    assert repo.earned_code("lit.ablation_tas").id == "IMP"
+    plan = make_plan(repo, Ledger.for_repo(repo), ["main"])
+    assert "lit.ablation_tas" in plan.groups[0].interventional
+    # the same claim with an observational stated_evidence contradicts its entrypoint
+    edit(repo_copy, "lit.ablation_tas", lambda d: d["provenance"]["source"].update(stated_evidence="IOB"))
+    _expect_failure(repo_copy, "lit.ablation_tas", "intervention but evidence IOB")
+
+
+@pytest.mark.parametrize("cid, change, fragment", [
+    ("mech.prev_token_head", lambda d: d["data"]["dataset"]["params"].update(half=-1), "cannot be generated"),
+    ("mech.prev_token_head", lambda d: d["data"]["dataset"]["params"].update(vocab_lo=20000), "cannot be generated"),
+    ("mech.prev_token_head", lambda d: d["subject"]["model"].pop("hf"), "subject.model.hf"),
+    ("mech.prev_token_head", lambda d: d.update(expect=">= 0.5"), "expect must be"),
+    ("mech.prev_token_head", lambda d: d["expect"].pop("value"), "expect must be"),
+    ("mech.induction_head", lambda d: d.update(depends_on="mech.prev_token_head"), "`depends_on` must be a list"),
+    ("causal.induction_head_ablation", lambda d: d["data"].update(hash="deadbeef"), "inherit cannot be combined"),
+    ("mech.prev_token_head", lambda d: d.update(status="refuted"), "requires qualifier NOT"),
+])
+def test_validate_reports_instead_of_crashing(repo_copy, cid, change, fragment):
+    edit(repo_copy, cid, change)
+    _expect_failure(repo_copy, cid, fragment)
+
+
+def test_tas_claim_cannot_be_verified(repo_copy):
+    d = _literature_claim("lit.induction_tas", "TAS")
+    d["status"] = "verified"
+    add_claim(repo_copy, d)
+    _expect_failure(repo_copy, "lit.induction_tas", "stay proposed")
+
+
+def test_empty_question_file_is_reported(repo_copy):
+    (repo_copy / "questions" / "empty.yaml").write_text("")
+    r = cli_validate(repo_copy)
+    assert r.returncode != 0 and "empty.yaml" in r.stderr

@@ -38,6 +38,11 @@ def _claim_errors(repo: Repo, cid: str) -> list[str]:
         err(f"claim {cid}: unknown status {c.status!r}")
     if c.qualifier not in ("", "NOT"):
         err(f"claim {cid}: qualifier must be '' or NOT, got {c.qualifier!r}")
+    if c.status == "refuted" and c.qualifier != "NOT":
+        err(f"claim {cid}: status refuted requires qualifier NOT")
+    if not code.rerunnable and c.status not in ("proposed", "unreproduced"):
+        err(f"claim {cid}: {c.evidence} claims stay proposed until an experiment reproduces them, "
+            f"got status {c.status!r}")
     if c.question not in repo.questions:
         err(f"claim {cid}: question {c.question!r} not found")
     src = c.provenance.get("source") or {}
@@ -51,14 +56,23 @@ def _claim_errors(repo: Repo, cid: str) -> list[str]:
                 err(f"claim {cid}: rerunnable claim needs `{k}`")
         if not c.code.get("entrypoint"):
             err(f"claim {cid}: rerunnable claim needs code.entrypoint")
-        if c.expect and c.expect.get("op") not in OPS:
-            err(f"claim {cid}: expect.op must be one of {sorted(OPS)}")
+    if c.expect is not None and not (isinstance(c.expect, dict) and c.expect.get("op") in OPS
+                                     and isinstance(c.expect.get("value"), (int, float))
+                                     and not isinstance(c.expect.get("value"), bool)):
+        err(f"claim {cid}: expect must be {{op: one of {sorted(OPS)}, value: number}}")
+    if c.tolerance is not None and not isinstance(c.tolerance, (int, float)):
+        err(f"claim {cid}: tolerance must be a number")
     # Rule 2: causal codes require an intervention entrypoint; an observational
-    # entrypoint cannot be relabeled causal by editing the evidence field.
-    if code.causal and "intervention" not in c.tags:
-        err(f"claim {cid}: evidence {c.evidence} requires an entrypoint tagged @intervention")
-    if not code.causal and "intervention" in c.tags:
-        err(f"claim {cid}: entrypoint is an intervention but evidence {c.evidence} is not causal")
+    # entrypoint cannot be relabeled causal by editing the evidence field. For a
+    # TAS/NAS claim with an attached experiment the code it would earn is checked.
+    earned = repo.earned_code(cid)
+    if c.code.get("entrypoint") and not code.rerunnable and earned is None:
+        err(f"claim {cid}: {c.evidence} claim with an entrypoint needs provenance.source.stated_evidence")
+    if earned is not None:
+        if earned.causal and "intervention" not in c.tags:
+            err(f"claim {cid}: evidence {earned.id} requires an entrypoint tagged @intervention")
+        if not earned.causal and "intervention" in c.tags:
+            err(f"claim {cid}: entrypoint is an intervention but evidence {earned.id} is not causal")
     for d in c.depends_on:
         parent = repo.claims.get(d)
         if parent is None:
@@ -71,7 +85,7 @@ def _claim_errors(repo: Repo, cid: str) -> list[str]:
         if not pcode.dependency:
             err(f"claim {cid}: depends_on {d} has evidence {parent.evidence}, which cannot be a dependency")
         # Rule 3: ICP cannot be a dependency of causal claims.
-        elif code.causal and not pcode.supports_causal:
+        elif earned is not None and earned.causal and not pcode.supports_causal:
             err(f"claim {cid}: causal claim ({c.evidence}) depends_on {d} with evidence "
                 f"{parent.evidence}, which cannot support causal claims")
     for name, ref in c.inputs.items():
@@ -106,7 +120,7 @@ def _data_errors(repo: Repo) -> list[str]:
         if key not in seen:
             try:
                 seen[key] = content_hash(materialize(dv))
-            except (KeyError, TypeError) as e:
+            except Exception as e:  # bad params surface from the generator in many types
                 seen[key] = None
                 out.append(f"claim {cid}: dataset {dv.gen} cannot be generated: {e}")
         if seen[key] and seen[key] != dv.hash:

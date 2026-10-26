@@ -141,3 +141,28 @@ def test_real_model_all_three_hold(tmp_path):
     assert len(rows) == 3 and all(x.status == "ok" and x.holds for x in rows)
     r2 = subprocess.run(cmd, capture_output=True, text=True)
     assert "executed: 0   ledger hits: 3" in r2.stdout
+
+
+def test_promote_judges_only_the_subject_revision(tmp_path):
+    root = copy_repo(tmp_path)
+    # Reproduction target far from any value: step1000 result would say unreproduced.
+    p = root / "claims" / "causal.induction_head_ablation.yaml"
+    d = yaml.safe_load(p.read_text())
+    d["provenance"]["source"]["stated_value"] = 100.0
+    p.write_text(yaml.safe_dump(d, sort_keys=False))
+    repo = load_repo(root)
+    # subject revision is main; results arrive for step1000 first, then main
+    verify(repo, SyntheticBackend(), revisions=["step1000", "main"], promote=True, log=lambda s: None)
+    after = load_repo(root).claims["causal.induction_head_ablation"]
+    assert after.status == "unreproduced"
+    assert "reproduced_from" not in after.provenance
+    # and a reproducing value at main promotes: evidence stays IMP, status verified
+    d = yaml.safe_load(p.read_text())
+    d["status"] = "proposed"
+    main_row = by_id([r for r in Ledger.for_repo(repo).rows if r.revision == "main"])["causal.induction_head_ablation"]
+    d["provenance"]["source"]["stated_value"] = main_row.value
+    p.write_text(yaml.safe_dump(d, sort_keys=False))
+    verify(load_repo(root), SyntheticBackend(), revisions=["main"], promote=True, force=True, log=lambda s: None)
+    after = load_repo(root).claims["causal.induction_head_ablation"]
+    assert after.status == "verified" and after.evidence == "IMP"
+    assert after.provenance["reproduced_from"] == "arXiv:2209.11895"

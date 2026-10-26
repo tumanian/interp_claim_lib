@@ -16,9 +16,13 @@ class Ledger:
         self.rows: list[Result] = []
         self.index: dict[tuple[str, str], list[Result]] = {}
         if self.path.exists():
-            for line in self.path.read_text().splitlines():
-                if line.strip():
+            for n, line in enumerate(self.path.read_text().splitlines(), 1):
+                if not line.strip():
+                    continue
+                try:
                     self._add(Result(**{k: v for k, v in json.loads(line).items() if k in RESULT_FIELDS}))
+                except (ValueError, TypeError) as e:
+                    raise ValueError(f"{self.path}:{n}: malformed ledger row: {e}") from e
 
     @classmethod
     def for_repo(cls, repo: Repo) -> "Ledger":
@@ -53,9 +57,12 @@ class Ledger:
         prior = [r for r in self.history(cid, rev) if r.status == "ok"]
         if not prior:
             return "never run"
-        old, new = prior[-1].lineage, repo.lineage(cid)
-        if set(old) != set(new) or any(old[c][0] != new[c][0] for c in new):
+        last, c = prior[-1], repo.claims[cid]
+        old, new = last.lineage, repo.lineage(cid)
+        if set(old) != set(new) or any(old[k][0] != new[k][0] for k in new):
             return "code changed"
-        if any(old[c][1] != new[c][1] for c in new):
+        if any(old[k][1] != new[k][1] for k in new):
             return "data changed"
-        return "inputs changed"
+        if last.model != c.model:
+            return "model changed"
+        return "inputs or entrypoint changed"
