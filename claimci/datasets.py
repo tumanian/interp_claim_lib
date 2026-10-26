@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -28,3 +29,21 @@ def materialize(dv: DataVersion) -> list[list[int]]:
     if dv.gen not in GENERATORS:
         raise KeyError(f"unknown dataset generator {dv.gen!r}")
     return GENERATORS[dv.gen](**dv.params)
+
+
+@dataclass
+class Dataset:
+    version: DataVersion
+    tokens: list[list[int]]
+
+    def head(self, k: int) -> "Dataset":
+        return Dataset(self.version, self.tokens[:k])
+
+    @property
+    def meta(self) -> dict:
+        v = self.version
+        return {"gen": v.gen, "params": dict(v.params), "hash": v.hash, "n": len(self.tokens)}
+
+
+def load_dataset(dv: DataVersion) -> Dataset:
+    return Dataset(dv, materialize(dv))
