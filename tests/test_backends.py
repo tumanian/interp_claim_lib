@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -9,7 +10,7 @@ from claimci.adapters import HFAdapter
 from claimci.backends import CpuBackend, registered
 from claimci.datasets import load_dataset
 from claimci.loader import load_repo
-from tests.models import any_handle, smallest_cached, synthetic
+from tests.models import any_handle
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -91,29 +92,38 @@ sys.path.insert(0, {root!r})
 from claimci.backends import CpuBackend
 from claimci.datasets import load_dataset
 from claimci.loader import load_repo
-from tests.models import MODEL, smallest_cached
-rev = smallest_cached()
 b = CpuBackend(offline=True)
-h = b.load(MODEL, rev) if rev else b.load({saved!r}, "main")
+h = b.load({model!r}, {rev!r})
 ds = load_dataset(load_repo({root!r}).claims["mech.induction_head"].dataset)
 b.run(h, ds)
+kb = None
 try:  # VmHWM is per address space; ru_maxrss can carry the forking parent's peak across exec
-    kb = next(int(ln.split()[1]) for ln in open("/proc/self/status") if ln.startswith("VmHWM"))
+    with open("/proc/self/status") as f:
+        kb = next((int(ln.split()[1]) for ln in f if ln.startswith("VmHWM")), None)
 except OSError:
+    pass
+if kb is None:
     kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-print("real" if rev else "synthetic", kb)
+    if sys.platform == "darwin":  # macOS reports bytes, Linux KB
+        kb //= 1024
+print(kb)
 """
 
 
-def test_peak_rss_under_2gb(tmp_path):
+def test_peak_rss_under_2gb(setup, tmp_path):
     """Measured in a fresh process through CpuBackend.load (from_pretrained), the path
-    real checkpoints take. Without a cached checkpoint, synthetic weights are saved to
-    disk first: building a random-init model in-process inflates peak RSS by ~450 MB."""
-    if smallest_cached() is None:
-        synthetic().model.save_pretrained(tmp_path / "synthetic70m")
-    script = RSS_SCRIPT.format(root=str(ROOT), saved=str(tmp_path / "synthetic70m"))
-    out = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True,
-                         check=True).stdout.split()
-    kind, kb = out[-2], int(out[-1])
-    print(f"peak RSS ({kind} weights): {kb / 1024:.0f} MB")
+    real checkpoints take. Without a cached checkpoint, the synthetic weights are saved
+    to disk first: building a random-init model in-process inflates peak RSS by ~450 MB."""
+    _, handle, _ = setup
+    if handle.revision == "synthetic":
+        model, rev = str(tmp_path / "synthetic70m"), "main"
+        handle.model.save_pretrained(model)
+    else:
+        model, rev = handle.name, handle.revision
+    script = RSS_SCRIPT.format(root=str(ROOT), model=model, rev=rev)
+    r = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
+    shutil.rmtree(tmp_path / "synthetic70m", ignore_errors=True)
+    assert r.returncode == 0, r.stderr
+    kb = int(r.stdout.split()[-1])
+    print(f"peak RSS ({handle.revision if handle.revision == 'synthetic' else 'real'} weights): {kb / 1024:.0f} MB")
     assert kb < 2 * 1024 * 1024
