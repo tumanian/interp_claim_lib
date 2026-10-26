@@ -19,6 +19,7 @@ code:
 
 data:
   dataset: {gen: repeated_random_tokens, params: {n: 48, half: 20, seed: 0, vocab_lo: 1000, vocab_hi: 10000}}
+  hash: 4a6a7c81cb3b2441bbc2b5cce07d676144e10032be1fb7f8f41593af9d167ea8
 
 metric: induction_attn
 expect: {op: ">=", value: 0.3}

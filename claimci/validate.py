@@ -1,7 +1,8 @@
 """Validation: typing rules from SPEC.md and graph checks from RUNNER.md. No model loads."""
 from __future__ import annotations
 
-from .spec import Repo, SpecError
+from .datasets import content_hash, materialize
+from .spec import Repo, SpecError, canonical
 
 STATUSES = {"proposed", "verified", "stale", "refuted", "unreproduced"}
 OPS = {">=", ">", "<=", "<", "=="}
@@ -91,8 +92,31 @@ def _claim_errors(repo: Repo, cid: str) -> list[str]:
     return out
 
 
+def _data_errors(repo: Repo) -> list[str]:
+    """Generate each explicitly declared dataset once and compare to its declared hash."""
+    out, seen = [], {}
+    for cid in sorted(repo.claims):
+        c = repo.claims[cid]
+        if "dataset" not in c.data or c.dataset is None:
+            continue
+        dv = c.dataset
+        if not dv.hash:
+            out.append(f"claim {cid}: data.hash is not declared")
+            continue
+        key = canonical({"gen": dv.gen, "params": dv.params})
+        if key not in seen:
+            try:
+                seen[key] = content_hash(materialize(dv))
+            except (KeyError, TypeError) as e:
+                seen[key] = None
+                out.append(f"claim {cid}: dataset {dv.gen} cannot be generated: {e}")
+        if seen[key] and seen[key] != dv.hash:
+            out.append(f"claim {cid}: data.hash mismatch: declared {dv.hash}, generated {seen[key]}")
+    return out
+
+
 def validate(repo: Repo) -> list[str]:
-    errors = list(repo.errors)
+    errors = list(repo.errors) + _data_errors(repo)
     cyc = _cycles(repo)
     errors += cyc
     for cid in sorted(repo.claims):
