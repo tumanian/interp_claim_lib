@@ -24,7 +24,7 @@ def check(name, cond):
     ok &= bool(cond)
     print(f"[{'PASS' if cond else 'FAIL'}] {name}")
 
-check(f"shared wall clock {wall}s < 900s", wall < 900)
+check(f"shared wall clock {wall}s < 900s (PROMPT.md step 8; RUNNER.md's target is 600s incl. downloads)", wall < 900)
 check("step0: no claim holds (negative control)", all(status[c][0] != "verified" for c in ids))
 ind = status["mech.induction_head"]
 onset = next((i for i, s in enumerate(ind) if s == "verified"), None)

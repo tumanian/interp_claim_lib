@@ -35,8 +35,12 @@ def cmd_plan(args) -> int:
     repo, errors = _load_valid(args.root)
     if errors:
         return 1
-    plan = make_plan(repo, Ledger.for_repo(repo), _csv(args.revisions), _csv(args.claims),
-                     args.mode, args.force)
+    try:
+        plan = make_plan(repo, Ledger.for_repo(repo), _csv(args.revisions), _csv(args.claims),
+                         args.mode, args.force)
+    except KeyError as e:
+        print(f"error: {e.args[0]}", file=sys.stderr)
+        return 1
     print(plan.render())
     return 0
 
@@ -75,7 +79,7 @@ def cmd_verify(args) -> int:
     try:
         _, results = verify(repo, backend, _csv(args.revisions), _csv(args.claims), args.mode, args.force,
                             args.claim_timeout, args.mem_budget and int(args.mem_budget * 2**20), args.promote)
-    except (OSError, MemoryError) as e:  # missing checkpoint (--offline / no network), cache over budget
+    except (OSError, MemoryError, KeyError) as e:  # missing checkpoint, cache over budget, unknown claim
         print(f"error: {type(e).__name__}: {str(e).splitlines()[0]}", file=sys.stderr)
         return 2
     print(f"total wall clock: {time.perf_counter() - t0:.1f}s")

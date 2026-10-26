@@ -71,7 +71,11 @@ class Runner:
             load_share = (time.perf_counter() - t0) / sum(len(g.claims) for g in groups)
             try:
                 for g in groups:
-                    results += self.run_group(handle, g, plan.mode, load_share)
+                    out = self.run_group(handle, g, plan.mode, load_share)
+                    results += out
+                    if any(r.status == "hook_leak" for r in out):  # never reuse a leaked model
+                        self.backend.unload(handle)
+                        handle = self.backend.load(model, rev)
             finally:
                 self.backend.unload(handle)
         return results
@@ -91,7 +95,12 @@ class Runner:
                               "sharding is phase 2")
         adapter = HFAdapter(handle)
         shared, shared_cost = None, (0.0, 0.0)
-        if mode == "shared":
+        runnable: set[str] = set()  # claims whose dependencies hold or will run in this group
+        for cid in g.claims:  # topological order
+            if all(d in runnable or self.dependency_holds(d, g.revision)
+                   for d in self.repo.claims[cid].depends_on):
+                runnable.add(cid)
+        if mode == "shared" and runnable:
             t0 = time.perf_counter()
             shared = self.backend.run(handle, ds)
             shared_cost = (1.0 / len(g.claims), (time.perf_counter() - t0) / len(g.claims))
@@ -113,6 +122,10 @@ class Runner:
             out.append(r)
         return out
 
+    def dependency_holds(self, d: str, rev: str) -> bool:
+        r = self.outputs.get((d, rev)) or self.ledger.get(d, self.repo.claim_key(d, rev))
+        return r is not None and r.status == "ok" and bool(evaluate(self.repo.claims[d].expect, r.value))
+
     def dependency_block(self, cid: str, rev: str):
         """(None, bindings_by_parent) if runnable, else (reason, None)."""
         found = {}
@@ -133,39 +146,37 @@ class Runner:
         if reason:
             return self.result(cid, g, "blocked", reason=reason)
         inputs = {k: parents[p][e] for k, (p, e) in c.input_refs().items()}
-        passes, t0 = 0.0, time.perf_counter()
+        intervention = is_intervention(self.repo, cid)
+        ctx = Ctx(self.backend, handle, ds, adapter)
+        passes, canary, leak, t0 = 0.0, 0.0, None, time.perf_counter()
         try:
             with time_limit(self.claim_timeout):
                 acts = shared
                 if acts is None:  # naive mode: no sharing
                     acts, passes = self.backend.run(handle, ds), 1.0
                 fn = resolve_entrypoint(c.code["entrypoint"])
-                if is_intervention(self.repo, cid):
-                    ctx = Ctx(self.backend, handle, ds, adapter)
+                if intervention:
                     value, bindings = fn(acts, ctx, **inputs, **c.params), dict(inputs)
-                    passes += ctx.passes
                 else:
                     value, bindings = fn(acts, **inputs, **c.params)
                 missing = set(c.exports) - set(bindings)
                 if missing:
                     raise ValueError(f"experiment did not return exports {sorted(missing)}")
+                value = round(float(value), 6)
+                if intervention:
+                    canary, leak = 1.0, self.canary(handle, ds, acts)
         except Exception as e:
             tb = traceback.format_exc()
             r = self.result(cid, g, "error", reason=f"{type(e).__name__}: {e}",
                             traceback_hash=hashlib.sha256(tb.encode()).hexdigest()[:16])
-            r.cost.update(forward_passes=passes, seconds=time.perf_counter() - t0)
-            return r
-        value = round(float(value), 6)
-        r = self.result(cid, g, "ok", value=value, holds=evaluate(c.expect, value),
-                        bindings={k: v for k, v in bindings.items()})
-        r.reproduction = self.reproduction(cid, value)
-        canary = 0.0
-        if is_intervention(self.repo, cid):
-            canary = 1.0
-            leak = self.canary(handle, ds, acts)
+        else:
+            r = self.result(cid, g, "ok", value=value, holds=evaluate(c.expect, value), bindings=bindings)
+            if c.status == "proposed":  # a promotion run: compare to the source's stated value
+                r.reproduction = self.reproduction(cid, value)
             if leak:
                 r.status, r.reason, r.holds = "hook_leak", leak, None
-        r.cost.update(forward_passes=passes, canary_passes=canary, seconds=time.perf_counter() - t0)
+        r.cost.update(forward_passes=passes + ctx.passes, canary_passes=canary,
+                      seconds=time.perf_counter() - t0)
         return r
 
     def canary(self, handle, ds, acts) -> str | None:

@@ -8,6 +8,8 @@ from . import intervention
 
 def _argmax_head(scores: torch.Tensor, min_layer: int = 0) -> tuple[float, dict]:
     """scores [L, H] -> (max value, {layer, head}) over layers >= min_layer."""
+    if not 0 <= min_layer < scores.shape[0]:
+        raise ValueError(f"min_layer {min_layer} outside [0, {scores.shape[0]})")
     masked = scores.clone()
     masked[:min_layer] = float("-inf")
     flat = int(torch.argmax(masked))
