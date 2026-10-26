@@ -28,3 +28,18 @@ Warm the cache once (tests never download):
 
 ## Step 5: ledger
 - [x] all checks pass here (no model needed; "full run" rows are written directly by the test)
+
+## Step 6: planner and runner
+Verified here on synthetic weights with thresholds lowered in a temp copy
+(`tests/test_runner.py`): plan with an empty HF cache and without importing
+torch; 3 rows written; rerun = 0 executed / 3 ledger hits; naive values equal
+shared values to 6 decimals; failing parent -> dependent `blocked`, no
+intervention pass; raising experiment -> `error`, siblings ok; leaked hook ->
+canary -> `hook_leak`; two forced runs give identical values.
+
+- [ ] `claimci verify --revisions main` on real pythia-70m: 3 rows, all three hold
+      (`pytest tests/test_runner.py::test_real_model_all_three_hold -s` does this in a temp copy)
+- [ ] rerun reports `executed: 0   ledger hits: 3`
+- [ ] `claimci verify --revisions main --mode naive`: values equal shared to 6 decimals
+- Spec note: naive mode records **4** forward passes, not 3. Naive gives each claim its
+  own clean pass (3), and the ablation also needs its hooked pass (1). Shared mode is 2.
