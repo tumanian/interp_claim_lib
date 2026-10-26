@@ -63,3 +63,8 @@ canary -> `hook_leak`; two forced runs give identical values.
   there are `blocked` (per RUNNER.md) and have no raw value. If the onset check fails,
   `claimci verify --claims mech.induction_head` won't help either, since ancestors are
   included; we'd need to discuss whether to expose raw values for blocked claims.
+
+## Step 9: README
+- [x] fresh clone + new venv + `pip install -e '.[report,test]'` + `claimci validate && claimci plan --revisions main` (exit 0); full test suite passes in that venv
+- [ ] the optional CPU-wheel line (`download.pytorch.org`) was blocked here too; untested
+- [ ] paste the step 8 matrix and throughput table into README.md
