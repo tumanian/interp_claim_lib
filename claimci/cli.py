@@ -81,6 +81,33 @@ def cmd_verify(args) -> int:
     return 1 if any(r.status in ("error", "hook_leak") for r in results) else 0
 
 
+def cmd_matrix(args) -> int:
+    from .report import matrix_markdown, matrix_png
+    repo = load_repo(args.root)
+    if args.question not in repo.questions:
+        print(f"error: unknown question {args.question}", file=sys.stderr)
+        return 1
+    ledger = Ledger.for_repo(repo)
+    print(matrix_markdown(repo, ledger, args.question))
+    if args.png:
+        matrix_png(repo, ledger, args.question, args.png)
+        print(f"\nwrote {args.png}")
+    return 0
+
+
+def cmd_throughput(args) -> int:
+    from .report import throughput_markdown
+    print(throughput_markdown(Ledger.for_repo(load_repo(args.root))))
+    return 0
+
+
+def cmd_status(args) -> int:
+    from .report import status_report
+    repo = load_repo(args.root)
+    print(status_report(repo, Ledger.for_repo(repo), _csv(args.revisions)))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="claimci")
     p.add_argument("--root", default=".", help="repo root containing claims/, questions/, ledger/")
@@ -100,8 +127,15 @@ def main(argv: list[str] | None = None) -> int:
     v.add_argument("--mem-budget", type=float, default=None, help="MB for the shared activation cache")
     v.add_argument("--promote", action="store_true",
                    help="write evidence/status/reproduced_from to proposed claim files that reproduce")
+    m = sub.add_parser("matrix", help="claims x revisions for one question")
+    m.add_argument("--question", required=True)
+    m.add_argument("--png", help="also render the table to this PNG path")
+    sub.add_parser("throughput", help="shared vs naive cost from the ledger")
+    st = sub.add_parser("status", help="counts by status and evidence; stale claims and why")
+    st.add_argument("--revisions", help="default: each claim's subject revision")
     args = p.parse_args(argv)
-    return {"validate": cmd_validate, "plan": cmd_plan, "verify": cmd_verify}[args.cmd](args)
+    return {"validate": cmd_validate, "plan": cmd_plan, "verify": cmd_verify, "matrix": cmd_matrix,
+            "throughput": cmd_throughput, "status": cmd_status}[args.cmd](args)
 
 
 if __name__ == "__main__":

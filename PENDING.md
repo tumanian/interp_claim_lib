@@ -43,3 +43,10 @@ canary -> `hook_leak`; two forced runs give identical values.
 - [ ] `claimci verify --revisions main --mode naive`: values equal shared to 6 decimals
 - Spec note: naive mode records **4** forward passes, not 3. Naive gives each claim its
   own clean pass (3), and the ablation also needs its hooked pass (1). Shared mode is 2.
+
+## Step 7: reports
+- [x] matrix (one column, three rows, values match ledger), PNG renders, throughput
+      shared < naive passes, status stale=0 then `code changed` for the edited claim
+      and its dependent; editing `expect` re-evaluates holds without rerun
+      (`tests/test_report.py`, synthetic ledger)
+- [ ] same three commands after the real step 6 runs
