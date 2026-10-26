@@ -25,3 +25,6 @@ Warm the cache once (tests never download):
       step0: both scores < 0.15
       For reference, random-init synthetic weights gave prev_token 0.0855, induction 0.0347
       (close to uniform causal attention: ~0.083 and ~0.034). That is not the step0 checkpoint.
+
+## Step 5: ledger
+- [x] all checks pass here (no model needed; "full run" rows are written directly by the test)

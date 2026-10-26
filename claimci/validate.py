@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 from .datasets import content_hash, materialize
-from .spec import Repo, SpecError, canonical
+from .spec import OPS, Repo, SpecError, canonical
 
 STATUSES = {"proposed", "verified", "stale", "refuted", "unreproduced"}
-OPS = {">=", ">", "<=", "<", "=="}
 
 
 def _cycles(repo: Repo) -> list[str]:

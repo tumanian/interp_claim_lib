@@ -143,10 +143,24 @@ class Result:
     revision: str | None = None
     code_version: str | None = None
     data_hash: str | None = None
+    dataset: str | None = None
     reason: str | None = None
+    traceback_hash: str | None = None
+    lineage: dict = field(default_factory=dict)  # {claim_id: [code_version, data_ident]} self + ancestors
     reproduction: dict | None = None
     cost: dict = field(default_factory=dict)
     run: dict = field(default_factory=dict)
+
+
+OPS = {">=": lambda a, b: a >= b, ">": lambda a, b: a > b, "<=": lambda a, b: a <= b,
+       "<": lambda a, b: a < b, "==": lambda a, b: a == b}
+
+
+def evaluate(expect: dict | None, value: float | None) -> bool | None:
+    """holds, from the current expect and a stored value (changing expect never reruns)."""
+    if expect is None or value is None:
+        return None
+    return bool(OPS[expect["op"]](value, expect["value"]))
 
 
 @dataclass
@@ -164,6 +178,18 @@ class Repo:
             out |= nxt
             frontier = nxt
         return out
+
+    def ancestors(self, cid: str) -> set[str]:
+        out, frontier = set(), {cid}
+        while frontier:
+            nxt = {d for f in frontier for d in self.claims[f].depends_on if d in self.claims} - out
+            out |= nxt
+            frontier = nxt
+        return out
+
+    def lineage(self, cid: str) -> dict:
+        return {c: [self.claims[c].code_version, self.claims[c].dataset.ident if self.claims[c].dataset else None]
+                for c in sorted(self.ancestors(cid) | {cid})}
 
     def claim_key(self, cid: str, revision: str | None = None, _seen: tuple = ()) -> str:
         """sha(code.version + params + data.hash), plus model/revision and upstream keys.
