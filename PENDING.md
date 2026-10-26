@@ -13,8 +13,10 @@ Warm the cache once (tests never download):
 ## Step 3: backend
 - [x] bitwise-identical repeat runs, hook cleanup on exception, hook-leak test (synthetic weights)
 - [ ] same tests on real pythia-70m: `pytest tests/test_backends.py -s` (uses `main` once cached)
-- [ ] peak RSS < 2 GB on real weights. Synthetic measured 1901 MB, of which ~520 MB is
-      importing torch+transformers and ~450 MB is building the random-init model. Tight margin.
+- [x] peak RSS < 2 GB through `CpuBackend.load` on saved synthetic weights: 1199 MB (dev env),
+      1450 MB (fresh venv; importing torch+transformers alone is ~520-730 MB). Measured
+      with VmHWM in a fresh process; `ru_maxrss` carried the pytest parent's peak across exec.
+- [ ] same on real pythia-70m (the test uses it automatically once cached)
 
 ## Step 4: experiments
 - [x] scores and bindings exact on hand-built attention patterns
@@ -65,6 +67,6 @@ canary -> `hook_leak`; two forced runs give identical values.
   included; we'd need to discuss whether to expose raw values for blocked claims.
 
 ## Step 9: README
-- [x] fresh clone + new venv + `pip install -e '.[report,test]'` + `claimci validate && claimci plan --revisions main` (exit 0); full test suite passes in that venv
+- [x] fresh clone + new venv + `pip install -e '.[report,test]'` + `claimci validate && claimci plan --revisions main` (exit 0); full test suite passes in that venv (41 passed, 3 skipped)
 - [ ] the optional CPU-wheel line (`download.pytorch.org`) was blocked here too; untested
 - [ ] paste the step 8 matrix and throughput table into README.md
