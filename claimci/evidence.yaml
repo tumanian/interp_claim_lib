@@ -1,0 +1,77 @@
+# Evidence ontology. Modeled on ECO: each code has an id, a parent, and a
+# definition. Properties (rerunnable, dependency, causal, supports_causal)
+# are inherited from the parent unless overridden. Only leaf codes may be
+# assigned to a claim.
+
+- id: evidence
+  definition: Any support offered for a claim.
+  rerunnable: false
+  dependency: false
+  causal: false
+  supports_causal: false
+
+- id: author_statement
+  parent: evidence
+  definition: A claim asserted by an author; nothing to rerun.
+
+- id: NAS
+  parent: author_statement
+  name: Non-traceable author statement
+  definition: Claim from a paper with no section or figure cited.
+
+- id: TAS
+  parent: author_statement
+  name: Traceable author statement
+  definition: Claim from a paper with a section or figure cited (provenance.source.locator).
+
+- id: computational
+  parent: evidence
+  definition: Produced by running code, without an experiment designed to test the claim.
+  rerunnable: true
+
+- id: IEA
+  parent: computational
+  name: Inferred from automated annotation
+  definition: Auto-interp label; no experiment.
+
+- id: experimental
+  parent: evidence
+  definition: Produced by an experiment on model internals.
+  rerunnable: true
+  dependency: true
+  supports_causal: true
+
+- id: observational
+  parent: experimental
+  definition: Reads or fits on activations; no intervention.
+
+- id: IOB
+  parent: observational
+  name: Inferred from observation
+  definition: Reads activations or attention; no fit, no intervention.
+
+- id: ICP
+  parent: observational
+  name: Inferred from correlational probe
+  definition: Probe fit on activations, evaluated on held-out data.
+  supports_causal: false
+
+- id: interventional
+  parent: experimental
+  definition: Changes the forward pass and measures the behavior change.
+  causal: true
+
+- id: IMP
+  parent: interventional
+  name: Inferred from mutant phenotype
+  definition: Ablation or patching; behavior change measured.
+
+- id: ISS
+  parent: interventional
+  name: Inferred from steering
+  definition: Add a direction or feature; the predicted behavior appears.
+
+- id: ICA
+  parent: interventional
+  name: Inferred from causal abstraction
+  definition: Interchange intervention against a stated high-level model.

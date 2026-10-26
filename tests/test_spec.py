@@ -1,0 +1,153 @@
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+import yaml
+
+from claimci.loader import load_repo
+from claimci.validate import validate
+
+ROOT = Path(__file__).resolve().parents[1]
+IDS = ["mech.prev_token_head", "mech.induction_head", "causal.induction_head_ablation"]
+
+
+@pytest.fixture
+def repo_copy(tmp_path):
+    for d in ("claims", "questions"):
+        shutil.copytree(ROOT / d, tmp_path / d)
+    return tmp_path
+
+
+def edit(root, cid, fn):
+    p = root / "claims" / f"{cid}.yaml"
+    d = yaml.safe_load(p.read_text())
+    fn(d)
+    p.write_text(yaml.safe_dump(d, sort_keys=False))
+
+
+def add_claim(root, d):
+    (root / "claims" / f"{d['id']}.yaml").write_text(yaml.safe_dump(d, sort_keys=False))
+
+
+def cli_validate(root):
+    return subprocess.run([sys.executable, "-m", "claimci.cli", "--root", str(root), "validate"],
+                          capture_output=True, text=True)
+
+
+def test_three_claims_load():
+    repo = load_repo(ROOT)
+    assert sorted(repo.claims) == sorted(IDS)
+    assert repo.claims["mech.prev_token_head"].evidence == "IOB"
+    assert repo.claims["causal.induction_head_ablation"].evidence == "IMP"
+    assert repo.claims["mech.induction_head"].exports == ["layer", "head"]
+    assert repo.questions["q.induction_formation"].claims == IDS
+    assert validate(repo) == []
+
+
+def test_inherit_resolves_to_parent_data_version():
+    repo = load_repo(ROOT)
+    child = repo.claims["causal.induction_head_ablation"]
+    parent = repo.claims["mech.induction_head"]
+    assert child.data == {"inherit": "mech.induction_head"}
+    assert child.dataset is not None and child.dataset == parent.dataset
+    assert child.dataset.gen == "repeated_random_tokens"
+
+
+def test_code_version_is_computed_for_local_entrypoints():
+    c = load_repo(ROOT).claims["causal.induction_head_ablation"]
+    assert c.code_version_kind == "local" and c.code_version.startswith("src:")
+    assert "intervention" in c.tags
+
+
+def test_claim_key_stable_across_loads():
+    a, b = load_repo(ROOT), load_repo(ROOT)
+    for cid in IDS:
+        assert a.claim_key(cid) == b.claim_key(cid)
+
+
+def test_expect_does_not_change_key(repo_copy):
+    before = {cid: load_repo(repo_copy).claim_key(cid) for cid in IDS}
+    edit(repo_copy, "mech.induction_head", lambda d: d["expect"].update(value=0.99))
+    after = load_repo(repo_copy)
+    assert after.claims["mech.induction_head"].expect["value"] == 0.99
+    assert {cid: after.claim_key(cid) for cid in IDS} == before
+
+
+def test_statement_and_provenance_do_not_change_key(repo_copy):
+    before = load_repo(repo_copy).claim_key("mech.induction_head")
+    edit(repo_copy, "mech.induction_head",
+         lambda d: d.update(statement="reworded", provenance={"source": {"kind": "human"}}))
+    assert load_repo(repo_copy).claim_key("mech.induction_head") == before
+
+
+def test_params_change_key_and_dependents(repo_copy):
+    before = {cid: load_repo(repo_copy).claim_key(cid) for cid in IDS}
+    edit(repo_copy, "mech.induction_head", lambda d: d["code"]["params"].update(min_layer=2))
+    after = load_repo(repo_copy)
+    assert after.claim_key("mech.induction_head") != before["mech.induction_head"]
+    assert after.claim_key("causal.induction_head_ablation") != before["causal.induction_head_ablation"]
+    assert after.claim_key("mech.prev_token_head") == before["mech.prev_token_head"]
+
+
+def test_revision_changes_key():
+    repo = load_repo(ROOT)
+    assert repo.claim_key("mech.induction_head", "step0") != repo.claim_key("mech.induction_head", "main")
+
+
+def test_cli_validate_ok():
+    r = cli_validate(ROOT)
+    assert r.returncode == 0, r.stderr
+
+
+# --- injected errors: validate must exit non-zero and name the claim ---
+
+def _expect_failure(root, claim_id, fragment):
+    r = cli_validate(root)
+    print(r.stderr)
+    assert r.returncode != 0
+    assert claim_id in r.stderr and fragment in r.stderr
+
+
+def test_cycle(repo_copy):
+    edit(repo_copy, "mech.prev_token_head",
+         lambda d: d.update(depends_on=["causal.induction_head_ablation"]))
+    _expect_failure(repo_copy, "mech.prev_token_head", "cycle in depends_on")
+
+
+def test_input_not_exported(repo_copy):
+    edit(repo_copy, "causal.induction_head_ablation",
+         lambda d: d["inputs"].update(layer="mech.induction_head.lyr"))
+    _expect_failure(repo_copy, "causal.induction_head_ablation", "mech.induction_head.lyr")
+
+
+def _literature_claim(cid, evidence):
+    return {
+        "id": cid, "question": "q.induction_formation", "evidence": evidence, "status": "proposed",
+        "statement": "x", "subject": {"model": {"hf": "EleutherAI/pythia-70m"}},
+        "code": {}, "data": {"inherit": "mech.induction_head"},
+        "provenance": {"source": {"kind": "paper", "ref": "arXiv:2209.11895", "locator": "Fig. 1"}},
+    }
+
+
+def test_tas_dependency(repo_copy):
+    add_claim(repo_copy, _literature_claim("lit.induction_tas", "TAS"))
+    edit(repo_copy, "mech.induction_head", lambda d: d["depends_on"].append("lit.induction_tas"))
+    _expect_failure(repo_copy, "mech.induction_head", "lit.induction_tas has evidence TAS")
+
+
+def test_icp_under_imp(repo_copy):
+    probe = _literature_claim("probe.induction_icp", "ICP")
+    probe.update(code={"entrypoint": "claimci.experiments.induction:prev_token_score", "version": "local"},
+                 metric="probe_acc", expect={"op": ">=", "value": 0.9})
+    probe["provenance"] = {}
+    add_claim(repo_copy, probe)
+    edit(repo_copy, "causal.induction_head_ablation",
+         lambda d: d["depends_on"].append("probe.induction_icp"))
+    _expect_failure(repo_copy, "causal.induction_head_ablation", "cannot support causal claims")
+
+
+def test_observational_cannot_be_relabeled_causal(repo_copy):
+    edit(repo_copy, "mech.prev_token_head", lambda d: d.update(evidence="IMP"))
+    _expect_failure(repo_copy, "mech.prev_token_head", "requires an entrypoint tagged @intervention")

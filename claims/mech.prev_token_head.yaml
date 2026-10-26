@@ -1,0 +1,34 @@
+id: mech.prev_token_head
+question: q.induction_formation
+qualifier: ""
+evidence: IOB
+status: proposed
+statement: >
+  Some attention head attends from each token to the immediately preceding
+  token with mean attention >= 0.5 on repeated random tokens.
+
+subject:
+  model: {hf: EleutherAI/pythia-70m, revision: main}
+  component: {layer: $layer, head: $head}    # bound from this claim's result
+
+code:
+  entrypoint: claimci.experiments.induction:prev_token_score
+  version: local                              # sha(source + params), computed at load
+  params: {}
+
+data:
+  dataset: {gen: repeated_random_tokens, params: {n: 48, half: 20, seed: 0, vocab_lo: 1000, vocab_hi: 10000}}
+
+metric: prev_token_attn
+expect: {op: ">=", value: 0.5}
+
+depends_on: []
+inputs: {}
+exports: [layer, head]
+
+provenance:
+  source:
+    kind: paper
+    ref: arXiv:2209.11895
+  assigned_by: agent:claude-code
+  date: 2026-10-26

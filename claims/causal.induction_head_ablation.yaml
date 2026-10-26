@@ -1,0 +1,38 @@
+id: causal.induction_head_ablation
+question: q.induction_formation
+qualifier: ""
+evidence: IMP
+status: proposed
+statement: >
+  Zero-ablating the head bound by mech.induction_head raises mean loss on the
+  second copy of repeated random tokens by >= 0.3 nats.
+
+subject:
+  model: {hf: EleutherAI/pythia-70m, revision: main}
+  component: {layer: $layer, head: $head}   # bound from inputs
+
+code:
+  entrypoint: claimci.experiments.induction:ablate_head_loss_delta
+  version: local
+  params: {ablation: zero}
+
+data:
+  inherit: mech.induction_head       # same model + dataset => shares the forward pass
+
+metric: loss_delta_nats
+expect: {op: ">=", value: 0.3}
+tolerance: 0.05                      # for reproduction against a published value
+
+depends_on: [mech.induction_head]
+inputs: {layer: mech.induction_head.layer, head: mech.induction_head.head}
+exports: []
+
+provenance:
+  source:
+    kind: paper
+    ref: arXiv:2209.11895
+    locator: "Section 3, Fig. 4"     # copied from the SPEC.md example; not checked against the paper
+    stated_value: 0.4                # copied from the SPEC.md example; not checked against the paper
+    stated_evidence: IMP
+  assigned_by: agent:claude-code
+  date: 2026-10-26

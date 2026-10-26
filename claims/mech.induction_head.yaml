@@ -1,0 +1,35 @@
+id: mech.induction_head
+question: q.induction_formation
+qualifier: ""
+evidence: IOB
+status: proposed
+statement: >
+  Some attention head in layer >= 1 attends from each token in the second copy
+  of a repeated random sequence to the token after its earlier occurrence,
+  with mean attention >= 0.3.
+
+subject:
+  model: {hf: EleutherAI/pythia-70m, revision: main}
+  component: {layer: $layer, head: $head}    # bound from this claim's result
+
+code:
+  entrypoint: claimci.experiments.induction:induction_head_score
+  version: local
+  params: {min_layer: 1}
+
+data:
+  dataset: {gen: repeated_random_tokens, params: {n: 48, half: 20, seed: 0, vocab_lo: 1000, vocab_hi: 10000}}
+
+metric: induction_attn
+expect: {op: ">=", value: 0.3}
+
+depends_on: [mech.prev_token_head]
+inputs: {}
+exports: [layer, head]
+
+provenance:
+  source:
+    kind: paper
+    ref: arXiv:2209.11895
+  assigned_by: agent:claude-code
+  date: 2026-10-26

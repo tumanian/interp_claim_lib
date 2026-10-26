@@ -1,0 +1,5 @@
+id: q.induction_formation
+text: Does this model form induction heads, and when in training?
+status: open
+claims: [mech.prev_token_head, mech.induction_head, causal.induction_head_ablation]
+parent: q.in_context_learning

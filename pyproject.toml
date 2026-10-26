@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claimci"
+version = "0.1.0"
+description = "CI for mechanistic interpretability claims"
+requires-python = ">=3.11"
+dependencies = ["pyyaml", "numpy", "torch", "transformers"]
+
+[project.optional-dependencies]
+report = ["matplotlib"]
+test = ["pytest"]
+
+[project.scripts]
+claimci = "claimci.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["claimci*"]
+
+[tool.setuptools.package-data]
+claimci = ["evidence.yaml"]
