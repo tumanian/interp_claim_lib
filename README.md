@@ -26,6 +26,9 @@ pip install -e '.[report,test,ingest]'
 claimci serve                                # http://127.0.0.1:8765
 ```
 
+Or see it without installing: [tumanian.dev/interp_lib_demo](https://tumanian.dev/interp_lib_demo/)
+(read-only).
+
 The results below are committed, so the demo needs no keys and no GPU. Adding a source needs a
 Claude API key; rerunning claims needs a GPU ([GUIDE.md](GUIDE.md#setup)).
 

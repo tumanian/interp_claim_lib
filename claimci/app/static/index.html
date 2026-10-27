@@ -180,6 +180,10 @@ const ev = (lab) => lab ? `<span class="ev ${esc(lab[0])}"><b>${esc(lab[0])}</b>
 const verdict = (v) => { const [t, c] = VERDICT[v] || [v, "warn"]; return `<span class="pill ${c}">${esc(t)}</span>`; };
 
 async function api(path, body) {
+  if (window.CLAIMCI_STATIC) {   // a pre-rendered, read-only site (claimci export-site): same names as static_site.key()
+    if (body) throw new Error("read-only demo");
+    path = "api/" + decodeURIComponent(path.replace(/^\/api\//, "")).replace(/[^A-Za-z0-9._-]/g, "_") + ".json";
+  }
   const r = await fetch(path, body ? {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)} : {});
   const j = await r.json();
   if (!r.ok) throw new Error(j.error || r.statusText);

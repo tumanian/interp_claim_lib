@@ -281,6 +281,9 @@ def main(argv: list[str] | None = None) -> int:
     jg.add_argument("--model", default="claude-haiku-5-5")
     jg.add_argument("--effort", default="low")
     jg.add_argument("--out", help="default: <input>.judged.jsonl")
+    es = sub.add_parser("export-site", help="the web app as a read-only static site (for Vercel or any static host)")
+    es.add_argument("--out", default="site")
+    es.add_argument("--base", help="URL path the site is served under, e.g. /demo/ (default: the site root)")
     vs = sub.add_parser("versions", help="experiments whose code changed; keep or bump their versions")
     vs.add_argument("--keep", help="comma-separated ids: same computation, keep the version")
     vs.add_argument("--bump", help="comma-separated ids: different computation, next version")
@@ -292,6 +295,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "judge":
         from .read.judging import main as judge_main
         return judge_main(args.path, args.rubric, args.model, args.effort, args.out)
+    if args.cmd == "export-site":
+        from pathlib import Path
+        from .app.static_site import export
+        n = export(Path(args.root), Path(args.out), args.base)
+        print(f"wrote {n} pages to {args.out}/; deploy with: npx vercel deploy {args.out}")
+        return 0
     if args.cmd == "serve":
         from pathlib import Path
         from .app.web import serve
