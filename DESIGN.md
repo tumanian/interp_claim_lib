@@ -848,7 +848,7 @@ What it buys (the acceptance criteria when this is built):
 This is the layer for scaling extraction and re-verification in batch, in the spirit of
 TransformerLens.
 
-## 17. Expand as dumb machinery (agreed, not built)
+## 17. Expand as dumb machinery (built)
 
 `expand.py` checks for one template by name and calls `templates.contrastive_direction` with
 knowledge of that template's parameters (`block`, `layer`, `pack`) and its layer-scaling rule. So

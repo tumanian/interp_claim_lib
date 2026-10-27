@@ -158,11 +158,10 @@ def cmd_match(args) -> int:
 def cmd_expand(args) -> int:
     from pathlib import Path
     from .expand import expand
-    out = expand(Path(args.root), args.ref, _csv(args.models))
-    for s in out["skipped"]:
-        print(f"  skipped: {s}")
-    print(f"wrote {len(out['written'])} claims" + (f"; validation errors: {out['errors']}" if out["errors"] else ""))
-    return 1 if out["errors"] else 0
+    out = expand(Path(args.root), args.ref, _csv(args.models), verify=args.verify)
+    print(f"wrote {len(out['written'])} claims, refused {len(out['refused'])} closures"
+          + (f"; validation errors: {out['errors']}" if out["errors"] else ""))
+    return 1 if out["errors"] or out.get("verify_exit") else 0
 
 
 def cmd_agent(args) -> int:
@@ -255,6 +254,7 @@ def main(argv: list[str] | None = None) -> int:
     ex = sub.add_parser("expand", help="instantiate a source's verifications on other models")
     ex.add_argument("ref")
     ex.add_argument("--models", required=True, help="comma-separated Hugging Face model ids")
+    ex.add_argument("--verify", action="store_true", help="run the new claims (on the GPU box when configured)")
     se = sub.add_parser("search", help="find claims by words in their id, statement, quote or source")
     se.add_argument("query")
     se.add_argument("--kind", choices=["source", "test", "measurement"])
