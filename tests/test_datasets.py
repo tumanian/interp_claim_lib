@@ -9,7 +9,7 @@ from claimci.schema.loader import load_repo
 ROOT = Path(__file__).resolve().parents[1]
 PARAMS = dict(n=48, half=20, seed=0, vocab_lo=1000, vocab_hi=10000)
 HASH_SNIPPET = (
-    "from claimci.datasets import repeated_random_tokens, content_hash;"
+    "from claimci.store.datasets import repeated_random_tokens, content_hash;"
     "print(content_hash(repeated_random_tokens(n=48, half=20, seed=0, vocab_lo=1000, vocab_hi=10000)))"
 )
 
