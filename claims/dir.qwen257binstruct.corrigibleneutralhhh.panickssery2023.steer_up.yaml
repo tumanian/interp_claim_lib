@@ -68,3 +68,4 @@ provenance:
     expect:
       by: template contrastive_direction
       note: '>= 0.1 balanced P(matching answer); set before running'
+  expanded_from: meta-llama/Llama-2-7b-chat-hf

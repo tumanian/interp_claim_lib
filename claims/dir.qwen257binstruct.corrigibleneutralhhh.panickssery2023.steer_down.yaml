@@ -67,3 +67,4 @@ provenance:
     expect:
       by: template contrastive_direction
       note: <= -0.1; CAA claims steering works in both directions
+  expanded_from: meta-llama/Llama-2-7b-chat-hf

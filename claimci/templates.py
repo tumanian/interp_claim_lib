@@ -170,7 +170,7 @@ def default_opts(hf_model: str) -> dict:
 
 
 def contrastive_direction(source: dict, hf_model: str, layer: int, pack: str, block: int | None = None,
-                          note: str | None = None) -> list[dict]:
+                          note: str | None = None, expanded_from: str | None = None) -> list[dict]:
     """Direction readout, steering up and down, and a random-direction control, for one model."""
     P = PACKS[pack]
     block = P["block_of"](layer) if block is None else block
@@ -205,6 +205,8 @@ def contrastive_direction(source: dict, hf_model: str, layer: int, pack: str, bl
         d["stated"] = {"layer": layer, "pack": pack, "from": source["id"]}
         d["provenance"] = {"assigned_by": "template contrastive_direction", "template": tmpl,
                            "supplemented": {**supp, **({"expect": tsupp(note)} if note else {})}}
+        if expanded_from:  # the paper did not test this model: results here are about scope, not the paper
+            d["provenance"]["expanded_from"] = expanded_from
         return d
 
     dep = dict(depends_on=[f"{base}.direction"], inputs={"direction": f"{base}.direction.direction"})

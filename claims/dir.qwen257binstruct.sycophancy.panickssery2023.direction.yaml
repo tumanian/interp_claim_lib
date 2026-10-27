@@ -61,3 +61,4 @@ provenance:
     vector_norm:
       by: template contrastive_direction
       note: raw difference of means; CAA rescales vectors to a shared norm per layer across behaviours
+  expanded_from: meta-llama/Llama-2-7b-chat-hf

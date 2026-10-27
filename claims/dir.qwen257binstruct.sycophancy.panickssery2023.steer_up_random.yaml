@@ -69,3 +69,4 @@ provenance:
     expect:
       by: template contrastive_direction
       note: <= 0.05; a random direction should not steer the behaviour
+  expanded_from: meta-llama/Llama-2-7b-chat-hf

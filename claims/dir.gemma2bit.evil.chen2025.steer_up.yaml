@@ -79,3 +79,4 @@ provenance:
       by: template contrastive_direction
       note: '>= 20 points on the paper''s 0-100 trait scale; the paper''s figures show larger shifts at
         this coefficient'
+  expanded_from: Qwen/Qwen2.5-7B-Instruct

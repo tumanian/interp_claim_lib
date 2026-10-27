@@ -67,3 +67,4 @@ provenance:
       by: template contrastive_direction
       note: 2 answers per system-prompt pair for the vector, 4 per question for steering, 200 new tokens;
         the paper used more
+  expanded_from: Qwen/Qwen2.5-7B-Instruct

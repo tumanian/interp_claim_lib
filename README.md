@@ -1,19 +1,79 @@
 # claimci
 
-CI for mechanistic interpretability claims.
+A GO-style library of interpretability claims, where verification is a rerun.
 
-A claim is a statement about a model component, paired with the experiment code
-that tests it and the versioned data it runs on. Verifying a claim means
-rerunning that code; the runner appends the result to a ledger, keyed by a hash
-of code, params, data, model and checkpoint. Editing code or data makes the
-claim and its dependents stale, while editing the threshold (`expect`) only
-re-evaluates stored values.
+Biology curates claims about genes with evidence codes, but its evidence is a wet-lab
+experiment nobody reruns. In interpretability the experiment is code, so a claim can carry its
+own test: the code, the data, the model and the threshold, stored as metadata, rerun on demand,
+on new models, as the code changes. claimci is a small working version of that.
+
+## What it does
+
+**1. Given a paper, it extracts the claims, formulates experiments, and runs them on several
+models, including ones the paper did not test.**
+- `claimci ingest arXiv:2507.21509`: claims come from the abstract, and for each claim the
+  paper's own tests (what was done, where, models, data, metric, stated numbers) come from the
+  body. Every quote and number is string-checked against the paper. Claude Sonnet 5.5 extracts;
+  nothing it says is trusted without the check.
+- Matching picks an experiment template and fills its parameters from the paper's stated tests.
+  For Persona Vectors it chose Qwen2.5-7B-Instruct, layer 20, the evil trait; for CAA,
+  Llama-2-7b-chat, layer 13, sycophancy and corrigibility. Thresholds are fixed before any run.
+- `claimci expand arXiv:2312.06681 --models Qwen/Qwen2.5-7B-Instruct,Qwen/Qwen3.5-4B`: the same
+  experiments on other models, at the same relative depth. That choice is recorded as ours, and
+  a failure there counts as scope, not as evidence against the paper.
+
+**2. It stores the metadata (code, setup, everything) in local YAML**, plus an append-only JSONL
+ledger of results, content-addressed artifacts (directions, judged answers) and a data manifest
+that says where every file came from (the authors, elsewhere, or made here). Each claim
+records which numbers the source stated and which were our choices (`supplemented`).
+Trivially a service: the web app (`claimci serve`) already reads it live.
+
+**3. It re-verifies from the metadata alone, skipping parsing.** `claimci verify` reruns
+any claim; results are keyed by a hash of code, parameters, data, model and checkpoint, so
+editing code or data makes a claim and its dependents stale, and a rerun of anything unchanged
+is a cache hit. `claimci reverify` runs everything stale, previously verified claims first,
+cheapest first. This is where compute goes to keep the knowledge current. Runs go to a GPU box
+over SSH when one is configured.
+
+**4. Downstream agents read semi-machine-readable results.** `claimci search`, `get`, `card`
+and `explain`, all with `--json`, return verdicts with margins, the controls they passed,
+caveats, whether the threshold was set after seeing results (post hoc), and the evidence type
+(e.g. *Causal | Activation steering*). An agent can build on a result (claims depend on other
+claims and consume their outputs, e.g. a direction or a head) and add new claims that run
+through the same chain.
+
+Not formal verification: a library with evidence codes, controls and provenance, closer to Gene
+Ontology than to a proof checker. Next: run steps 1 and 3 in batch, which needs a modular,
+scalable experiment layer (in the spirit of TransformerLens), and let the app write the
+experiments it is missing, safely ([DESIGN.md](DESIGN.md) section 13).
+
+## Tested on
+
+| source | finding | model | result |
+|---|---|---|---|
+| Arditi et al. 2024, refusal direction (arXiv:2406.11717) | ablating the direction stops refusal; adding it induces refusal | gemma-2b-it (paper's) | **verified**: refusal 0.91 → 0.00 when ablated (random direction: 0.91); harmless prompts 0.00 → 1.00 when added (random: 0.00); our direction matches the authors' published one (cosine 0.99999); text loss −0.007 nats |
+| @_lyraaaa_ on X: two neurons make Qwen evil | steering L14 N8949 / L13 N7956 makes Qwen3.5-4B evil | Qwen3.5-4B (post's) | **verified \***: 94% of answers judged misaligned (random neurons, same push: 8%; unsteered: 0%). \* loses coherence: 5% of steered answers coherent. Threshold set after seeing results (post hoc) |
+| Chen et al. 2025, Persona Vectors (arXiv:2507.21509) | a persona vector steers the trait | Qwen2.5-7B-Instruct (paper's) | **verified \***: judged evil score 0.1 → 62 (random direction: −0.1); 148/200 contrast pairs confirmed by the judge. \* loses coherence at ×2: 0% coherent |
+| | | gemma-2b-it (expansion) | **could not run**: Gemma will not adopt the evil persona (2/200 pairs pass), so there is no vector to extract |
+| Panickssery et al. 2023, CAA (arXiv:2312.06681) | steering vectors shift behaviour both ways | Llama-2-7b-chat (paper's) | **not run**: gated, no access |
+| | | Qwen2.5-7B-Instruct (expansion) | **does not transfer at ×1**: sycophancy +0.001 / −0.007, corrigibility +0.024 / −0.033 (threshold ±0.1) |
+| | | Qwen3.5-4B (expansion) | **partly**: corrigibility +0.12 ✓ / −0.03, sycophancy ±0.01 |
+| Olsson et al. 2022, induction heads | induction heads form abruptly early in training | pythia-160m, 19 checkpoints | **verified**: forms between step512 and step1000 (score 0.09 → 0.95); ablation +0.85 nats |
+| Betley et al. 2025, Emergent Misalignment (arXiv:2502.17424) | fine-tuning on insecure code causes broad misalignment | — | **gap**: needs fine-tuning, which the library does not have yet (the first target for self-written experiments) |
+
+Every row opens in the web app to the evidence: the quote, the authors' own tests, our
+verifications with thresholds and who set them, controls, and judged samples you can read.
+
+```
+claimci serve            # http://127.0.0.1:8765
+```
 
 Specs: [SPEC.md](SPEC.md) (claim format, evidence codes, lifecycle) and
 [RUNNER.md](RUNNER.md) (pipeline, planner, backend, invalidation).
-[PENDING.md](PENDING.md) records the real-weight verification.
-[DESIGN.md](DESIGN.md) is the proposal for what comes next: paper claims vs
-tests vs measurements, a read path for research agents, and a nightly refresh.
+[DESIGN.md](DESIGN.md) is where this is going: findings vs verifications vs readouts, objects
+vs annotations vs mechanisms, the agent read path, the nightly refresh, local-first
+verification with a shared base, and V2 (the app writes its own experiments).
+[PENDING.md](PENDING.md) records the first real-weight verification.
 
 ## Evidence codes
 
@@ -39,7 +99,7 @@ doesn't pull the CUDA build:
 git clone https://github.com/tumanian/interp_claim_lib && cd interp_claim_lib
 python -m venv .venv && . .venv/bin/activate
 pip install torch --index-url https://download.pytorch.org/whl/cpu   # optional, CPU-only
-pip install -e '.[report,test]'
+pip install -e '.[report,test,ingest]'
 claimci validate && claimci plan --revisions main
 ```
 
@@ -48,22 +108,26 @@ claimci validate && claimci plan --revisions main
 ## Commands
 
 ```
-claimci validate                                  # typing rules, DAG, dataset hashes; no model loads
-claimci plan --revisions main,step1000            # groups, forward passes, ledger hits; no model loads
-claimci verify --revisions main,step1000          # run, append results to ledger/results.jsonl
+claimci ingest arXiv:2507.21509                   # findings from the abstract, the paper's tests from the body; matched to templates
+claimci ingest https://x.com/... --text-file post.txt   # a post: its URL and its text
+claimci match arXiv:2312.06681                    # re-match an ingested source (no re-extraction)
+claimci expand arXiv:2312.06681 --models Qwen/Qwen2.5-7B-Instruct,Qwen/Qwen3.5-4B
+claimci validate                                  # typing rules, provenance, DAG, dataset hashes; no model loads
+claimci plan --claims ID,ID                       # groups, forward passes, ledger hits; no model loads
+claimci verify --claims ID,ID                     # run; results to ledger/results.jsonl
+claimci reverify [--dry-run]                      # everything stale, previously-verified first, cheapest first
+claimci search "refusal direction" [--json]       # find claims
+claimci get CLAIM                                 # one result as JSON: verdict, value, margin, controls, caveats
+claimci card CLAIM | claimci explain arXiv:ID     # cards, text or --json
+claimci judge answers.jsonl                       # the LLM judge as a tool (Claude Haiku 5.5 by default)
+claimci serve                                     # the web app
 ```
 
-Reports, read from the ledger:
-
-```
-claimci matrix --question q.induction_formation --png matrix.png
-claimci throughput
-claimci status
-```
-
-`verify` options: `--mode naive` (one clean pass per claim, the throughput
-baseline), `--force`, `--claims`, `--offline`, `--claim-timeout`,
-`--mem-budget`, `--promote`.
+Reports for the Pythia run: `claimci matrix --question q.induction_formation --png matrix.png`,
+`claimci throughput`, `claimci status`. Remote runs: put
+`{"host": "user@ip", "key": "~/.ssh/key.pem", "dir": "~/interp_claim_lib"}` in
+`.claimci-remote.json`; `verify` and the web app then run on that box and merge its ledger back.
+Ingest and the judge need `ANTHROPIC_API_KEY`.
 
 ## Results: pythia-160m across training
 
@@ -110,6 +174,10 @@ Forward passes naive/shared: 1.93x.
 pytest
 ```
 
-Tests never download. Tests that need trained weights skip until
-`EleutherAI/pythia-70m` (`main`, `step0`) is in the HF cache. The rest of the
-suite runs on a random-init model with the same architecture, built locally.
+88 tests. Tests never download and never call an API (the judge is stubbed). What needs real
+weights skips until they are in the HF cache: `EleutherAI/pythia-70m` (`main`, `step0`) for the
+induction checks, `Qwen/Qwen2.5-0.5B-Instruct` for end-to-end runs of the steering experiments
+through `verify` (CAA and Persona Vectors: direction, steering, random control, artifacts, ledger
+cache, hook cleanup). Everything else runs on a random-init model with Pythia's architecture,
+built locally, or on no model at all (schema, validation, ingest checks, templates, matching,
+expansion, reports, search, re-verification order).

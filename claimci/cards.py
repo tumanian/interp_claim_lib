@@ -91,9 +91,23 @@ def card(repo: Repo, ledger: Ledger, cid: str) -> dict:
                                         "results": _results(repo, ledger, j)}
                                        for j, o in sorted(repo.claims.items()) if o.control_for == k]}
                          for k in attached]
-        tests = [a for a in d["attached"] if a["kind"] == "test"]
+        for a in d["attached"]:
+            a["expansion"] = repo.claims[a["id"]].provenance.get("expanded_from")
+        all_tests = [a for a in d["attached"] if a["kind"] == "test"]
+        tests = [a for a in all_tests if not a["expansion"]]   # the source's own setting decides support
         d["caveats"] = [t for a in tests if a["verdict"] == "holds" for t in a["caveats"]]
-        d["support"] = ("untested" if not tests else
+        by_model: dict[str, list[str]] = {}
+        for a in all_tests:
+            if a["expansion"]:
+                by_model.setdefault(a["model"], []).append(a["verdict"])
+        d["expansions"] = [{"model": m, "held": sum(v == "holds" for v in vs),
+                            "ran": sum(v in ("holds", "fails", "holds, control failed") for v in vs),
+                            "could_not_run": sum(v in ("blocked", "error") for v in vs), "total": len(vs)}
+                           for m, vs in sorted(by_model.items())]
+        d["support"] = ("untested" if not all_tests else
+                        "only tested beyond the source's setting" if not tests else
+                        "not run on the source's model" if all(a["verdict"] in ("not run", "error", "blocked") for a in tests)
+                        and any(a["verdict"] != "not run" for a in all_tests) else
                         "tests attached, not run" if all(a["verdict"] == "not run" for a in tests) else
                         "contradicted by a test" if any(a["verdict"] == "fails" for a in tests) else
                         "not supported: a control reproduced the effect" if any(a["verdict"] == "holds, control failed" for a in tests) else
@@ -168,7 +182,9 @@ KIND_LABELS = {"source": "Finding", "test": "Verification", "measurement": "Read
 FINDING_STATUS = {  # card support -> one word for the report card
     "supported": "Verified", "contradicted by a test": "Not supported",
     "not supported: a control reproduced the effect": "Not supported", "partly tested": "Partly verified",
-    "tests attached, not run": "Not yet run", "untested": "Untested"}
+    "tests attached, not run": "Not yet run", "untested": "Untested",
+    "not run on the source's model": "Not run on the paper's model",
+    "only tested beyond the source's setting": "Tested beyond the paper only"}
 
 
 ORIGINS = ("from the authors", "pulled from elsewhere", "made here")

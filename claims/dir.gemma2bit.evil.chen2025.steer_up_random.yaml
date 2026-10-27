@@ -74,3 +74,4 @@ provenance:
     expect:
       by: template contrastive_direction
       note: <= 5 points; a random direction should not induce the trait
+  expanded_from: Qwen/Qwen2.5-7B-Instruct

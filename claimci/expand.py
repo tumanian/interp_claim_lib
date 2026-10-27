@@ -74,7 +74,8 @@ def expand(root: Path, ref: str, models: list[str], log=print) -> dict:
             block = scale_block(p["block"], src_n, dst_n)
             note = (f"expanded from {p['hf_model']} (block {p['block']} of {src_n}) to block {block} of {dst_n} "
                     f"by relative depth; the paper did not test this model")
-            claims = templates.contrastive_direction(source, m, p["layer"], p["pack"], block=block, note=note)
+            claims = templates.contrastive_direction(source, m, p["layer"], p["pack"], block=block, note=note,
+                                                     expanded_from=p["hf_model"])
             log(f"{p['pack']} on {m}: block {block} of {dst_n} ({len(claims)} claims)")
             made += claims
     written = templates.write_claims(made, root / "claims", root / "questions")

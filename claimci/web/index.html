@@ -96,6 +96,7 @@ summary .chev { color: var(--faint); transition: transform .15s; }
 details[open] > summary .chev { transform: rotate(90deg); }
 .finding-st { font-size: 14px; }
 details.obj .sub { color: var(--muted); font-size: 12px; }
+.expn { display: block; font-size: 12px; color: var(--accent); margin-top: 3px; }
 .caveat { display: block; font-size: 12px; color: var(--warn); margin-top: 3px; }
 p.caveat { margin: 0 0 10px; }
 .body { padding: 2px 0 16px 128px; }
@@ -166,7 +167,9 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<"
 const fmt = (x) => x == null ? "–" : typeof x !== "number" ? esc(x) : Math.abs(x) >= 100 ? x.toFixed(0) : x.toFixed(3);
 let current = null, busy = false;
 
-const STATUS = {"Verified": "ok", "Not supported": "bad", "Partly verified": "warn", "Not yet run": "", "Untested": ""};
+const STATUS = {"Verified": "ok", "Not supported": "bad", "Partly verified": "warn", "Not yet run": "", "Untested": "",
+                "Not run on the paper's model": "warn", "Tested beyond the paper only": "warn"};
+const expansionText = (e) => e.could_not_run && !e.ran ? `${e.model}: could not run` : `${e.model}: ${e.held} of ${e.ran} held`;
 const VERDICT = {"holds": ["Holds", "ok"], "fails": ["Fails", "bad"], "holds, control failed": ["Holds, control failed", "bad"],
                  "measured": ["Read out", "accent"], "not run": ["Not run", ""], "gated": ["Gated", "warn"]};
 const ev = (lab) => lab ? `<span class="ev ${esc(lab[0])}"><b>${esc(lab[0])}</b><span>${esc(lab[1])}</span></span>` : "";
@@ -248,9 +251,10 @@ function verification(a) {
       <span style="font-family:var(--mono)"> ${fmt(c.results.at(-1)?.value)}</span>${readouts(c.results.at(-1))}</div>`).join("");
   return `<details class="ver"><summary>
       <span class="ver-st"><span class="k">${esc(a.kind_label)}</span>${esc(a.statement)}</span>
-      <span class="ver-res">${a.post_hoc ? `<span class="pill warn">post hoc</span> ` : ""}${r?.samples ? `<span class="pill accent">${r.samples_n || ""} samples</span> ` : ""}${fmt(r?.value)} ${verdict(a.verdict)}</span><span class="chev">›</span></summary>
+      <span class="ver-res">${a.expansion ? `<span class="pill accent">beyond the paper</span> ` : ""}${a.post_hoc ? `<span class="pill warn">post hoc</span> ` : ""}${r?.samples ? `<span class="pill accent">${r.samples_n || ""} samples</span> ` : ""}${fmt(r?.value)} ${verdict(a.verdict)}</span><span class="chev">›</span></summary>
     <div class="ver-body">
       <div class="meta">${ev(a.evidence_label)} <span>on ${esc(a.model)}</span> ${a.judged ? `<span class="pill">judged by ${esc(a.judged)}</span>` : ""}
+        ${a.expansion ? `<span class="pill accent" title="Expanded from ${esc(a.expansion)}">not in the paper</span>` : ""}
         ${a.post_hoc ? `<span class="pill warn" title="The threshold was set after seeing results">post hoc</span>` : ""}</div>
       ${(a.caveats || []).map((c) => `<p class="caveat">* ${esc(c)}</p>`).join("")}
       <dl class="kv"><dt>Metric</dt><dd>${esc(a.metric)}</dd><dt>Threshold</dt><dd>${thr}${a.threshold ? ` — ${esc(a.threshold.origin)}` : ""}</dd></dl>
@@ -271,7 +275,8 @@ function finding(f) {
   const cav = f.caveats || [];
   return `<details><summary>
       <span class="pill ${STATUS[f.status] ?? ""}">${esc(f.status)}${cav.length ? " *" : ""}</span>
-      <span class="finding-st">${esc(f.statement)}${cav.map((c) => `<span class="caveat">* ${esc(c)}</span>`).join("")}</span><span class="chev">›</span></summary>
+      <span class="finding-st">${esc(f.statement)}${cav.map((c) => `<span class="caveat">* ${esc(c)}</span>`).join("")}
+        ${(f.expansions || []).length ? `<span class="expn">Beyond the paper: ${f.expansions.map(expansionText).map(esc).join(" · ")}</span>` : ""}</span><span class="chev">›</span></summary>
     <div class="body">
       ${f.quote ? `<p class="quote">“${esc(f.quote)}”</p>` : ""}
       <div class="meta">${ev(f.evidence_label)} <span>${esc(f.source.locator || "")}</span> <span>${esc(f.hedge || "")}</span>
