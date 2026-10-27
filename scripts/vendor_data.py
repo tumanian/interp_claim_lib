@@ -107,8 +107,37 @@ def em_questions() -> None:
                 "paper_samples_per_question": plain[0].get("samples_per_paraphrase")})
 
 
+def persona_vectors() -> None:
+    """Persona Vectors (Chen et al. 2025, arXiv:2507.21509): the evil trait's extraction and
+    evaluation data and the paper's two judge prompts (trait, coherence), at a pinned commit."""
+    import re as _re
+    commit = "b8e0f044fe2410a6fad579f38324f03f13b4e917"
+    raw = f"https://raw.githubusercontent.com/safety-research/persona_vectors/{commit}"
+    extract = json.loads(get(f"{raw}/data_generation/trait_data_extract/evil.json"))
+    evaluate = json.loads(get(f"{raw}/data_generation/trait_data_eval/evil.json"))
+    prompts_py = get(f"{raw}/eval/prompts.py").decode()  # read as text, never executed
+    coherence = _re.search(r'Prompts\["coherence_0_100"\] = """(.*?)"""', prompts_py, _re.S).group(1)
+    write_json(ROOT / "persona_vectors" / "evil.json",
+               {"source": {"repo": "https://github.com/safety-research/persona_vectors", "commit": commit},
+                "trait": "evil", "instructions": extract["instruction"], "extract_questions": extract["questions"],
+                "eval_questions": evaluate["questions"], "judge_prompts": {"trait": extract["eval_prompt"], "coherence": coherence}})
+
+
+def caa() -> None:
+    """Contrastive Activation Addition (Panickssery et al. 2023, arXiv:2312.06681): the sycophancy
+    and corrigibility A/B datasets (vector generation and test splits), at a pinned commit."""
+    commit = "5dabbbd9a0bca5f25e174501e959de378806aa48"
+    raw = f"https://raw.githubusercontent.com/nrimsky/CAA/{commit}/datasets"
+    for behavior in ("sycophancy", "corrigible-neutral-HHH"):
+        write_json(ROOT / "caa" / f"{behavior}.json",
+                   {"source": {"repo": "https://github.com/nrimsky/CAA", "commit": commit}, "behavior": behavior,
+                    "generate": json.loads(get(f"{raw}/generate/{behavior}/generate_dataset.json")),
+                    "test": json.loads(get(f"{raw}/test/{behavior}/test_dataset_ab.json"))})
+
+
 if __name__ == "__main__":
     import sys as _sys
-    steps = {"refusal": refusal, "persona": persona, "natural_text": natural_text, "em_questions": em_questions}
+    steps = {"refusal": refusal, "persona": persona, "natural_text": natural_text, "em_questions": em_questions,
+             "persona_vectors": persona_vectors, "caa": caa}
     for name in (_sys.argv[1:] or steps):
         steps[name]()

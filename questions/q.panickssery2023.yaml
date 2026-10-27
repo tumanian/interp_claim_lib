@@ -1,5 +1,28 @@
 id: q.panickssery2023
-text: What does Steering Llama 2 via Contrastive Activation Addition claim, and does
-  it hold?
+text: What does Steering Llama 2 via Contrastive Activation Addition claim, and does it hold?
 status: open
-claims: []
+claims:
+- dir.llama27bchathf.sycophancy.panickssery2023.direction
+- dir.llama27bchathf.sycophancy.panickssery2023.steer_up
+- dir.llama27bchathf.sycophancy.panickssery2023.steer_down
+- dir.llama27bchathf.sycophancy.panickssery2023.steer_up_random
+- dir.llama27bchathf.corrigibleneutralhhh.panickssery2023.direction
+- dir.llama27bchathf.corrigibleneutralhhh.panickssery2023.steer_up
+- dir.llama27bchathf.corrigibleneutralhhh.panickssery2023.steer_down
+- dir.llama27bchathf.corrigibleneutralhhh.panickssery2023.steer_up_random
+- dir.qwen257binstruct.corrigibleneutralhhh.panickssery2023.direction
+- dir.qwen257binstruct.corrigibleneutralhhh.panickssery2023.steer_up
+- dir.qwen257binstruct.corrigibleneutralhhh.panickssery2023.steer_down
+- dir.qwen257binstruct.corrigibleneutralhhh.panickssery2023.steer_up_random
+- dir.qwen354b.corrigibleneutralhhh.panickssery2023.direction
+- dir.qwen354b.corrigibleneutralhhh.panickssery2023.steer_up
+- dir.qwen354b.corrigibleneutralhhh.panickssery2023.steer_down
+- dir.qwen354b.corrigibleneutralhhh.panickssery2023.steer_up_random
+- dir.qwen257binstruct.sycophancy.panickssery2023.direction
+- dir.qwen257binstruct.sycophancy.panickssery2023.steer_up
+- dir.qwen257binstruct.sycophancy.panickssery2023.steer_down
+- dir.qwen257binstruct.sycophancy.panickssery2023.steer_up_random
+- dir.qwen354b.sycophancy.panickssery2023.direction
+- dir.qwen354b.sycophancy.panickssery2023.steer_up
+- dir.qwen354b.sycophancy.panickssery2023.steer_down
+- dir.qwen354b.sycophancy.panickssery2023.steer_up_random

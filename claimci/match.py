@@ -12,13 +12,13 @@ from __future__ import annotations
 import json
 
 from .ingest import EFFORT, MODEL
-from .templates import CATALOG
+from .templates import CATALOG, PACKS
 
 SCHEMA = {
     "type": "object", "additionalProperties": False, "required": ["matches"],
     "properties": {"matches": {"type": "array", "items": {
         "type": "object", "additionalProperties": False,
-        "required": ["slug", "same_as", "template", "hf_model", "interventions", "why"],
+        "required": ["slug", "same_as", "template", "hf_model", "interventions", "packs", "layer", "why"],
         "properties": {
             "slug": {"type": "string"},
             "same_as": {"type": "string", "description": "existing source claim id, or empty"},
@@ -27,6 +27,9 @@ SCHEMA = {
             "interventions": {"type": "array", "items": {
                 "type": "object", "additionalProperties": False, "required": ["layer", "neuron", "dose"],
                 "properties": {"layer": {"type": "integer"}, "neuron": {"type": "integer"}, "dose": {"type": "number"}}}},
+            "packs": {"type": "array", "items": {"type": "string", "enum": list(PACKS)},
+                      "description": "contrastive_direction: the data packs for the behaviours this claim covers"},
+            "layer": {"type": "integer", "description": "contrastive_direction: the paper's stated layer number, or -1"},
             "why": {"type": "string", "description": "one sentence"}}}}},
 }
 
@@ -37,8 +40,12 @@ thing (same source or another source making the identical claim). Leave empty if
 but different claim is not the same.
 2. template: a test template from the catalog that fits, but only if the claim states every \
 parameter the template needs. Never guess a parameter. Leave empty otherwise.
-3. hf_model and interventions: the template's parameters exactly as the source states them \
-(empty if no template). Map an informal model name to its official Hugging Face repo id.
+3. hf_model, interventions, pack, layer: the template's parameters exactly as the source states \
+them, including its stated tests (empty / -1 if no template). Map an informal model name to its \
+official Hugging Face repo id. A claim about several behaviours or traits can be tested on the \
+subset that has data packs: list every pack that matches one of them (it is fine if some of the \
+claim's behaviours have no pack; say so in `why`). Never use a pack for a behaviour the claim \
+does not mention.
 
 TEMPLATE CATALOG:
 {catalog}
@@ -82,10 +89,14 @@ def match(new_claims: list[dict], existing: dict, ref: str, client=None) -> dict
 
 def check_params(m: dict) -> str | None:
     """Why a template match cannot be instantiated, or None if it can."""
-    if m["template"] != "neuron_steering":
+    if m["template"] == "neuron_steering":
+        if not m["hf_model"] or not m["interventions"]:
+            return "missing model or interventions"
+    elif m["template"] == "contrastive_direction":
+        if not m["hf_model"] or not m.get("packs") or any(p not in PACKS for p in m["packs"]) or m.get("layer", -1) < 0:
+            return "missing model, data pack or stated layer"
+    else:
         return "template not instantiable automatically" if m["template"] else None
-    if not m["hf_model"] or not m["interventions"]:
-        return "missing model or interventions"
     try:
         from huggingface_hub import model_info
         model_info(m["hf_model"])

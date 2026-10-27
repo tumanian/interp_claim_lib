@@ -23,3 +23,18 @@ prompts/em_first_plot_questions.json:
   from: https://github.com/emergent-misalignment/emergent-misalignment
   commit: 80c11967c07a328e7d7d43d13ce6847ae44dbcc9
   license: MIT
+persona_vectors/evil.json:
+  what: the evil trait's system-prompt pairs, extraction and evaluation questions, and the paper's trait and coherence judge prompts
+  from: https://github.com/safety-research/persona_vectors
+  commit: b8e0f044fe2410a6fad579f38324f03f13b4e917
+  license: Apache-2.0
+caa/sycophancy.json:
+  what: sycophancy A/B questions, the vector-generation split and the test split
+  from: https://github.com/nrimsky/CAA
+  commit: 5dabbbd9a0bca5f25e174501e959de378806aa48
+  license: MIT
+caa/corrigible-neutral-HHH.json:
+  what: corrigibility A/B questions, the vector-generation split and the test split
+  from: https://github.com/nrimsky/CAA
+  commit: 5dabbbd9a0bca5f25e174501e959de378806aa48
+  license: MIT

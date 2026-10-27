@@ -1,0 +1,67 @@
+id: dir.qwen257binstruct.evil.chen2025.direction
+kind: measurement
+question: q.chen2025
+evidence: IOB
+status: proposed
+statement: 'The evil persona vector of Qwen/Qwen2.5-7B-Instruct at block 19: answers under evil vs helpful
+  system prompts, judge-filtered; value is the share of pairs kept.'
+about: src.chen2025.persona_vectors_identified
+exports:
+- direction
+- block
+subject:
+  model:
+    hf: Qwen/Qwen2.5-7B-Instruct
+    revision: main
+    chat: true
+    dtype: bfloat16
+    template: hf
+    thinking: false
+    batch: 16
+code:
+  entrypoint: claimci.experiments.direction:persona_direction
+  version: local
+  params:
+    pack: pack
+    block: 19
+data:
+  dataset:
+    gen: vendored
+    params:
+      files:
+        pack: persona_vectors/evil.json
+  hash: da97d791343ede0d7bac148a4a6dd1ca3d81c9fab6897791d81478a266a4d432
+metric: pairs_kept_fraction
+depends_on: []
+inputs: {}
+stated:
+  layer: 20
+  pack: persona_vectors/evil
+  from: src.chen2025.persona_vectors_identified
+provenance:
+  assigned_by: template contrastive_direction
+  template:
+    name: contrastive_direction
+    params:
+      hf_model: Qwen/Qwen2.5-7B-Instruct
+      layer: 20
+      block: 19
+      pack: persona_vectors/evil
+  supplemented:
+    code.params.block:
+      by: template contrastive_direction
+      note: 'paper layer 20 -> block 19: persona_vectors hooks layer_idx = layer - 1 (eval/eval_persona.py)'
+    code.params.coef:
+      by: template contrastive_direction
+      note: +2.0 to induce the trait (the paper sweeps 0.5-2.5); -1.5 to suppress, from scripts/eval_steering.sh
+    subject.model.dtype:
+      by: template contrastive_direction
+      note: bfloat16
+    judge:
+      by: template contrastive_direction
+      note: Claude Haiku 5.5 at low effort with the paper's own trait and coherence prompts; the paper
+        used gpt-4.1-mini
+    samples:
+      by: template contrastive_direction
+      note: 2 answers per system-prompt pair for the vector, 4 per question for steering, 200 new tokens;
+        the paper used more

@@ -60,13 +60,23 @@ def load_chat(model: str, revision: str, opts: dict, offline: bool = False) -> C
     return ChatHandle(m, tok, model, revision, dict(opts))
 
 
-def format_prompt(h: ChatHandle, instruction: str) -> str:
+def format_prompt(h: ChatHandle, instruction: str, system: str | None = None, prefix: str = "") -> str:
+    """The chat-formatted prompt, ready for the assistant's first token. `system` adds a system turn
+    (folded into the user turn for templates without one); `prefix` starts the assistant's answer."""
     template = h.opts.get("template", "hf")
     if template == "gemma_paper":
-        return GEMMA_PAPER_TEMPLATE.format(instruction=instruction)
+        text = f"{system}\n\n{instruction}" if system else instruction
+        return GEMMA_PAPER_TEMPLATE.format(instruction=text) + prefix
     kw = {"enable_thinking": False} if h.opts.get("thinking") is False else {}
-    return h.tokenizer.apply_chat_template([{"role": "user", "content": instruction}], tokenize=False,
-                                           add_generation_prompt=True, **kw)
+    msgs = [{"role": "user", "content": instruction}]
+    if system:
+        msgs.insert(0, {"role": "system", "content": system})
+    try:
+        out = h.tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True, **kw)
+    except Exception:  # no system role in this template: fold it into the user turn
+        msgs = [{"role": "user", "content": f"{system}\n\n{instruction}"}]
+        out = h.tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True, **kw)
+    return out + prefix
 
 
 def _batches(h: ChatHandle, texts: list[str]):
@@ -108,6 +118,54 @@ def block_inputs(h: ChatHandle, prompts: list[str], layer: int, pos: int) -> tor
         for enc in _batches(h, _bos(h, prompts)):
             h.model(**enc)
     return torch.cat(got)
+
+
+def block_outputs(h: ChatHandle, texts: list[str], block: int, pos: int | None = -1,
+                  start: list[int] | None = None) -> torch.Tensor:
+    """[N, D] output of decoder block `block`: at position `pos` (negative, from the end), or, with
+    pos=None, the mean over positions from start[i] (counted from the left of each unpadded text)."""
+    from .backends import registered
+    got, offsets = [], []
+
+    def grab(module, args, out):
+        x = out[0] if isinstance(out, tuple) else out
+        got.append(x.detach())
+
+    bs = int(h.opts.get("batch", 16))
+    texts = _bos(h, texts)
+    with torch.no_grad(), registered([(h.layers[block], grab, "post")]):
+        for s in range(0, len(texts), bs):
+            enc = h.tokenizer(texts[s:s + bs], return_tensors="pt", padding=True, add_special_tokens=False).to(h.device)
+            h.model(**enc)
+            x = got.pop().to(torch.float64)
+            if pos is not None:
+                offsets.append(x[:, pos, :].cpu())
+                continue
+            lengths = enc.attention_mask.sum(1).tolist()
+            T = x.shape[1]
+            for i, L in enumerate(lengths):  # left padding: the text occupies the last L positions
+                first = T - L + start[s + i]
+                offsets.append(x[i, first:, :].mean(0, keepdim=True).cpu())
+    return torch.cat(offsets)
+
+
+def generate(h: ChatHandle, prompts: list[str], hooks=(), n: int = 1, max_new_tokens: int = 200,
+             temperature: float = 1.0, seed: int = 0) -> list[list[str]]:
+    """n sampled continuations per formatted prompt (greedy when temperature is 0)."""
+    from .backends import registered
+    out, bs = [], max(1, int(h.opts.get("batch", 8)) // max(n, 1))
+    torch.manual_seed(seed)
+    with torch.no_grad(), registered(hooks):
+        for s in range(0, len(prompts), bs):
+            enc = h.tokenizer(_bos(h, prompts[s:s + bs]), return_tensors="pt", padding=True,
+                              add_special_tokens=False).to(h.device)
+            kw = dict(do_sample=True, temperature=temperature, top_p=1.0, top_k=0) if temperature > 0 else dict(do_sample=False)
+            seqs = h.model.generate(**enc, max_new_tokens=max_new_tokens, num_return_sequences=n,
+                                    pad_token_id=h.tokenizer.pad_token_id, **kw)
+            T = enc.input_ids.shape[1]
+            texts = [h.tokenizer.decode(q[T:], skip_special_tokens=True).strip() for q in seqs]
+            out += [texts[i * n:(i + 1) * n] for i in range(len(texts) // n)]
+    return out
 
 
 def resid_norm_medians(h: ChatHandle, prompt: str, layers: list[int]) -> dict[int, float]:

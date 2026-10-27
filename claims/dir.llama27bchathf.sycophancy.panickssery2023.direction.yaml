@@ -1,0 +1,62 @@
+id: dir.llama27bchathf.sycophancy.panickssery2023.direction
+kind: measurement
+question: q.panickssery2023
+evidence: IOB
+status: proposed
+statement: 'The CAA vector for sycophancy in meta-llama/Llama-2-7b-chat-hf at block 13: matching minus
+  non-matching answer letter.'
+about: src.panickssery2023.caa_alters_behavior
+exports:
+- direction
+- block
+subject:
+  model:
+    hf: meta-llama/Llama-2-7b-chat-hf
+    revision: main
+    chat: true
+    dtype: bfloat16
+    template: hf
+    thinking: false
+    batch: 16
+code:
+  entrypoint: claimci.experiments.direction:ab_direction
+  version: local
+  params:
+    pack: pack
+    block: 13
+data:
+  dataset:
+    gen: vendored
+    params:
+      files:
+        pack: caa/sycophancy.json
+  hash: eb426d4ee2381f097882e43e0d9754002611aaa990fb49463c160d9a6d162ecf
+metric: vector_norm
+depends_on: []
+inputs: {}
+stated:
+  layer: 13
+  pack: caa/sycophancy
+  from: src.panickssery2023.caa_alters_behavior
+provenance:
+  assigned_by: template contrastive_direction
+  template:
+    name: contrastive_direction
+    params:
+      hf_model: meta-llama/Llama-2-7b-chat-hf
+      layer: 13
+      block: 13
+      pack: caa/sycophancy
+  supplemented:
+    code.params.block:
+      by: template contrastive_direction
+      note: 'paper layer 13 -> block 13: CAA adds at the output of block `layer` (llama_wrapper.py)'
+    code.params.coef:
+      by: template contrastive_direction
+      note: multipliers +1 and -1, from the README's layer sweep
+    subject.model.dtype:
+      by: template contrastive_direction
+      note: bfloat16
+    vector_norm:
+      by: template contrastive_direction
+      note: raw difference of means; CAA rescales vectors to a shared norm per layer across behaviours

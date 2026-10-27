@@ -144,6 +144,61 @@ def cmd_ingest(args) -> int:
     return 1 if out["errors"] else 0
 
 
+def cmd_match(args) -> int:
+    from pathlib import Path
+    from .pipeline import match_source
+    out = match_source(Path(args.root), args.ref)
+    for c in out["claims"]:
+        what = (f"same as {c['same_as']}" if c["same_as"] else
+                f"{len(c['tests'])} tests from {c['template']} {c['params']}" if c["tests"] else f"gap: {c['gap']}")
+        print(f"  {c['id']:<58} {what}")
+    return 1 if out["errors"] else 0
+
+
+def cmd_expand(args) -> int:
+    from pathlib import Path
+    from .expand import expand
+    out = expand(Path(args.root), args.ref, _csv(args.models))
+    for s in out["skipped"]:
+        print(f"  skipped: {s}")
+    print(f"wrote {len(out['written'])} claims" + (f"; validation errors: {out['errors']}" if out["errors"] else ""))
+    return 1 if out["errors"] else 0
+
+
+def cmd_agent(args) -> int:
+    from . import agent_api
+    repo = _load_or_fail(args.root)
+    ledger = Ledger.for_repo(repo)
+    if args.cmd == "search":
+        out = agent_api.search(repo, ledger, args.query, args.kind, args.model, args.limit)
+        if args.json:
+            print(json.dumps(out, indent=1))
+        else:
+            for r in out:
+                print(f"{r['id']:<62} {r['kind']:<12} {r['verdict']}\n    {r['statement'][:150]}")
+        return 0
+    if args.cmd == "get":
+        if args.claim not in repo.claims:
+            print(f"error: unknown claim {args.claim}", file=sys.stderr)
+            return 1
+        print(json.dumps(agent_api.get(repo, ledger, args.claim, args.revision), indent=1, default=str))
+        return 0
+    plan = agent_api.reverify_plan(repo, ledger, tuple(_csv(args.skip_models) or ()))[:args.limit]
+    for r in plan:
+        print(f"  {r['id']:<62} {r['why']:<22} ~{r['est_seconds']:.0f}s  {r['model']}")
+    print(f"{len(plan)} stale claims" + (" (dry run)" if args.dry_run else ""))
+    if args.dry_run or not plan:
+        return 0
+    from pathlib import Path
+    from .remote import config, verify as remote_verify
+    ids = [r["id"] for r in plan]
+    if config(Path(args.root)):
+        return remote_verify(Path(args.root), ids)
+    from .backends import CpuBackend
+    verify(repo, CpuBackend(), claims=ids)
+    return 0
+
+
 def cmd_card(args) -> int:
     from . import cards
     repo = _load_or_fail(args.root)
@@ -199,6 +254,24 @@ def main(argv: list[str] | None = None) -> int:
         s = sub.add_parser(name, help=what)
         s.add_argument("claim")
         s.add_argument("--json", action="store_true")
+    mt = sub.add_parser("match", help="match an ingested source's claims to test templates (no re-extraction)")
+    mt.add_argument("ref", help="the source's ref, e.g. arXiv:2507.21509")
+    ex = sub.add_parser("expand", help="instantiate a source's verifications on other models")
+    ex.add_argument("ref")
+    ex.add_argument("--models", required=True, help="comma-separated Hugging Face model ids")
+    se = sub.add_parser("search", help="find claims by words in their id, statement, quote or source")
+    se.add_argument("query")
+    se.add_argument("--kind", choices=["source", "test", "measurement"])
+    se.add_argument("--model", help="substring of the model id")
+    se.add_argument("--limit", type=int, default=10)
+    se.add_argument("--json", action="store_true")
+    ge = sub.add_parser("get", help="one claim's current result as JSON (verdict, value, margin, controls, caveats)")
+    ge.add_argument("claim")
+    ge.add_argument("--revision")
+    rv = sub.add_parser("reverify", help="run every stale claim, previously-verified first, cheapest first")
+    rv.add_argument("--dry-run", action="store_true")
+    rv.add_argument("--limit", type=int, default=1000)
+    rv.add_argument("--skip-models", help="comma-separated substrings of model ids to skip (e.g. gated ones)")
     jg = sub.add_parser("judge", help="score question/answer pairs (JSONL) with an LLM judge rubric")
     jg.add_argument("path", help="JSONL with `question` and `answer` per line")
     jg.add_argument("--rubric", default="em")
@@ -218,7 +291,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     return {"validate": cmd_validate, "plan": cmd_plan, "verify": cmd_verify, "matrix": cmd_matrix,
             "throughput": cmd_throughput, "status": cmd_status, "ingest": cmd_ingest,
-            "card": cmd_card, "explain": cmd_card}[args.cmd](args)
+            "card": cmd_card, "explain": cmd_card,
+            "match": cmd_match, "expand": cmd_expand,
+            "search": cmd_agent, "get": cmd_agent, "reverify": cmd_agent}[args.cmd](args)
 
 
 if __name__ == "__main__":
