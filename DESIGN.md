@@ -468,3 +468,97 @@ Each step ends with something usable.
 - Copying score: the paper's definition of an induction head includes copying
   (OV circuit). Add a measurement for it before calling
   `lit.olsson.induction_heads_exist` supported, or record it as a gap?
+
+## 11. Demo: drop an arXiv id, get verified claims (brainstorm)
+
+A small web app that shows the whole loop on one screen.
+
+```
+[ arXiv id ]
+ 1. Read     fetch the paper (arXiv HTML or PDF) -> text with section anchors
+ 2. Extract  LLM -> paper claims (statement, quote, locator, scope, hedge, stated numbers)
+             + references: code repos, datasets, models (HF ids), checkpoints
+             each quote and number string-checked against the paper text, shown as pass/fail
+ 3. Match    per claim: a test or measurement in the library? the paper's own code? neither -> gap
+ 4. Plan     claims x models x checkpoints, estimated time (and cost, once backends are priced)
+ 5. Verify   runs; results stream into claim cards: value, verdict, margin, control
+ 6. Write    claim files, ledger rows and card metadata (download, or open a PR to the shared base)
+```
+
+The moment the demo is built around: a paper claim card goes from "asserted"
+to "measured on pythia-160m: holds, margin +0.58, control ok" seconds after the
+id is dropped.
+
+Step 3 decides how good it looks, so the demo is honest about it:
+
+- Golden path, Olsson et al.: the library covers it (previous-token head,
+  induction head, ablation, onset and abruptness). End to end in about a minute
+  on CPU.
+- Any other paper: reading, extraction, quote checks, references and the plan
+  work for anything. Verification runs only where the library has a matching
+  experiment; otherwise the card says "no test available" and what one would
+  need. Showing gaps is part of the trust model, not a failure of the demo.
+- The paper's own code: "code found, not runnable yet" until an adapter exists.
+  Stretch goal.
+
+### Steering papers
+
+Steering is the second demo family, because it is popular, cheap to rerun on
+small models, and easy to overclaim. Its evidence code is ISS (inferred from
+steering): add a direction, or scale a set of neurons, and the predicted
+behaviour appears.
+
+Candidate papers to check (recent, from a search; not yet chosen):
+- Query-Adaptive Neuron Steering for LLMs (arXiv:2610.14519): a trained gate
+  sets per-query coefficients on a candidate set of neurons; claims gains across
+  model scales and transfer across benchmarks.
+- Does Steering Break Your Model? (arXiv:2610.07722): SteerScope, 23 methods
+  and 15 metrics; reports that no activation steering method beats prompt
+  steering on efficacy against side effects, and that side effects grow out of
+  distribution.
+
+The second paper is close to a checklist for what a steering test needs. A
+steering claim is verified as a bundle of tests and measurements, not one
+number:
+
+| piece | kind | what it checks |
+|---|---|---|
+| efficacy | test | behaviour metric, steered minus unsteered, on held-out prompts |
+| dose-response | measurement | effect against coefficient; a real effect should be monotone over a range |
+| specificity control | test | the same number of random neurons (or a random direction of the same norm) in the same layer, same coefficient, gives a much smaller effect |
+| side effects | measurement | perplexity on held-out natural text and a small capability set, steered vs unsteered |
+| prompt baseline | measurement | the same behaviour asked for in the prompt, no activation change |
+| held-out selection | rule | neurons or directions chosen on one prompt set, evaluated on another |
+| across models | expand | rerun on other sizes when the method claims to be general |
+
+Library additions this needs:
+- a steering hook: add a vector to the residual stream, or scale chosen MLP
+  neurons, at a layer, with a coefficient; reuses the hook context manager and
+  the hook-leak canary;
+- generation-free metrics where possible (log-probability of target tokens),
+  because they are deterministic;
+- when a judge model scores behaviour, the judge's id and version go into the
+  claim key, and the evidence is marked as judged, since judges drift.
+
+Compute: steering papers usually report 7B to 8B models. Small models (Pythia,
+small Llama-style) run on CPU and are enough to check whether the method's
+effect exists and passes its controls. Matching the paper's own model needs a
+GPU, which is where priced backends (section 0, P2) stop being P2.
+
+### Build order for the demo
+
+The demo reorders section 9: ingestion moves first, the nightly job later.
+
+1. Ingestion: Claude API extraction into `kind: paper` claims, plus the quote
+   and number check.
+2. `kind`, `about` and the claim card (section 9 steps 1 and 3): the cards are
+   the UI.
+3. Recorded values and margins (step 2), so cards show numbers, not "blocked".
+4. Trajectory tests (step 4), for the onset result.
+5. Steering library: hook, random-neuron control, side-effect and dose-response
+   measurements, on a small model.
+6. A thin web layer: a small Python server wrapping claimci and one page that
+   streams results. Locally first; a Hugging Face Space on CPU for a shareable
+   link.
+
+Open: which steering paper to use for the second golden path.
