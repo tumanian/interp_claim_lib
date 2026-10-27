@@ -16,7 +16,7 @@ from .. import __version__
 from ..store.ledger import Ledger
 from .planner import Group, Plan, is_intervention
 from ..schema.repo import Repo
-from ..schema.claim import Result, evaluate
+from ..schema.claim import Result
 
 CANARY_N = 4
 CANARY_ATOL = 1e-4
@@ -123,7 +123,7 @@ class Runner:
             r.cost["mode"] = mode
             self.ledger.put(r)
             self.outputs[(cid, g.revision)] = r
-            self.log(self.describe(r))
+            self.log(self.describe(r, self.repo.claims[r.claim].holds(r.value)))
             out.append(r)
         return out
 
@@ -180,11 +180,9 @@ class Runner:
             r = self.result(cid, g, "error", reason=f"{type(e).__name__}: {e}",
                             traceback_hash=hashlib.sha256(tb.encode()).hexdigest()[:16])
         else:
-            r = self.result(cid, g, "ok", value=value, holds=evaluate(c.expect, value), bindings=bindings)
-            if c.status == "proposed":  # a promotion run: judged against the source or a supplemented expect
-                r.reproduction = self.reproduction(cid, value, r.holds)
+            r = self.result(cid, g, "ok", value=value, bindings=bindings)   # a value; verdicts are derived on read
             if leak:
-                r.status, r.reason, r.holds = "contaminated", leak, None
+                r.status, r.reason = "contaminated", leak
         r.cost.update(forward_passes=passes + ctx.passes, canary_passes=canary,
                       seconds=time.perf_counter() - t0)
         return r
@@ -217,16 +215,6 @@ class Runner:
         diff = (now - before).abs().max().item()
         return f"canary probe on the first {CANARY_N} inputs differs from the shared pass by {diff:.6f}"
 
-    def reproduction(self, cid: str, value: float, holds: bool) -> dict | None:
-        c = self.repo.claims[cid]
-        target = (c.provenance.get("source") or {}).get("stated_value")
-        if target is not None and c.tolerance is not None:
-            return {"basis": "stated_value", "target": target,
-                    "within_tolerance": abs(value - target) <= c.tolerance}
-        if target is None and (c.provenance.get("supplemented") or {}).get("expect"):
-            return {"basis": "supplemented_expect", "expect": c.expect, "within_tolerance": bool(holds)}
-        return None
-
     def result(self, cid: str, g: Group, status: str, **kw) -> Result:
         c = self.repo.claims[cid]
         return Result(
@@ -239,6 +227,6 @@ class Runner:
                  "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}, **kw)
 
     @staticmethod
-    def describe(r: Result) -> str:
-        detail = f"value={r.value} holds={r.holds} bindings={r.bindings}" if r.status == "ok" else r.reason
+    def describe(r: Result, holds: bool | None = None) -> str:
+        detail = f"value={r.value} holds={holds} bindings={r.bindings}" if r.status == "ok" else r.reason
         return f"{r.revision:<10} {r.claim:<32} {r.status:<9} {detail}"

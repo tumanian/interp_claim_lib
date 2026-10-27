@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from ..store.ledger import Ledger
 from .report import computed_status, current_row, gated_by, revision_order
-from ..schema.claim import OPS, margin
+from ..schema.claim import OPS
 from ..schema.repo import Repo
 
 
@@ -31,7 +31,7 @@ def _results(repo: Repo, ledger: Ledger, cid: str) -> list[dict]:
         if r is None:
             continue
         out.append({"model": r.model, "revision": rev, "status": computed_status(repo, r, ledger),
-                    "value": r.value, "margin": margin(c.expect, r.value), "gated_by": gated_by(repo, ledger, cid, rev),
+                    "value": r.value, "margin": c.margin(r.value), "gated_by": gated_by(repo, ledger, cid, rev),
                     "bindings": {k: v for k, v in r.bindings.items() if not str(v).startswith("artifact:")},
                     "reason": r.reason, "seconds": round(r.cost.get("seconds", 0.0), 1), "at": r.run.get("at"),
                     # judged runs keep every answer: the card offers them as samples to drill into

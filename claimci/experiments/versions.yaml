@@ -1,15 +1,14 @@
 # Experiment versions (DESIGN 19). Written by `claimci versions`; commit it with the code.
 caa.direction:
-  version: 1
   entrypoint: claimci.experiments.direction:ab_direction
   params:
     block: layer
     n: scalar
     pack: data
   tags: []
-  fingerprint: d84ad6a49cc67570
-caa.steer:
+  fingerprint: 656c67857606aebc
   version: 1
+caa.steer:
   entrypoint: claimci.experiments.direction:steer_ab
   params:
     block: layer
@@ -20,9 +19,9 @@ caa.steer:
     random_seed: scalar
   tags:
   - intervention
-  fingerprint: d84ad6a49cc67570
-induction.ablate_head:
+  fingerprint: 656c67857606aebc
   version: 1
+induction.ablate_head:
   entrypoint: claimci.experiments.induction:ablate_head_loss_delta
   params:
     ablation: scalar
@@ -30,22 +29,22 @@ induction.ablate_head:
     layer: input
   tags:
   - intervention
-  fingerprint: 4ac49b62ce0ee2d5
-induction.head:
+  fingerprint: 286e1745816e7b5e
   version: 1
+induction.head:
   entrypoint: claimci.experiments.induction:induction_head_score
   params:
     min_layer: layer
   tags: []
-  fingerprint: 4ac49b62ce0ee2d5
-induction.prev_token:
+  fingerprint: 286e1745816e7b5e
   version: 1
+induction.prev_token:
   entrypoint: claimci.experiments.induction:prev_token_score
   params: {}
   tags: []
-  fingerprint: 4ac49b62ce0ee2d5
-judge.baseline:
+  fingerprint: 286e1745816e7b5e
   version: 1
+judge.baseline:
   entrypoint: claimci.experiments.judge:judged_baseline
   params:
     judge_effort: scalar
@@ -56,9 +55,9 @@ judge.baseline:
     seed: scalar
     temperature: scalar
   tags: []
-  fingerprint: 92de059aeaba941a
-judge.misalignment:
+  fingerprint: 3ef7640e7ad25695
   version: 1
+judge.misalignment:
   entrypoint: claimci.experiments.judge:judged_misalignment
   params:
     interventions: component
@@ -71,9 +70,9 @@ judge.misalignment:
     temperature: scalar
   tags:
   - intervention
-  fingerprint: 92de059aeaba941a
-judge.random_neurons:
+  fingerprint: 3ef7640e7ad25695
   version: 1
+judge.random_neurons:
   entrypoint: claimci.experiments.judge:judged_random_neurons
   params:
     interventions: component
@@ -87,9 +86,9 @@ judge.random_neurons:
     temperature: scalar
   tags:
   - intervention
-  fingerprint: 92de059aeaba941a
-persona.direction:
+  fingerprint: 3ef7640e7ad25695
   version: 1
+persona.direction:
   entrypoint: claimci.experiments.direction:persona_direction
   params:
     block: layer
@@ -99,9 +98,9 @@ persona.direction:
     seed: scalar
     threshold: scalar
   tags: []
-  fingerprint: d84ad6a49cc67570
-persona.steer:
+  fingerprint: 656c67857606aebc
   version: 1
+persona.steer:
   entrypoint: claimci.experiments.direction:steer_persona
   params:
     block: layer
@@ -115,9 +114,9 @@ persona.steer:
     seed: scalar
   tags:
   - intervention
-  fingerprint: d84ad6a49cc67570
-refusal.ablate:
+  fingerprint: 656c67857606aebc
   version: 1
+refusal.ablate:
   entrypoint: claimci.experiments.refusal:ablation_refusal_rate
   params:
     direction: input
@@ -126,18 +125,18 @@ refusal.ablate:
     split: data
   tags:
   - intervention
-  fingerprint: 192f4283fb28ec6c
-refusal.ablate_text_loss:
+  fingerprint: 32421d05c703b7db
   version: 1
+refusal.ablate_text_loss:
   entrypoint: claimci.experiments.refusal:ablation_text_loss_delta
   params:
     direction: input
     n_texts: scalar
   tags:
   - intervention
-  fingerprint: 192f4283fb28ec6c
-refusal.add:
+  fingerprint: 32421d05c703b7db
   version: 1
+refusal.add:
   entrypoint: claimci.experiments.refusal:addition_refusal_rate
   params:
     coeff: scalar
@@ -148,9 +147,9 @@ refusal.add:
     split: data
   tags:
   - intervention
-  fingerprint: 192f4283fb28ec6c
-refusal.direction:
+  fingerprint: 32421d05c703b7db
   version: 1
+refusal.direction:
   entrypoint: claimci.experiments.refusal:refusal_direction
   params:
     filter_train: scalar
@@ -159,17 +158,17 @@ refusal.direction:
     reference: data
     refusal_toks: tokenizer
   tags: []
-  fingerprint: 192f4283fb28ec6c
-refusal.rate:
+  fingerprint: 32421d05c703b7db
   version: 1
+refusal.rate:
   entrypoint: claimci.experiments.refusal:refusal_rate
   params:
     refusal_toks: tokenizer
     split: data
   tags: []
-  fingerprint: 192f4283fb28ec6c
-steering.dose_response:
+  fingerprint: 32421d05c703b7db
   version: 1
+steering.dose_response:
   entrypoint: claimci.experiments.steering:dose_response
   params:
     interventions: component
@@ -177,25 +176,25 @@ steering.dose_response:
     scales: scalar
   tags:
   - intervention
-  fingerprint: f79ba9c8cb513466
-steering.persona_baseline:
+  fingerprint: 062e047135f45697
   version: 1
+steering.persona_baseline:
   entrypoint: claimci.experiments.steering:persona_baseline
   params:
     n_per_set: scalar
   tags: []
-  fingerprint: f79ba9c8cb513466
-steering.persona_delta:
+  fingerprint: 062e047135f45697
   version: 1
+steering.persona_delta:
   entrypoint: claimci.experiments.steering:steer_persona_delta
   params:
     interventions: component
     n_per_set: scalar
   tags:
   - intervention
-  fingerprint: f79ba9c8cb513466
-steering.random_neurons:
+  fingerprint: 062e047135f45697
   version: 1
+steering.random_neurons:
   entrypoint: claimci.experiments.steering:random_neuron_delta
   params:
     interventions: component
@@ -203,22 +202,23 @@ steering.random_neurons:
     seeds: scalar
   tags:
   - intervention
-  fingerprint: f79ba9c8cb513466
-steering.single_neurons:
+  fingerprint: 062e047135f45697
   version: 1
+steering.single_neurons:
   entrypoint: claimci.experiments.steering:single_neuron_deltas
   params:
     interventions: component
     n_per_set: scalar
   tags:
   - intervention
-  fingerprint: f79ba9c8cb513466
-steering.text_loss:
+  fingerprint: 062e047135f45697
   version: 1
+steering.text_loss:
   entrypoint: claimci.experiments.steering:steer_text_loss_delta
   params:
     interventions: component
     n_texts: scalar
   tags:
   - intervention
-  fingerprint: f79ba9c8cb513466
+  fingerprint: 062e047135f45697
+  version: 1

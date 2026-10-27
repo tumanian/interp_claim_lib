@@ -1,7 +1,9 @@
 """Experiment versions (DESIGN 19): versions.yaml next to this file, committed with the code.
 
 Each experiment has a version, its entrypoint and parameter kinds, and a fingerprint: a hash of
-the files it runs (its module and every claimci module that reaches, transitively). Claim keys
+the code that computes it (its module, and every experiment or run-layer module it reaches,
+transitively). Orchestration (runner, planner, executors), schema and store are not part of it: they
+do not change what an experiment computes, and data identity is in the key already. Claim keys
 use the version, never the fingerprint. When code changes, the fingerprint no longer matches and
 `claimci validate` fails until someone decides, in the same change:
 
@@ -54,12 +56,20 @@ def _imports(module: str, path: Path) -> set[str]:
     return out
 
 
+ORCHESTRATION = {"claimci.experiments", "claimci.run.runner", "claimci.run.verify", "claimci.run.planner",
+                 "claimci.run.executors", "claimci.run.outcome", "claimci.run.adapters"}
+
+
+def computes(module: str) -> bool:
+    return module.startswith(("claimci.experiments.", "claimci.run.")) and module not in ORCHESTRATION
+
+
 def fingerprint(module: str) -> str:
-    """Hash of the module's file and every claimci file it reaches."""
+    """Hash of the module's file and every file of computing code it reaches."""
     seen, todo = {}, [module]
     while todo:
         m = todo.pop()
-        if m in seen or m == "claimci":
+        if m in seen or not computes(m):
             continue
         path = _file(m)
         if path is None:

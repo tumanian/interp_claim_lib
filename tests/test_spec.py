@@ -253,3 +253,14 @@ def test_about_must_name_a_source(repo_copy):
 def test_measurement_has_no_expect(repo_copy):
     edit(repo_copy, "mech.induction_head", lambda d: d.update(kind="measurement"))
     _expect_failure(repo_copy, "mech.induction_head", "a measurement has no `expect`")
+
+
+def test_expect_holds_and_margin_from_the_threshold_and_an_interval():
+    from claimci.schema.claim import Expect
+    e = Expect(">=", 0.5)
+    assert e.holds(0.6) and e.margin(0.6) == 0.1 and e.holds(0.4) is False and e.margin(0.4) == -0.1
+    assert e.holds(0.6, interval=(0.45, 0.75)) is False and e.margin(0.6, interval=(0.45, 0.75)) == -0.05
+    assert Expect("<=", 0.2).margin(0.1, interval=(0.05, 0.15)) == 0.05
+    near = Expect("==", 0.91, tol=0.01)
+    assert near.holds(0.915) and not near.holds(0.93) and near.margin(0.905) == 0.005
+    assert Expect.of(None) is None and Expect.of({"op": "<", "value": 1}).holds(0.5)

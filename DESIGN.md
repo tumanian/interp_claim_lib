@@ -990,6 +990,10 @@ interventions at a layer, or the canary passes a change it should catch); tolera
 experiments, where the judge itself is an API call that can drift.
 ## 20. Results made of reusable objects (one migration for the open schema changes)
 
+Built so far: `Expect` (op, value, tol; holds and margin, with an optional interval) on the claim
+(`c.holds(v)`, `c.margin(v)`, `c.reproduction(v)`); the runner records values only and every
+verdict is derived on read.
+
 `Result` is nineteen flat fields, and the same three things are spelled differently on each side:
 the model is `subject.model.hf` / `subject.model.revision` on a claim and `model` / `revision`
 on a result; the code is `code.experiment` / `code.params` on a claim and `code_version` on a

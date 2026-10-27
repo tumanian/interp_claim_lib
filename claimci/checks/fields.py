@@ -13,7 +13,8 @@ def number(x) -> bool:
 
 
 def threshold(e) -> bool:
-    return isinstance(e, dict) and e.get("op") in OPS and number(e.get("value"))
+    return (isinstance(e, dict) and e.get("op") in OPS and number(e.get("value")) and set(e) <= {"op", "value", "tol"}
+            and (e.get("tol") is None or number(e["tol"])))
 
 
 def caveat(cv) -> bool:
@@ -37,7 +38,7 @@ RUN = [   # tests and measurements
          when=lambda c, **_: c.kind == "test", ok=lambda c, **_: c.expect is not None),
     Rule(f"each caveat needs binding, op (one of {sorted(OPS)}), value and text",
          ok=lambda c, **_: all(caveat(cv) for cv in c.caveats)),
-    Rule(f"expect must be {{{{op: one of {sorted(OPS)}, value: number}}}}",
+    Rule(f"expect must be {{{{op: one of {sorted(OPS)}, value: number, tol: number (optional)}}}}",
          when=lambda c, **_: c.expect is not None, ok=lambda c, **_: threshold(c.expect)),
     Rule("tolerance must be a number",
          when=lambda c, **_: c.tolerance is not None, ok=lambda c, **_: isinstance(c.tolerance, (int, float))),

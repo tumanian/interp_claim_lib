@@ -24,11 +24,12 @@ def verify(repo, backend, revisions=None, claims=None, mode="shared", force=Fals
         # Promotion is judged at the claim's own subject revision (the paper's checkpoint).
         for r in results:
             c = repo.claims[r.claim]
-            if r.status != "ok" or not r.reproduction or c.status != "proposed" or r.revision != c.revision:
+            rep = c.reproduction(r.value) if r.status == "ok" else None
+            if not rep or c.status != "proposed" or r.revision != c.revision:
                 continue
             earned = repo.earned_code(r.claim)
-            reproduced = r.reproduction["within_tolerance"] and not gated_by(repo, runner.ledger, r.claim, r.revision)
+            reproduced = rep["within_tolerance"] and not gated_by(repo, runner.ledger, r.claim, r.revision)
             c.status = write_promotion(c, reproduced, earned.id,
-                                       r.reproduction.get("basis", "stated_value"))
+                                       rep.get("basis", "stated_value"))
             log(f"{r.claim}: claim file set to {c.status} ({c.path}); commit it separately")
     return plan, results

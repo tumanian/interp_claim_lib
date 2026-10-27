@@ -70,7 +70,9 @@ def test_verify_rerun_naive_and_determinism(tmp_path):
     _, first = run(root)
     rows = by_id(first)
     assert [r.claim for r in first] == IDS
-    assert all(r.status == "ok" and r.holds for r in first)
+    claims = load_repo(root).claims
+    assert all(r.status == "ok" and claims[r.claim].holds(r.value) for r in first)
+    assert all(r.holds is None for r in first)                     # verdicts are derived on read, not stored
     assert rows["causal.induction_head_ablation"].bindings == rows["mech.induction_head"].bindings
     assert len(Ledger.for_repo(load_repo(root)).rows) == 3
 
@@ -97,7 +99,8 @@ def test_failing_parent_gates_dependent(tmp_path):
     set_expect(root, "mech.induction_head", 0.99)
     _, res = run(root)
     rows = by_id(res)
-    assert rows["mech.induction_head"].status == "ok" and rows["mech.induction_head"].holds is False
+    assert rows["mech.induction_head"].status == "ok"
+    assert load_repo(root).claims["mech.induction_head"].holds(rows["mech.induction_head"].value) is False
     causal = rows["causal.induction_head_ablation"]
     assert causal.status == "ok" and causal.value is not None
     repo = load_repo(root)
@@ -138,8 +141,9 @@ def test_real_model_all_three_hold(tmp_path):
     cmd = [sys.executable, "-m", "claimci.cli", "--root", str(root), "verify", "--revisions", "main", "--offline"]
     r = subprocess.run(cmd, capture_output=True, text=True)
     print(r.stdout, r.stderr)
-    rows = Ledger.for_repo(load_repo(root)).rows
-    assert len(rows) == 3 and all(x.status == "ok" and x.holds for x in rows)
+    repo = load_repo(root)
+    rows = Ledger.for_repo(repo).rows
+    assert len(rows) == 3 and all(x.status == "ok" and repo.claims[x.claim].holds(x.value) for x in rows)
     r2 = subprocess.run(cmd, capture_output=True, text=True)
     assert "executed: 0   ledger hits: 3" in r2.stdout
 
@@ -183,8 +187,9 @@ def test_promote_without_stated_value_uses_expect(tmp_path):
     assert after["mech.induction_head"].provenance["reproduced_from"] == "arXiv:2209.11895"
     assert after["mech.induction_head"].provenance["basis"] == "supplemented_expect"
     assert after["causal.induction_head_ablation"].status == "unreproduced"
-    rows = [r for r in Ledger.for_repo(load_repo(root)).rows if r.revision == "main"]
-    assert all(r.reproduction["basis"] == "supplemented_expect" for r in rows)
+    repo = load_repo(root)
+    rows = [r for r in Ledger.for_repo(repo).rows if r.revision == "main"]
+    assert all(repo.claims[r.claim].reproduction(r.value)["basis"] == "supplemented_expect" for r in rows)
 
 
 def test_errored_parent_blocks_and_gated_rerun_is_a_ledger_hit(tmp_path, monkeypatch):
