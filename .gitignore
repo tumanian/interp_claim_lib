@@ -5,3 +5,4 @@ ledger/*.jsonl
 ledger/artifacts/
 .claimci-remote.json
 ledger/.remote_results.jsonl
+.claude/launch.json

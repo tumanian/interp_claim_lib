@@ -83,7 +83,7 @@ def refusal_direction(acts, layer, pos, refusal_toks, ctx=None, filter_train=Tru
     bindings = {"direction": ctx.artifacts.save(d), "layer": layer, "pos": pos,
                 "n_harmful": len(harm), "n_harmless": len(harmless), "norm": round(float(d.norm()), 4)}
     if reference:
-        ref = torch.load(chat_data_path(acts, reference), weights_only=True).to(torch.float64).flatten()
+        ref = torch.load(chat_data_path(acts, reference), weights_only=True, map_location="cpu").to(torch.float64).flatten()
         return float(torch.nn.functional.cosine_similarity(d, ref, dim=0)), bindings
     return float(d.norm()), bindings
 

@@ -45,8 +45,9 @@ def verify(root: Path, claims: list[str], log=print, force: bool = False) -> int
     if cfg is None:
         raise RuntimeError("no .claimci-remote.json; see claimci/remote.py")
     d = cfg["dir"]
-    for item in PUSH:
-        subprocess.run(_rsync(cfg) + [str(root / item), f"{cfg['host']}:{d}/{item}"], check=True)
+    for item in PUSH:  # a trailing slash syncs a directory's contents (Path() would strip it)
+        src = str(root / item) + ("/" if item.endswith("/") else "")
+        subprocess.run(_rsync(cfg) + [src, f"{cfg['host']}:{d}/{item}"], check=True)
     cmd = f"cd {d} && . .venv/bin/activate && PYTHONUNBUFFERED=1 claimci verify --claims {','.join(claims)}" \
           + (" --force" if force else "")
     log(f"remote: {cfg['host']}: claimci verify --claims {','.join(claims)}")

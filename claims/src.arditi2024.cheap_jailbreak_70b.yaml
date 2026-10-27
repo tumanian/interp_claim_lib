@@ -1,0 +1,29 @@
+id: src.arditi2024.cheap_jailbreak_70b
+kind: source
+evidence: TAS
+status: proposed
+hedge: argues
+statement: The method can jailbreak a 70B parameter model for under $5 of compute. It needs neither gradient-based
+  optimization nor harmful completions.
+quote: Our method, which can yield a jailbroken version of a 70B parameter model using less than $5 of
+  compute, is simpler than previous fine-tuning methods
+question: q.refusal_direction
+stated:
+  values:
+  - name: compute cost
+    value: less than $5
+    context: jailbreaking a 70B parameter model
+provenance:
+  source:
+    kind: paper
+    ref: arXiv:2406.11717
+    title: Refusal in Language Models Is Mediated by a Single Direction
+    scope: 70B-parameter open-weight chat models
+    locator: §7 Ethical considerations
+    date: '2024-10-30'
+  assigned_by: agent:ingest (claude-opus-5-5)
+  reviewed: false
+  checks:
+    quote_found: true
+    values_found:
+      less than $5: true

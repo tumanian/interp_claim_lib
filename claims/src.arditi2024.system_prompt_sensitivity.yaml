@@ -1,0 +1,50 @@
+id: src.arditi2024.system_prompt_sensitivity
+kind: source
+evidence: TAS
+status: proposed
+hedge: suggests
+statement: The default system prompt substantially reduces orthogonalized-model ASR for Llama-2 but not
+  for Qwen. Applying the Llama-2 system prompt to Qwen does not remove the gap, which suggests the effect
+  is model-dependent.
+quote: For Llama-2 models, including the system prompt substantially reduces ASR compared to evaluation
+  without it (e.g. 22.6% vs 79.9% for Llama-2 7B).
+question: q.refusal_direction
+stated:
+  values:
+  - name: Llama-2 7B ASR with vs without system prompt
+    value: 22.6% vs 79.9%
+    context: §4.2
+  - name: Qwen 7B ASR with vs without system prompt
+    value: 79.2% vs 74.8%
+    context: §4.2
+  - name: Qwen 7B ASR with Llama-2 system prompt
+    value: '75.5'
+    context: Table 7
+  - name: Qwen 14B ASR with Llama-2 system prompt
+    value: '78.0'
+    context: Table 7
+  - name: Llama-2 7B ASR across 12 system prompts
+    value: mean of 30.0% and standard deviation of 23.3%
+    context: §F.2
+  - name: Qwen 7B ASR across 12 system prompts
+    value: mean of 76.7% and standard deviation of 5.9%
+    context: §F.2
+provenance:
+  source:
+    kind: paper
+    ref: arXiv:2406.11717
+    title: Refusal in Language Models Is Mediated by a Single Direction
+    scope: Orthogonalized Llama-2 7B and Qwen 7B/14B on HarmBench with various system prompts (12 prompts)
+    locator: §4.2, §F.2, Table 7
+    date: '2024-10-30'
+  assigned_by: agent:ingest (claude-opus-5-5)
+  reviewed: false
+  checks:
+    quote_found: true
+    values_found:
+      22.6% vs 79.9%: true
+      79.2% vs 74.8%: true
+      '75.5': true
+      '78.0': true
+      mean of 30.0% and standard deviation of 23.3%: true
+      mean of 76.7% and standard deviation of 5.9%: true
