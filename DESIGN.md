@@ -938,3 +938,42 @@ copies each extracted test verbatim into `stated.tests`, so the prompt's output 
 defines part of the stored format and nothing validates it. The stored shape of a source's tests
 (and `provenance.checks`) gets its own type in the schema layer (`SourceTest`), checked by
 `validate`; the extraction schema maps onto it, and the two evolve separately.
+
+## 19. Experiment versions, auto-assigned, bumped by behaviour (replaces the behaviour hash)
+
+Section 14 keys results on a behaviour hash of the experiment's code. It ignores comments,
+docstrings and layout, but any code edit still changes it: renaming a variable, inlining a helper
+or swapping a loop for a comprehension makes every dependent claim stale although nothing it
+computes changed. Hashing code cannot tell a refactor from a behaviour change. Only running it can.
+
+So the key carries a version, not a hash, and versions are assigned by the tool:
+
+- **Lock file.** `experiments.lock` (committed) records, per experiment id: `version`, a code
+  `fingerprint`, and the canary outputs of that version. Claim keys use `experiment id + version`;
+  the fingerprint is never part of a key.
+- **Auto-assign.** An experiment with no lock entry gets `v1`. Nobody writes version numbers.
+- **Fingerprint as a trigger only.** When the fingerprint changes, the tool reruns the experiment
+  on a small fixed canary input (a tiny model, a few prompts, fixed seeds) and compares with the
+  stored canary outputs:
+  - same outputs (exactly for deterministic experiments, within a stated tolerance for sampled or
+    judged ones): a refactor. The fingerprint updates, the version stays, nothing goes stale.
+  - different outputs: the version becomes `v2`, the new canary outputs are stored, and claims on
+    that experiment go stale.
+  - explicit override (`claimci version bump <id>` / `claimci version keep <id>`) for what a
+    canary cannot see, e.g. a change that only matters on large models.
+- **The fingerprint can be crude.** A false trigger costs one canary run, never a
+  re-verification, so it does not need the AST walk in codehash.py. Hashes of the files the
+  experiment executed (recorded with coverage.py during the canary run, as pytest-testmon does)
+  are enough, and they follow calls through objects, which the static walk cannot.
+- **Where it runs.** A check (CI or `claimci validate`) fails when a fingerprint changed and the
+  lock file was not updated, so the decision is made when the code changes, in the same PR, and
+  the reviewer sees "refactor, outputs identical" or "v1 -> v2, outputs differ" in the diff.
+
+What stays from section 14: stable experiment ids and the registry. What goes: codehash.py's
+behaviour hash and its tests; the registry can be collected by importing the experiments package
+rather than parsing it. Migration: every experiment starts at `v1` with its current canary
+outputs, and existing ledger rows are carried over with `migrated_from` as in section 14.
+
+Open: canary inputs per experiment family (they must exercise the parameters claims use, e.g.
+interventions at a layer, or the canary passes a change it should catch); tolerance for judged
+experiments, where the judge itself is an API call that can drift.
