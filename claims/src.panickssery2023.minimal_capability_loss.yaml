@@ -1,8 +1,9 @@
 id: src.panickssery2023.minimal_capability_loss
-kind: source
+kind: finding
 evidence: TAS
 status: proposed
 hedge: shows
+level: annotation
 statement: CAA causes only a minimal reduction in model capabilities.
 quote: minimally reduces capabilities
 question: q.panickssery2023

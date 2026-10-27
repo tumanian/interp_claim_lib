@@ -1,8 +1,9 @@
 id: src.chen2025.flag_training_data
-kind: source
+kind: finding
 evidence: TAS
 status: proposed
 hedge: shows
+level: annotation
 statement: Persona vectors can flag training data that will produce undesirable personality changes, at
   both the dataset level and the individual sample level.
 quote: persona vectors can be used to flag training data that will produce undesirable personality changes,

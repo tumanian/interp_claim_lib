@@ -1,8 +1,9 @@
 id: src.tigges2023.sentiment_linear_direction
-kind: source
+kind: finding
 evidence: TAS
 status: proposed
 hedge: shows
+level: mechanism
 statement: 'Across a range of models, sentiment is represented linearly: a single direction in activation
   space mostly captures the feature across tasks, with positive at one extreme and negative at the other.'
 quote: 'across a range of models, sentiment is represented linearly: a single direction in activation

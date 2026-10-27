@@ -1,8 +1,9 @@
 id: src.tigges2023.summarization_motif
-kind: source
+kind: finding
 evidence: TAS
 status: proposed
 hedge: shows
+level: mechanism
 statement: Sentiment is not only represented on emotionally charged words but is also summarized at intermediate
   positions without inherent sentiment, such as punctuation and names; the authors term this the summarization
   motif.

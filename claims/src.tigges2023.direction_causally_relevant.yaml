@@ -1,8 +1,9 @@
 id: src.tigges2023.direction_causally_relevant
-kind: source
+kind: finding
 evidence: TAS
 status: proposed
 hedge: shows
+level: annotation
 statement: Causal interventions isolate the sentiment direction and show it is causally relevant in both
   toy tasks and real-world datasets such as Stanford Sentiment Treebank.
 quote: Through causal interventions, we isolate this direction and show it is causally relevant in both

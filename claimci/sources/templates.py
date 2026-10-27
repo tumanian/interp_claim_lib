@@ -1,6 +1,6 @@
 """Test templates: operationalizations written once, instantiated per source claim.
 
-A template turns a source claim whose parameters are fully stated (a model, a set of
+A template turns a finding whose parameters are fully stated (a model, a set of
 neurons and doses) into the tests and measurements that would check it, controls
 included. What the template decides (metric, data, thresholds) is recorded as
 supplemented on every claim it writes; what the source stated is copied as stated.

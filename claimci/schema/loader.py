@@ -21,7 +21,7 @@ def load_claim(path: Path) -> Claim:
         raise SpecError(cid, f"unknown fields {sorted(unknown)} in {path.name}")
     d["kind"] = d.get("kind") or infer_kind(d)
     required = {"id", "evidence", "status", "statement"}
-    if d["kind"] != "source":
+    if d["kind"] != "finding":
         required |= {"question", "subject", "code", "data"}
     missing = required - set(d)
     if missing:
@@ -34,7 +34,7 @@ def load_claim(path: Path) -> Claim:
         if not isinstance(d[k], t):
             raise SpecError(cid, f"`{k}` must be a {t.__name__} in {path.name}")
     model = d["subject"].get("model")
-    if d["kind"] != "source" and (not isinstance(model, dict) or not isinstance(model.get("hf"), str)):
+    if d["kind"] != "finding" and (not isinstance(model, dict) or not isinstance(model.get("hf"), str)):
         raise SpecError(cid, f"subject.model.hf (str) is required in {path.name}")
     return Claim(**d, path=path)
 
@@ -44,7 +44,7 @@ def infer_kind(d: dict) -> str:
     source, a claim with `expect` is a test, anything else is a measurement."""
     code = d.get("code") or {}
     if d.get("evidence") in ("TAS", "NAS") and not (code.get("entrypoint") or code.get("experiment")):
-        return "source"
+        return "finding"
     return "test" if d.get("expect") is not None else "measurement"
 
 
@@ -100,7 +100,7 @@ def _resolve_data(claims: dict[str, Claim], errors: list[str]) -> None:
         return c.dataset
 
     for cid in claims:
-        if not claims[cid].is_source:
+        if not claims[cid].is_finding:
             resolve(cid, (cid,))
 
 

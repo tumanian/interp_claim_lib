@@ -43,7 +43,7 @@ def search(repo: Repo, ledger: Ledger, query: str, kind: str | None = None, mode
     for score, cid in out[:limit]:
         c = repo.claims[cid]
         res.append({"id": cid, "kind": cards.KIND_LABELS[c.kind], "statement": " ".join(c.statement.split()),
-                    "verdict": (cards.card(repo, ledger, cid)["support"] if c.is_source else cards.verdict(repo, ledger, cid)),
+                    "verdict": (cards.card(repo, ledger, cid)["support"] if c.is_finding else cards.verdict(repo, ledger, cid)),
                     "score": score})
     return res
 
@@ -51,7 +51,7 @@ def search(repo: Repo, ledger: Ledger, query: str, kind: str | None = None, mode
 def get(repo: Repo, ledger: Ledger, cid: str, revision: str | None = None) -> dict:
     """One claim's current result: enough for an agent to decide whether to build on it."""
     c = repo.claims[cid]
-    if c.is_source:
+    if c.is_finding:
         d = cards.card(repo, ledger, cid)
         return {"id": cid, "kind": "finding", "statement": d["statement"], "support": d["support"],
                 "caveats": d.get("caveats", []), "verifications": [{"id": a["id"], "verdict": a["verdict"]} for a in d["attached"]]}
@@ -82,7 +82,7 @@ def reverify_plan(repo: Repo, ledger: Ledger, skip_models: tuple = ()) -> list[d
     went stale first (keeping known results current), then never-run ones; cheapest first within each."""
     rows = []
     for cid, c in repo.claims.items():
-        if c.is_source or not repo.runnable(cid) or any(s in c.model for s in skip_models):
+        if c.is_finding or not repo.runnable(cid) or any(s in c.model for s in skip_models):
             continue
         if ledger.get(cid, repo.claim_key(cid, c.revision)) is not None:
             continue

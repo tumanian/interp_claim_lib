@@ -1,8 +1,9 @@
 id: src.chen2025.persona_vectors_identified
-kind: source
+kind: finding
 evidence: TAS
 status: proposed
 hedge: shows
+level: annotation
 statement: The authors identify directions in activation space, called persona vectors, that underlie
   several traits such as evil, sycophancy, and propensity to hallucinate.
 quote: we identify directions in the model's activation space-persona vectors-underlying several traits,

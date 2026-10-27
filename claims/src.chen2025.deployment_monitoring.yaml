@@ -1,8 +1,9 @@
 id: src.chen2025.deployment_monitoring
-kind: source
+kind: finding
 evidence: TAS
 status: proposed
 hedge: shows
+level: annotation
 statement: Persona vectors can be used to monitor fluctuations in the Assistant's personality at deployment
   time.
 quote: We confirm that these vectors can be used to monitor fluctuations in the Assistant's personality

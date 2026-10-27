@@ -74,8 +74,8 @@ def card(repo: Repo, ledger: Ledger, cid: str) -> dict:
     src = c.provenance.get("source") or {}
     d = {"id": cid, "kind": c.kind, "evidence": c.evidence, "statement": " ".join(c.statement.split()),
          "question": c.question, "about": c.about, "status_in_file": c.status}
-    if c.is_source:
-        d.update(hedge=c.hedge, quote=c.quote, source={k: src.get(k) for k in ("kind", "ref", "locator", "title", "date", "scope", "code") if src.get(k)},
+    if c.is_finding:
+        d.update(hedge=c.hedge, level=c.level, quote=c.quote, source={k: src.get(k) for k in ("kind", "ref", "locator", "title", "date", "scope", "code") if src.get(k)},
                  machine_made=str(c.provenance.get("assigned_by", "")).startswith("agent:ingest"),
                  checks=c.provenance.get("checks"), stated=c.stated or None,
                  source_tests=[{**t, "check": (c.provenance.get("checks") or {}).get("tests", [{}] * 99)[i]}
@@ -128,7 +128,7 @@ def explain(repo: Repo, ledger: Ledger, ref: str) -> list[dict]:
     if ref in repo.claims:
         return [card(repo, ledger, ref)]
     norm = ref.lower().replace("arxiv:", "").strip()
-    ids = sorted(k for k, c in repo.claims.items() if c.is_source
+    ids = sorted(k for k, c in repo.claims.items() if c.is_finding
                  and norm in str((c.provenance.get("source") or {}).get("ref", "")).lower())
     return [card(repo, ledger, k) for k in ids]
 
@@ -137,7 +137,7 @@ def render(d: dict) -> str:
     """Plain-text card, sized for an agent's context."""
     lines = [f"{d['id']}  [{d['kind']}, {d['evidence']}]" + (f"  about: {d['about']}" if d.get("about") else "")]
     lines.append(f"  {d['statement']}")
-    if d["kind"] == "source":
+    if d["kind"] == "finding":
         s = d["source"]
         lines.append(f"  source: {s.get('kind')} {s.get('ref')} {s.get('locator', '')}  hedge: {d['hedge']}"
                      + ("  [machine-made, unreviewed]" if d["machine_made"] else ""))
@@ -179,7 +179,7 @@ EVIDENCE_LABELS = {  # strength, method: shown as a two-part pill
     "ICP": ("Correlational", "Linear probe"), "IEA": ("Automated", "Auto-interp label"),
     "TAS": ("Stated", "Author statement, cited"), "NAS": ("Stated", "Author statement"),
 }
-KIND_LABELS = {"source": "Finding", "test": "Verification", "measurement": "Readout"}
+KIND_LABELS = {"finding": "Finding", "test": "Verification", "measurement": "Readout"}
 FINDING_STATUS = {  # card support -> one word for the report card
     "supported": "Verified", "contradicted by a test": "Not supported",
     "not supported: a control reproduced the effect": "Not supported", "partly tested": "Partly verified",
@@ -240,7 +240,7 @@ def report(repo: Repo, ledger: Ledger, ref: str) -> dict:
     s = findings[0]["source"]
     tested = {k for f in findings for a in f["attached"] for k in [a["id"]] + [x["id"] for x in a["controls"]]}
     q = {f["question"] for f in findings}
-    tested |= {k for k, c in repo.claims.items() if not c.is_source and c.question in q}
+    tested |= {k for k, c in repo.claims.items() if not c.is_finding and c.question in q}
     claims = [repo.claims[k] for k in sorted(tested)]
     models = sorted({c.model for c in claims})
     author_repos = {_repo_key(u) for f in findings for u in (f["source"].get("code") or [])} - {""}

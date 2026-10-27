@@ -10,7 +10,7 @@ from claimci.schema.loader import load_repo
 from claimci.sources.match import check_params
 from claimci.checks import validate
 
-SRC = {"id": "src.chen2025.persona_vectors_identified", "kind": "source", "evidence": "TAS", "status": "proposed",
+SRC = {"id": "src.chen2025.persona_vectors_identified", "kind": "finding", "evidence": "TAS", "status": "proposed",
        "statement": "s", "question": "q.chen2025",
        "provenance": {"source": {"kind": "paper", "ref": "arXiv:2507.21509", "locator": "Abstract"}}}
 
@@ -31,7 +31,7 @@ def test_every_pack_instantiates_valid_claims(tmp_path):
     controls = [c for c in tests if c.control_for]
     assert len(controls) == len(templates.PACKS)          # one random-direction control per pack
     assert all(c.expect is not None for c in tests)        # thresholds fixed at instantiation
-    assert all(c.provenance["template"]["name"] == "contrastive_direction" for c in repo.claims.values() if not c.is_source)
+    assert all(c.provenance["template"]["name"] == "contrastive_direction" for c in repo.claims.values() if not c.is_finding)
 
 
 def test_paper_layer_maps_to_block_per_repository():

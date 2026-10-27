@@ -3,14 +3,14 @@
     fields     the shape of a claim's own fields
     status     stored statuses consistent with evidence and kind
     evidence   the evidence ontology's rules, for a claim and its dependencies
-    source     what a source claim may and must carry
+    source     what a finding may and must carry
     graph      cycles and references between claims, questions and exports
     data       declared datasets hash as declared
 """
 from __future__ import annotations
 
 from ..schema.claim import SpecError
-from . import evidence, fields, graph, source, status
+from . import evidence, fields, finding, graph, status
 from .data import data_errors
 from .rules import broken, first_broken
 
@@ -23,9 +23,9 @@ def claim_errors(repo, cid: str) -> list[str]:
         return [f"{prefix}unknown or non-leaf evidence code {c.evidence!r}"]
     subject = dict(c=c, repo=repo, code=code, earned=repo.earned_code(cid), src=c.provenance.get("source") or {})
     out = broken(status.EVERY_CLAIM + fields.EVERY_CLAIM, prefix, **subject)
-    if c.is_source:
-        return (out + broken(source.RULES + status.SOURCE + fields.SOURCE, prefix, **subject)
-                + source.stated_tests(c) + broken(graph.QUESTION, prefix, **subject))
+    if c.is_finding:
+        return (out + broken(finding.RULES + status.FINDING + fields.FINDING, prefix, **subject)
+                + finding.stated_tests(c) + broken(graph.QUESTION, prefix, **subject))
     out += broken(fields.RUN + evidence.CLAIM, prefix, **subject)
     out += graph.references(repo, c)
     for d in c.depends_on:
@@ -38,7 +38,7 @@ def claim_errors(repo, cid: str) -> list[str]:
 def _keys(repo) -> list[str]:
     out = []
     for cid, c in repo.claims.items():
-        if not c.is_source:
+        if not c.is_finding:
             try:
                 repo.claim_key(cid)
             except SpecError as e:

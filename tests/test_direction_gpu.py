@@ -26,7 +26,7 @@ def cached() -> bool:
 
 
 pytestmark = pytest.mark.skipif(not cached(), reason=f"{MODEL} not in the HF cache (tests never download)")
-SRC = {"id": "src.t.claim", "kind": "source", "evidence": "TAS", "status": "proposed", "statement": "s", "question": "q.t",
+SRC = {"id": "src.t.claim", "kind": "finding", "evidence": "TAS", "status": "proposed", "statement": "s", "question": "q.t",
        "provenance": {"source": {"kind": "paper", "ref": "arXiv:0000.00000", "locator": "Abstract"}}}
 
 

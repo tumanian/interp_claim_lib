@@ -15,7 +15,7 @@ EVERY_CLAIM = [
          when=lambda code, **_: not code.rerunnable, ok=lambda c, **_: c.status in UNVERIFIED),
 ]
 
-SOURCE = [
-    Rule("a source claim is never verified itself, got status {c.status!r}",
+FINDING = [
+    Rule("a finding is never verified itself, got status {c.status!r}",
          ok=lambda c, **_: c.status in UNVERIFIED),
 ]

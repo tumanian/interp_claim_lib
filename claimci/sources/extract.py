@@ -31,12 +31,13 @@ CLAIMS_SCHEMA = {
         "authors": {"type": "array", "items": {"type": "string"}},
         "date": {"type": "string", "description": "YYYY-MM-DD if known, else empty"},
         "claims": {"type": "array", "items": {
-            "type": "object", "additionalProperties": False, "required": ["slug", "statement", "quote", "hedge"],
+            "type": "object", "additionalProperties": False, "required": ["slug", "statement", "quote", "hedge", "level"],
             "properties": {
                 "slug": {"type": "string", "description": "snake_case, 2-5 words, unique within the source"},
                 "statement": {"type": "string", "description": "the finding, in one or two plain sentences"},
                 "quote": {"type": "string", "description": "verbatim span from the abstract (under 40 words)"},
-                "hedge": {"type": "string", "enum": ["shows", "suggests", "speculates", "argues"]}}}}},
+                "hedge": {"type": "string", "enum": ["shows", "suggests", "speculates", "argues"]},
+                "level": {"type": "string", "enum": ["annotation", "mechanism"]}}}}},
 }
 
 TESTS_SCHEMA = {
@@ -65,7 +66,7 @@ TESTS_SCHEMA = {
     },
 }
 
-CLAIMS_PROMPT = """You are extracting claims from an interpretability {kind} for a claim database that research agents reason over. Authors state their findings in the {heading}; extract each distinct finding there as one claim (typically 3-8 for a paper, 1-3 for a post). Keep the authors' strength of language in `hedge` ("argues" for conclusions drawn from other findings). `quote` must be copied character for character from the text below; it will be checked.
+CLAIMS_PROMPT = """You are extracting claims from an interpretability {kind} for a claim database that research agents reason over. Authors state their findings in the {heading}; extract each distinct finding there as one claim (typically 3-8 for a paper, 1-3 for a post). Extract only findings an experiment could check: skip descriptions of the method itself, motivation, open problems, and conclusions about the field (e.g. "safety fine-tuning is brittle"). Set `level`: "annotation" when the finding says one object (a neuron, head, direction, vector) does something, "mechanism" when it says how a computation works across components or tasks. Keep the authors' strength of language in `hedge` ("argues" for conclusions drawn from other findings). `quote` must be copied character for character from the text below; it will be checked.
 
 {ref} — {heading}:
 <text>
@@ -151,8 +152,8 @@ def to_claims(out: dict, doc: Document, prefix: str, question: str | None) -> li
             src["code"] = own
         if codes:
             src["stated_evidence"] = max(codes, key=STRENGTH.index)
-        d = {"id": f"src.{prefix}.{c['slug']}", "kind": "source", "evidence": "TAS" if doc.claims_locator else "NAS",
-             "status": "proposed", "hedge": c["hedge"], "statement": c["statement"], "quote": c["quote"]}
+        d = {"id": f"src.{prefix}.{c['slug']}", "kind": "finding", "evidence": "TAS" if doc.claims_locator else "NAS",
+             "status": "proposed", "hedge": c["hedge"], "level": c.get("level"), "statement": c["statement"], "quote": c["quote"]}
         if question:
             d["question"] = question
         if tests:
