@@ -469,6 +469,13 @@ Each step ends with something usable.
   (OV circuit). Add a measurement for it before calling
   `lit.olsson.induction_heads_exist` supported, or record it as a gap?
 
+- Tools layer: only the judge is a standalone tool (`claimci judge`). Re-judging, steering
+  diagnostics and data vendoring are scripts; the quote checker, source fetching, model helpers,
+  interventions, readouts, the remote runner and the artifact store are buried in the pipeline.
+  Should they become `claimci tools ...` (judge, check, fetch, vendor, probe, compare-judges,
+  run-remote) with JSON output, built on the same pieces as experiments (section 16), so what a
+  person or agent sees while exploring is what a claim later tests?
+
 ## 11. Demo: drop an arXiv id, get verified claims (brainstorm)
 
 A small web app that shows the whole loop on one screen.
