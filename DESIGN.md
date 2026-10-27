@@ -4,6 +4,145 @@ Status: proposal, not built. SPEC.md and RUNNER.md describe what exists today.
 This document describes where it goes next and why. Where they disagree, this
 document is the intent and the specs get updated as each piece lands.
 
+## 0. Motivation and architecture (brainstorm, to prune)
+
+This section is brainstorm: the larger shape the rest of the design could grow
+into. Sections 1 to 10 are the near-term plan. Expect to cut from here.
+
+### Why this works for interpretability and not for genomics
+
+The evidence ladder is borrowed from Gene Ontology annotation codes. In
+genomics, "IMP: inferred from mutant phenotype" records that someone once
+knocked out a gene in a lab. The annotation is a static label for an experiment
+nobody will rerun. In interpretability the "mutant" is a forward pass with a
+hook, so the evidence code is earned each time the code runs.
+
+| | genomics | interpretability |
+|---|---|---|
+| cost of an experiment | weeks, money, a lab | seconds to hours of compute |
+| replication | rare, a project of its own | a rerun; can happen every night |
+| the subject | living organisms, variable | a fixed checkpoint; reruns are bitwise identical on one machine |
+| generalization | another species is another project | another model is another ledger row |
+| development | sampled when someone pays for it | Pythia and OLMo publish every stage of training |
+| the expensive part | running the experiment | deciding what the experiment should be |
+
+So the curation model carries over (claims, evidence codes, a base agents can
+read), and verification can be continuous. The cost moves rather than
+disappearing: compute is cheap up to a point (a 70B model or training an SAE is
+not), and judgement about how well a test captures a claim becomes the limit.
+
+### What can be verified automatically
+
+Connected end to end, ingest, tests and the nightly job make an automatic
+verifier of the literature: paper, paper claims, tests, runs on open models,
+per-model verdicts, morning report. Its quality is the quality of its
+auto-written tests.
+
+| step | automatable | why |
+|---|---|---|
+| ingest | mostly | quotes and numbers can be string-matched against the paper |
+| writing the test (spirit to exact values) | the hard step | which metric, data, threshold and control capture the authors' claim |
+| run, record, diff | fully | exists |
+| reading a verdict | partly | "refuted" can mean the paper is wrong or the test is bad |
+
+Principles that follow:
+
+- Several independent tests per paper claim. Agreement makes the verdict about
+  the paper; disagreement points at the tests, and the report should say so.
+  This sits next to "check across models".
+- Pre-registration and controls are required for auto-written tests, or the
+  system drifts toward tests that pass.
+- Review auto-written tests, not every extraction. The share of auto-verdicts
+  that survive review is the health metric for the whole system.
+- The experiment library sets coverage. Today: attention patterns and head
+  ablation. Next: activation patching, probes, steering, SAE features. Running a
+  paper's own code through an adapter is the shortcut.
+- Reachable: open-weight models, especially those with public training
+  checkpoints. Out of reach: closed models, claims that need large compute,
+  claims whose evidence is qualitative case studies.
+
+### Local-first: verify locally, push to a shared base
+
+claimci runs on anyone's machine; a shared base (a git repo of claims and ledger
+rows) collects what people push. The name already fits: CI for claims.
+
+```
+local                                             shared base (git repo)
+pull  <──────────── prior work ─────────────────  claims/, ledger/
+write a claim or idea
+claimci plan  -> "~40 GPU-min on a cloud backend, ~$3"
+verify (CPU, or pay for a GPU backend)
+push  ─────────── PR: claim file + ledger rows ──> CI reruns what it can afford
+                                                   -> merged with a trust level
+```
+
+Trust comes from reproduction, not reputation:
+
+| trust level | meaning |
+|---|---|
+| reported | someone ran it and pushed it; nobody else has rerun it |
+| CI-reproduced | the shared CI reran it: same value within tolerance, same verdict |
+| independently reproduced (N) | N other parties reran it on their own hardware |
+
+Expensive results stay "reported" until someone pays to reproduce them, and the
+card says so.
+
+What local-first needs beyond sections 1 to 10:
+
+- Pinned code. `code.version: local` hashes a module on one disk; a pushed claim
+  must reference a repo and commit (`git:<sha>`) so others can rerun it.
+- Agreement within tolerance. Same-machine reruns are bitwise identical; CPU vs
+  GPU and different BLAS builds are not. Reproduction means values within a
+  tolerance and the same verdict, with the environment fingerprint recorded.
+- Priced backends. The Backend interface already separates where from what. A
+  cloud GPU backend plus a cost per pass lets `plan` show money; the user
+  approves the spend, then it runs.
+- Registration before results. Locally, "threshold set before the run" is only
+  as good as the local clock. In a shared base the claim is pushed first (test
+  and threshold fixed), then the results, as in a clinical-trial registry.
+  Optional, but cards show whether a result was registered first.
+- Mergeable ledger. It is already append-only JSONL keyed by content hashes;
+  rows from different people for one key are more evidence, and disagreements
+  between them go to the diff report.
+
+The nightly job (section 7) becomes the shared base's CI. A researcher's local
+agent pulls the base, reasons over it (section 5), tests an idea locally, and
+pushes.
+
+### Volunteer computing: lessons from SETI@home / BOINC
+
+The local-first shape is close to SETI@home and Folding@home (both on BOINC),
+which already met several of these problems.
+
+- Redundancy is the trust model. BOINC sent each work unit to two or more
+  volunteers and accepted a result only on a matching quorum, because hardware
+  was faulty and some people cheated for credit. That is "independently
+  reproduced (N)", and BOINC's validator is the shared CI's job.
+- Floating point across machines. BOINC used homogeneous redundancy (compare
+  only within a platform class) and fuzzy validators (compare within a
+  tolerance). We need both: exact matching within a hardware class, tolerance
+  across classes.
+- Work sized to the volunteer. Pythia on CPU fits a laptop; a 70B model does
+  not. The planner tags work by hardware class.
+- Incentives get gamed. Credit should go to reproductions that others confirm,
+  not raw submissions.
+
+Where it differs:
+
+- Contributors bring ideas as well as compute: closer to BOINC plus Wikipedia.
+  The judgement-heavy part (writing good tests) is distributed too.
+- Work is content-addressed: the same claim, model and checkpoint give the same
+  key, so duplicates are free.
+- Every result is useful: a failure on a new model is still scope information.
+- `claimci gaps` is the work queue volunteers pull from: reproduce a reported
+  result, extend a test to another model, run a missing control.
+
+The new risk: verifying a pulled claim runs someone else's code. BOINC avoided
+this by running only the project's signed applications. Here, by default,
+volunteers run only experiments from a reviewed library at signed commits;
+arbitrary pushed code runs in a sandbox or only on CI until reviewed. This has
+to be in the design from the start.
+
 ## 1. Who this is for
 
 The main user is a research agent working on interpretability. Its loop:
