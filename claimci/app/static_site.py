@@ -18,7 +18,7 @@ from ..schema.loader import load_repo
 from ..store.ledger import Ledger
 from .web import PAGE, overview, samples
 
-READ_ONLY = {"ingest": "Read-only demo: adding a source runs locally with a Claude API key (see GUIDE.md).",
+READ_ONLY = {"ingest": "Read-only demo: adding a study runs locally with a Claude API key (see GUIDE.md).",
              "verify": "Read-only demo: verifications run locally on a GPU (see GUIDE.md)."}
 
 
