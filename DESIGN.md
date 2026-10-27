@@ -941,14 +941,15 @@ controls. Around it sit ~500 lines of infrastructure that libraries cover. Repla
 time; each step must reproduce the current ledger values (exactly for deterministic claims, within
 noise for sampled ones) on the GPU box before the old code is deleted.
 
-1. **Model access and hooks: nnsight.** run/operations.py, run/interventions.py and the hook
-   plumbing in run/backends.py attach PyTorch hooks to Hugging Face modules by hand. nnsight
-   wraps the real HF model (no re-implementation, so numbers match HF, and new architectures work
-   on release), gives one tracing API for reading and editing activations, and can run the same
-   code remotely on NDIF: a backend for large models without our own GPU. TransformerLens was
-   considered and not chosen: it re-implements each architecture, numbers differ slightly from HF,
-   and coverage of recent models lags. The operation signatures experiments call stay the same;
-   only their bodies change. The contamination canary stays (cheap, and it checks nnsight too).
+1. **Model access and hooks: nnsight, not adopted for the existing hooks.** Probed (0.8.1, plain
+   `NNsight(module)` wrapper): reads, edits, generation with an edit on every step and cleanup all
+   reproduce our hooks exactly. But the code it would replace is already thin (interventions are a
+   few lines of tensor arithmetic each, which stay), so it saves ~20-30 of ~330 lines, and it adds
+   pitfalls of its own (reads must follow execution order; code after an unbounded generation loop
+   silently never runs). Kept for what it uniquely gives: NDIF, remote execution of large models
+   without our own GPU, as a separate backend when a claim needs a 70B model. Internal tools stay
+   where nothing off the shelf removes code; what had to improve was how the recipes read, done
+   per experiment family (contrastive directions first).
 2. **Uncertainty.** No verdict reports it today: "94% misaligned vs 8% random" is a point estimate
    from 64-128 samples compared against a threshold. Rates get binomial intervals
    (`statsmodels.stats.proportion.proportion_confint`, Wilson), effect sizes bootstrap intervals
@@ -963,4 +964,4 @@ noise for sampled ones) on the GPU box before the old code is deleted.
    extraction recipe must be reproduced exactly, which is the experiment's point; with nnsight the
    remaining mechanics are a few lines.
 
-Order: 1, 2, 3. Step 2 lands with section 20's `Expect`; step 1 does not depend on it.
+Order: 3 (Inspect, which removes the most code), then 2 with section 20's `Expect`; 1 when a claim needs NDIF.
