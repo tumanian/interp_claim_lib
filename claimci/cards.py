@@ -205,6 +205,16 @@ def _data_items(c, author_repos: set[str]) -> list[dict]:
     return out
 
 
+def _objects(repo, ledger, ids):
+    from .objects import objects
+    out = objects(repo, ledger, ids)
+    for o in out:
+        o["checks"] = [{"id": k, "kind_label": KIND_LABELS[repo.claims[k].kind],
+                        "statement": " ".join(repo.claims[k].statement.split()), "verdict": verdict(repo, ledger, k)}
+                       for k in o["claims"]]
+    return out
+
+
 def report(repo: Repo, ledger: Ledger, ref: str) -> dict:
     """Report card for one source: findings with one-word status, and what they were tested on."""
     findings = explain(repo, ledger, ref)
@@ -250,5 +260,5 @@ def report(repo: Repo, ledger: Ledger, ref: str) -> dict:
     findings.sort(key=lambda f: (order.get(f["status"], 9), f["id"]))
     return {"ref": ref, "title": s.get("title") or ref, "kind": s.get("kind"), "date": s.get("date"),
             "counts": counts, "n_findings": len(findings), "models": models, "data": data,
-            "code": code, "origins": list(ORIGINS),
+            "code": code, "origins": list(ORIGINS), "objects": _objects(repo, ledger, tested),
             "findings": findings}

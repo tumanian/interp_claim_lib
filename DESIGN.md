@@ -675,3 +675,39 @@ The demo reorders section 9: ingestion moves first, the nightly job later.
 Open: which golden paths besides Olsson. Candidates: the evil-Qwen steering
 post (runs locally), the Qwen3-8B Elizabeth II neuron post (needs a GPU), and
 a steering paper.
+
+## 12. Objects, annotations, mechanisms
+
+Claims are about different kinds of things, and the read path should say which.
+
+| layer | what it is | examples | bio analogue |
+|---|---|---|---|
+| object | a component with an identity in one model | neuron L14N8949 of Qwen3.5-4B; head L4H6 of pythia-160m; the refusal direction of gemma-2b-it (a saved vector); an SAE feature | a gene or variant (Ensembl, dbSNP) |
+| annotation | a claim that one object does something | "L4H6 is an induction head"; "L11N3799 is an Elizabeth II neuron"; "these two neurons push Qwen toward evil" | a GO or ClinVar annotation: variant to function, with an evidence code |
+| mechanism | a claim about how a computation works, across objects | "refusal is mediated by a single direction"; "induction is a previous-token head plus an induction head"; "induction heads form in a phase change" | a pathway (Reactome) |
+
+Objects are anchors, not claims: nothing about an object is verified except through the
+annotations and mechanisms that reference it. Their job is aggregation: everything checked
+about one component, across sources, in one place.
+
+Object ids: `<model>@<revision>/<kind>/<locator>`, e.g.
+`Qwen/Qwen3.5-4B@main/mlp_neuron/L14/N8949`, `EleutherAI/pythia-160m@main/attn_head/L4/H6`,
+`google/gemma-2b-it@main/direction/<artifact id>`. They are resolved from what claims already
+carry, so nothing new is maintained by hand:
+- `subject.component` and stated interventions (layer, neuron) on a claim;
+- exported bindings (`layer`, `head`) of a result: the induction claim's bound head becomes an
+  object at each revision where it was found;
+- direction artifacts exported by a claim.
+
+Findings get a `level: annotation | mechanism` (ingest proposes it; review confirms). A
+mechanism usually depends on annotations ("a single direction mediates refusal" needs the
+direction object and its ablation/addition results first).
+
+Relation to Neuronpedia: Neuronpedia is an object atlas with mostly automated annotations
+(auto-interp labels, activation examples, steering on demand). In our terms that is
+*Automated | Auto-interp label* and *Correlational | Activation reading* evidence. claimci is
+the verification layer: annotations and mechanisms as checkable claims with controls. The two
+are complementary; ingesting Neuronpedia labels as stated annotations is deferred.
+
+Build: object resolution and an Objects list on the report card first; per-object pages
+(everything known about one component) next; `level` on findings with the next ingest change.

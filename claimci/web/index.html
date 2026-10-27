@@ -95,6 +95,7 @@ summary::-webkit-details-marker { display: none; }
 summary .chev { color: var(--faint); transition: transform .15s; }
 details[open] > summary .chev { transform: rotate(90deg); }
 .finding-st { font-size: 14px; }
+details.obj .sub { color: var(--muted); font-size: 12px; }
 .caveat { display: block; font-size: 12px; color: var(--warn); margin-top: 3px; }
 p.caveat { margin: 0 0 10px; }
 .body { padding: 2px 0 16px 128px; }
@@ -306,6 +307,13 @@ async function show(ref) {
         <div><h4>Code</h4>${byOrigin(r.code, r.origins, (c) => `<li><code>${esc(c.what)}</code><small>${esc(c.how)}${c.functions.length ? ` · ${c.functions.length} experiment${c.functions.length === 1 ? "" : "s"}` : ""}</small></li>`)}</div>
       </div>
     </div>
+    ${r.objects.length ? `<div class="card"><div class="label" style="margin:0 0 4px">Objects these findings are about</div>
+      ${r.objects.map((o) => `<details class="obj"><summary>
+          <span class="pill">${esc(o.kind)}</span>
+          <span><b>${esc(o.label)}</b> <span class="sub">${esc(o.model)}@${esc(o.revision)} · ${o.checks.length} check${o.checks.length === 1 ? "" : "s"}</span></span>
+          <span class="chev">›</span></summary>
+        <div class="body">${o.checks.map((k) => `<div class="paper-test"><small>${esc(k.kind_label)}</small> ${esc(k.statement)} ${verdict(k.verdict)}</div>`).join("")}</div>
+      </details>`).join("")}</div>` : ""}
     <div class="card"><div class="label" style="margin:0 0 4px">Findings</div>${r.findings.map(finding).join("")}</div>`;
   document.querySelectorAll("details.samples").forEach((d) => d.addEventListener("toggle", () => d.open && loadSamples(d)));
   $("#verify").onclick = () => runJob("/api/verify", {ref}, "Running verifications for " + r.title);
