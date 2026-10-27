@@ -1,6 +1,6 @@
 id: q.chen2025
-text: 'What does Persona Vectors: Monitoring and Controlling Character Traits in Language Models claim,
-  and does it hold?'
+text: 'What does Persona Vectors: Monitoring and Controlling Character Traits in Language
+  Models claim, and does it hold?'
 status: open
 claims:
 - dir.qwen257binstruct.evil.chen2025.direction
@@ -11,3 +11,4 @@ claims:
 - dir.gemma2bit.evil.chen2025.steer_up
 - dir.gemma2bit.evil.chen2025.steer_up_random
 - dir.gemma2bit.evil.chen2025.steer_down
+- dir.qwen257binstruct.evil.chen2025.monitor

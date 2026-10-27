@@ -6,7 +6,7 @@ caa.direction:
     n: scalar
     pack: data
   tags: []
-  fingerprint: 1c8c497b647db156
+  fingerprint: 6008c76e0ae6ef07
   version: 1
 caa.steer:
   entrypoint: claimci.experiments.direction:steer_ab
@@ -19,7 +19,7 @@ caa.steer:
     random_seed: scalar
   tags:
   - intervention
-  fingerprint: 1c8c497b647db156
+  fingerprint: 6008c76e0ae6ef07
   version: 1
 induction.ablate_head:
   entrypoint: claimci.experiments.induction:ablate_head_loss_delta
@@ -55,7 +55,7 @@ judge.baseline:
     seed: scalar
     temperature: scalar
   tags: []
-  fingerprint: 27d463d3f170e959
+  fingerprint: 93bda3bb4db2fdb2
   version: 1
 judge.misalignment:
   entrypoint: claimci.experiments.judge:judged_misalignment
@@ -70,7 +70,7 @@ judge.misalignment:
     temperature: scalar
   tags:
   - intervention
-  fingerprint: 27d463d3f170e959
+  fingerprint: 93bda3bb4db2fdb2
   version: 1
 judge.random_neurons:
   entrypoint: claimci.experiments.judge:judged_random_neurons
@@ -86,7 +86,7 @@ judge.random_neurons:
     temperature: scalar
   tags:
   - intervention
-  fingerprint: 27d463d3f170e959
+  fingerprint: 93bda3bb4db2fdb2
   version: 1
 persona.direction:
   entrypoint: claimci.experiments.direction:persona_direction
@@ -98,8 +98,17 @@ persona.direction:
     seed: scalar
     threshold: scalar
   tags: []
-  fingerprint: 1c8c497b647db156
+  fingerprint: 6008c76e0ae6ef07
   version: 1
+persona.monitor:
+  version: 1
+  entrypoint: claimci.experiments.direction:monitor_persona
+  params:
+    block: layer
+    direction: input
+    pack: data
+  tags: []
+  fingerprint: 6008c76e0ae6ef07
 persona.steer:
   entrypoint: claimci.experiments.direction:steer_persona
   params:
@@ -114,7 +123,7 @@ persona.steer:
     seed: scalar
   tags:
   - intervention
-  fingerprint: 1c8c497b647db156
+  fingerprint: 6008c76e0ae6ef07
   version: 1
 refusal.ablate:
   entrypoint: claimci.experiments.refusal:ablation_refusal_rate
@@ -125,7 +134,7 @@ refusal.ablate:
     split: data
   tags:
   - intervention
-  fingerprint: 59307ec10e402931
+  fingerprint: 7d80130f1ac08c87
   version: 1
 refusal.ablate_text_loss:
   entrypoint: claimci.experiments.refusal:ablation_text_loss_delta
@@ -134,7 +143,7 @@ refusal.ablate_text_loss:
     n_texts: scalar
   tags:
   - intervention
-  fingerprint: 59307ec10e402931
+  fingerprint: 7d80130f1ac08c87
   version: 1
 refusal.add:
   entrypoint: claimci.experiments.refusal:addition_refusal_rate
@@ -147,7 +156,7 @@ refusal.add:
     split: data
   tags:
   - intervention
-  fingerprint: 59307ec10e402931
+  fingerprint: 7d80130f1ac08c87
   version: 1
 refusal.direction:
   entrypoint: claimci.experiments.refusal:refusal_direction
@@ -158,7 +167,7 @@ refusal.direction:
     reference: data
     refusal_toks: tokenizer
   tags: []
-  fingerprint: 59307ec10e402931
+  fingerprint: 7d80130f1ac08c87
   version: 1
 refusal.rate:
   entrypoint: claimci.experiments.refusal:refusal_rate
@@ -166,7 +175,7 @@ refusal.rate:
     refusal_toks: tokenizer
     split: data
   tags: []
-  fingerprint: 59307ec10e402931
+  fingerprint: 7d80130f1ac08c87
   version: 1
 sentiment.ablate_zero_shot:
   entrypoint: claimci.experiments.sentiment:ablate_zero_shot
@@ -177,7 +186,7 @@ sentiment.ablate_zero_shot:
     random_seed: scalar
   tags:
   - intervention
-  fingerprint: 3b236ce011c842bd
+  fingerprint: 9c12c5b0983ec6e7
   version: 1
 sentiment.direction:
   entrypoint: claimci.experiments.sentiment:sentiment_direction
@@ -185,7 +194,7 @@ sentiment.direction:
     layer: layer
     pack: data
   tags: []
-  fingerprint: 3b236ce011c842bd
+  fingerprint: 9c12c5b0983ec6e7
   version: 1
 sentiment.reads_sst:
   entrypoint: claimci.experiments.sentiment:direction_reads_sst
@@ -194,7 +203,7 @@ sentiment.reads_sst:
     layer: layer
     pack: data
   tags: []
-  fingerprint: 3b236ce011c842bd
+  fingerprint: 9c12c5b0983ec6e7
   version: 1
 steering.dose_response:
   entrypoint: claimci.experiments.steering:dose_response
@@ -204,14 +213,14 @@ steering.dose_response:
     scales: scalar
   tags:
   - intervention
-  fingerprint: 15f2d169f2321898
+  fingerprint: f778986fd19bbd10
   version: 1
 steering.persona_baseline:
   entrypoint: claimci.experiments.steering:persona_baseline
   params:
     n_per_set: scalar
   tags: []
-  fingerprint: 15f2d169f2321898
+  fingerprint: f778986fd19bbd10
   version: 1
 steering.persona_delta:
   entrypoint: claimci.experiments.steering:steer_persona_delta
@@ -220,7 +229,7 @@ steering.persona_delta:
     n_per_set: scalar
   tags:
   - intervention
-  fingerprint: 15f2d169f2321898
+  fingerprint: f778986fd19bbd10
   version: 1
 steering.random_neurons:
   entrypoint: claimci.experiments.steering:random_neuron_delta
@@ -230,7 +239,7 @@ steering.random_neurons:
     seeds: scalar
   tags:
   - intervention
-  fingerprint: 15f2d169f2321898
+  fingerprint: f778986fd19bbd10
   version: 1
 steering.single_neurons:
   entrypoint: claimci.experiments.steering:single_neuron_deltas
@@ -239,7 +248,7 @@ steering.single_neurons:
     n_per_set: scalar
   tags:
   - intervention
-  fingerprint: 15f2d169f2321898
+  fingerprint: f778986fd19bbd10
   version: 1
 steering.text_loss:
   entrypoint: claimci.experiments.steering:steer_text_loss_delta
@@ -248,5 +257,5 @@ steering.text_loss:
     n_texts: scalar
   tags:
   - intervention
-  fingerprint: 15f2d169f2321898
+  fingerprint: f778986fd19bbd10
   version: 1

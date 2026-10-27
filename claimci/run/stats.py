@@ -21,6 +21,12 @@ def wilson(k: int, n: int, z: float = Z95) -> tuple[float, float] | None:
     return round(max(0.0, centre - half), 6), round(min(1.0, centre + half), 6)
 
 
+def auroc(positives, negatives) -> float:
+    """P(a positive scores above a negative), ties counting half: how well a score separates two groups."""
+    pos, neg = np.asarray(positives, dtype=float), np.asarray(negatives, dtype=float)
+    return float(((pos[:, None] > neg[None, :]).sum() + 0.5 * (pos[:, None] == neg[None, :]).sum()) / (len(pos) * len(neg)))
+
+
 def bootstrap(statistic, *samples, n_boot: int = 2000, seed: int = 0) -> tuple[float, float] | None:
     """Percentile interval for statistic(*samples), resampling each sample's items with replacement.
     Paired samples (the same items before and after an intervention) are passed as one array of
