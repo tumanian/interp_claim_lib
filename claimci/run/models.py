@@ -29,11 +29,16 @@ class LMHandle:
 
     @property
     def layers(self):
-        return self.model.model.layers
+        """The decoder blocks, whatever the architecture calls them (Llama/Qwen/Gemma, GPT-NeoX, GPT-2)."""
+        m = self.model
+        return m.model.layers if hasattr(m, "model") else m.gpt_neox.layers if hasattr(m, "gpt_neox") else m.transformer.h
 
     def attn(self, i: int):
         layer = self.layers[i]
-        return layer.self_attn if hasattr(layer, "self_attn") else layer.linear_attn
+        for name in ("self_attn", "linear_attn", "attention", "attn"):
+            if hasattr(layer, name):
+                return getattr(layer, name)
+        raise AttributeError(f"no attention module in block {i}")
 
     def mlp(self, i: int):
         return self.layers[i].mlp

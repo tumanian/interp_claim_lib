@@ -2,4 +2,11 @@ id: q.tigges2023
 text: What does Linear Representations of Sentiment in Large Language Models claim,
   and does it hold?
 status: open
-claims: []
+claims:
+- sent.pythia14b.direction
+- sent.pythia14b.direction_heldout
+- sent.pythia14b.reads_sst
+- sent.pythia14b.ablate
+- sent.pythia14b.ablate_random
+- sent.pythia14b.ablate_most
+- sent.pythia14b.ablate_commas

@@ -53,6 +53,31 @@ def project_out(h, d: torch.Tensor):
     return hooks
 
 
+def project_out_at(h, d: torch.Tensor, token_id: int):
+    """Directional ablation as in project_out, but only at positions holding `token_id` (e.g. every
+    comma): the input ids of each forward pass are read at the embedding."""
+    u = d / d.norm()
+    mask = {}
+
+    def ids(module, args):
+        mask["at"] = (args[0] == token_id).unsqueeze(-1)
+
+    def project(x):
+        uu = u.to(x)
+        return torch.where(mask["at"].to(x.device), x - (x @ uu).unsqueeze(-1) * uu, x)
+
+    def pre(module, args):
+        return (project(args[0]),) + tuple(args[1:])
+
+    def post(module, args, out):
+        return (project(out[0]),) + tuple(out[1:]) if isinstance(out, tuple) else project(out)
+
+    hooks = [(h.model.get_input_embeddings(), ids)]
+    for i in range(h.n_layers):
+        hooks += [(h.layers[i], pre), (h.attn(i), post, "post"), (h.mlp(i), post, "post")]
+    return hooks
+
+
 def add_to_neurons(h, interventions, medians: dict[int, float], scale: float = 1.0):
     """For each {layer, neuron, dose}: add dose x medians[layer] / ||W_down[:, neuron]|| to that
     neuron at the input of the layer's down projection, every position (the posted recipe)."""
