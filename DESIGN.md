@@ -1064,6 +1064,14 @@ claim key is identical before and after. Claim YAML stays as written; only loadi
 Section 19's versions land after this, on `CodeRef`.
 ## 21. Off-the-shelf tools for the science, and uncertainty on every verdict
 
+Built: intervals (claimci/run/stats.py: Wilson for rates, seeded percentile bootstrap for means and
+differences, paired where the same items are scored twice; numpy only, no new dependency).
+Experiments return them in `Outcome.interval`, rows store them, and verdicts and margins use the
+interval's near edge when there is one. Every chat experiment family (directions, judge, neuron
+steering, refusal) was rewritten as a readable recipe at the same time, each checked equivalent
+to the previous code (values, details, samples) on a tiny model with a stubbed judge; versions
+kept. Values already in the ledger have no interval until rerun. Not built: Inspect (step 3).
+
 The experiments' own code is the papers' recipes: layers, token positions, prompts, coefficients,
 controls. Around it sit ~500 lines of infrastructure that libraries cover. Replace them one at a
 time; each step must reproduce the current ledger values (exactly for deterministic claims, within

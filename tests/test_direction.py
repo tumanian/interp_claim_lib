@@ -124,8 +124,8 @@ def test_runner_hands_outcome_style_experiments_loaded_inputs_and_packs(tmp_path
 
     ctx = SimpleNamespace(artifacts=store, acts=SimpleNamespace(data={"p": {"test": [1, 2]}}))
     claim = SimpleNamespace(experiment_id="caa.steer", params={"block": 3, "coef": 1.0, "pack": "p"})
-    value, bindings = Runner.call(None, fn, ctx, claim, {"direction": ref})
+    value, bindings, interval = Runner.call(None, fn, ctx, claim, {"direction": ref})
     assert torch.equal(seen["direction"], torch.ones(3)) and seen["test"] == [1, 2]   # loaded, and a Pack
-    assert value == 0.5 and bindings["direction"] == ref and bindings["n"] == 1      # inputs stay references
+    assert value == 0.5 and interval is None and bindings["direction"] == ref and bindings["n"] == 1  # inputs stay refs
     assert torch.equal(store.load(bindings["v"]), torch.zeros(2))                    # exports saved
     assert bindings["answers"].startswith("artifact:")                               # samples saved for the card

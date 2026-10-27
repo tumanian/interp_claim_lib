@@ -5,10 +5,12 @@ score per item; metrics turn scores into the number a claim checks.
 """
 from __future__ import annotations
 
+import numpy as np
 import torch
 
 from . import operations as ops
 from .formats import format_prompt
+from .stats import bootstrap
 
 
 def balanced(items, scores, key) -> float:
@@ -21,6 +23,19 @@ def balanced(items, scores, key) -> float:
     for it, s in zip(items, scores):
         groups.setdefault(key(it), []).append(float(s))
     return sum(sum(g) / len(g) for g in groups.values()) / len(groups)
+
+
+def balanced_interval(items, key, *conditions, combine=lambda base, *steered: steered[0] - base):
+    """Bootstrap interval for combine(balanced score under each condition), resampling items with
+    all their conditions together (paired). `key` splits items into the groups `balanced` averages."""
+    groups = {g: i for i, g in enumerate(sorted({key(it) for it in items}, key=str))}
+    rows = np.column_stack([[groups[key(it)] for it in items]] + [np.asarray(c, dtype=float) for c in conditions])
+
+    def stat(r):
+        def bal(col):
+            return np.mean([r[r[:, 0] == g, col].mean() for g in groups.values() if (r[:, 0] == g).any()])
+        return combine(*(bal(i) for i in range(1, rows.shape[1])))
+    return bootstrap(stat, rows)
 
 
 def refusal_logodds(ctx, instructions: list[str], refusal_toks: list[int], hooks=()) -> torch.Tensor:

@@ -123,7 +123,7 @@ class Runner:
             r.cost["mode"] = mode
             self.ledger.put(r)
             self.outputs[(cid, g.revision)] = r
-            self.log(self.describe(r, self.repo.claims[r.claim].holds(r.value)))
+            self.log(self.describe(r, self.repo.claims[r.claim].holds(r.value, r.interval)))
             out.append(r)
         return out
 
@@ -151,7 +151,7 @@ class Runner:
         inputs = {k: parents[p][e] for k, (p, e) in c.input_refs().items()}
         intervention = is_intervention(self.repo, cid)
         ctx = Ctx(self.backend, handle, ds, adapter, artifacts=self.artifacts)
-        passes, canary, leak, t0 = 0.0, 0.0, None, time.perf_counter()
+        passes, canary, leak, interval, t0 = 0.0, 0.0, None, None, time.perf_counter()
         try:
             with time_limit(self.claim_timeout):
                 acts = shared
@@ -160,7 +160,7 @@ class Runner:
                 fn = resolve_entrypoint(c.entrypoint)
                 ctx.acts = acts
                 if next(iter(inspect.signature(fn).parameters)) == "ctx":   # Outcome style
-                    value, bindings = self.call(fn, ctx, c, inputs)
+                    value, bindings, interval = self.call(fn, ctx, c, inputs)
                 elif intervention:
                     out = fn(acts, ctx, **inputs, **c.params)
                     # an intervention returns a value, or (value, extra bindings) for its own readouts
@@ -180,22 +180,25 @@ class Runner:
             r = self.result(cid, g, "error", reason=f"{type(e).__name__}: {e}",
                             traceback_hash=hashlib.sha256(tb.encode()).hexdigest()[:16])
         else:
-            r = self.result(cid, g, "ok", value=value, bindings=bindings)   # a value; verdicts are derived on read
+            r = self.result(cid, g, "ok", value=value, bindings=bindings,   # a value; verdicts are derived on read
+                            interval=list(interval) if interval else None)
             if leak:
                 r.status, r.reason = "contaminated", leak
         r.cost.update(forward_passes=passes + ctx.passes, canary_passes=canary,
                       seconds=time.perf_counter() - t0)
         return r
 
-    def call(self, fn, ctx, c, inputs: dict) -> tuple[float, dict]:
+    def call(self, fn, ctx, c, inputs: dict) -> tuple[float, dict, tuple | None]:
         """Call an experiment written as `fn(ctx, **params) -> Outcome`: an `Input` arrives loaded
-        (an artifact reference becomes its tensor), a `Data` parameter as a Pack; tensors it exports
+        (an artifact reference becomes its tensor), a `Data` parameter that names a pack of the
+        dataset as that Pack (one naming a split within a pack stays a name); tensors it exports
         are saved as artifacts and its samples as a JSON artifact under `answers`."""
         from .outcome import Outcome, Pack
         from ..schema.experiments import lock
         kinds = lock()[c.experiment_id]["params"]
         load = lambda v: ctx.artifacts.load(v) if isinstance(v, str) and v.startswith("artifact:") else v
-        params = {k: Pack(ctx.acts.data[v]) if kinds.get(k) == "data" else v for k, v in c.params.items()}
+        names_a_pack = lambda k, v: kinds.get(k) == "data" and isinstance(v, str) and v in ctx.acts.data
+        params = {k: Pack(ctx.acts.data[v]) if names_a_pack(k, v) else v for k, v in c.params.items()}
         out = fn(ctx, **{k: load(v) for k, v in inputs.items()}, **params)
         if not isinstance(out, Outcome):
             raise TypeError(f"{c.experiment_id} returned {type(out).__name__}, not an Outcome")
@@ -203,7 +206,7 @@ class Runner:
         bindings = {**inputs, **out.details, **saved}
         if out.samples is not None:
             bindings["answers"] = ctx.artifacts.save_json(out.samples)
-        return out.value, bindings
+        return out.value, bindings, out.interval
 
     def canary(self, handle, ds, acts) -> str | None:
         import torch

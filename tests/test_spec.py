@@ -264,3 +264,12 @@ def test_expect_holds_and_margin_from_the_threshold_and_an_interval():
     near = Expect("==", 0.91, tol=0.01)
     assert near.holds(0.915) and not near.holds(0.93) and near.margin(0.905) == 0.005
     assert Expect.of(None) is None and Expect.of({"op": "<", "value": 1}).holds(0.5)
+
+
+def test_intervals():
+    from claimci.run.stats import bootstrap, wilson
+    lo, hi = wilson(60, 64)
+    assert 0.84 < lo < 0.86 and 0.97 < hi < 0.99 and wilson(0, 10)[0] == 0.0 and wilson(0, 0) is None
+    pairs = [(0.4, 0.6), (0.5, 0.7), (0.45, 0.62), (0.5, 0.71)]
+    a = bootstrap(lambda p: (p[:, 1] - p[:, 0]).mean(), pairs)
+    assert a == bootstrap(lambda p: (p[:, 1] - p[:, 0]).mean(), pairs) and a[0] <= 0.19 <= a[1]   # seeded
