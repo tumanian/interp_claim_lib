@@ -19,7 +19,8 @@ from ..store.ledger import Ledger
 from .web import PAGE, overview, samples
 
 READ_ONLY = {"ingest": "Read-only demo: adding a study runs locally with a Claude API key (see GUIDE.md).",
-             "verify": "Read-only demo: verifications run locally on a GPU (see GUIDE.md)."}
+             "verify": "Read-only demo: verifications run locally on a GPU (see GUIDE.md).",
+             "expand": "Read-only demo: expanding to more models runs locally on a GPU (see GUIDE.md)."}
 
 
 def key(request: str) -> str:
@@ -27,7 +28,8 @@ def key(request: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]", "_", request) + ".json"
 
 
-def export(root: Path, out: Path, base: str | None = None, verified_only: bool = False) -> int:
+def export(root: Path, out: Path, base: str | None = None, verified_only: bool = False,
+           first: list[str] | None = None) -> int:
     """Write the site to `out`. `base` is the URL path it will be served under (e.g. /demo/), so
     its relative requests resolve with or without a trailing slash. `verified_only` leaves out
     sources none of whose findings is verified yet."""
@@ -41,6 +43,9 @@ def export(root: Path, out: Path, base: str | None = None, verified_only: bool =
     if verified_only:
         pages["overview"]["sources"] = [s for s in pages["overview"]["sources"]
                                         if any(c["support"] == "supported" for c in s["claims"])]
+    if first:
+        rank = {ref: i for i, ref in enumerate(first)}
+        pages["overview"]["sources"].sort(key=lambda s: rank.get(s["ref"], len(rank)))   # stable: the rest keep their order
     for s in pages["overview"]["sources"]:
         pages[f"report?ref={s['ref']}"] = cards.report(repo, ledger, s["ref"])
     for art in sorted((root / "ledger" / "artifacts").glob("*.json")):

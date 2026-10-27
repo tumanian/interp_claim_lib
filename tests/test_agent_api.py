@@ -59,7 +59,7 @@ def test_web_app_says_why_an_action_cannot_run_here(tmp_path, monkeypatch):
     assert "ANTHROPIC_API_KEY" in w["ingest"] and "GPU" in w["verify"]
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")
     (tmp_path / ".claimci-remote.json").write_text("{}")
-    assert web.why_not(tmp_path) == {"ingest": None, "verify": None}
+    assert web.why_not(tmp_path) == {"ingest": None, "verify": None, "expand": None}
 
 
 def test_static_site_names_every_request_the_page_makes(tmp_path):
@@ -88,3 +88,11 @@ def test_agent_read_path_on_the_committed_results():
     g = agent.get(repo, led, "dir.qwen354b.sycophancy.panickssery2023.steer_up")
     assert g["run_on"] == "expanded" and g["expanded_from"].startswith("meta-llama/") and g["evidence"] == "ISS"
     assert cards.explain(repo, led, "chen2025") == cards.explain(repo, led, "arXiv:2507.21509") != []
+
+
+def test_expand_needs_a_gpu_like_verify(tmp_path, monkeypatch):
+    from claimci.app import web
+    monkeypatch.setattr(web, "_cuda", lambda: False)
+    assert web.why_not(tmp_path)["expand"]
+    (tmp_path / ".claimci-remote.json").write_text("{}")
+    assert web.why_not(tmp_path)["expand"] is None

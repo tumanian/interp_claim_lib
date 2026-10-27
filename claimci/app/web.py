@@ -33,7 +33,8 @@ def why_not(root: Path) -> dict:
         "Adding a study needs ANTHROPIC_API_KEY in .env (see README, Setup)."
     verify = None if (root / ".claimci-remote.json").exists() or _cuda() else \
         "Running verifications needs a GPU: a box in .claimci-remote.json, or local CUDA (see README, Setup)."
-    return {"ingest": ingest, "verify": verify}
+    expand = verify and "Expanding to more models runs their verifications, which needs a GPU (see README, Setup)."
+    return {"ingest": ingest, "verify": verify, "expand": expand}
 
 
 def _cuda() -> bool:
@@ -149,6 +150,21 @@ def make_handler(root: Path):
                 if not src:
                     return self.send(400, {"error": "give an arXiv id or a post URL"})
                 jid = start_job("ingest", lambda log: ingest_source(root, src, text, log=log))
+                return self.send(200, {"job": jid})
+            if self.path == "/api/expand":
+                models = [m.strip() for m in (body.get("models") or []) if m.strip()]
+                ref = body.get("ref", "")
+                if not ref or not models:
+                    return self.send(400, {"error": "give a study and at least one model"})
+
+                def run_expand(log):
+                    from ..sources.expand import expand
+                    with VERIFY_LOCK:  # one model run at a time
+                        out = expand(root, ref, models, verify=True, log=log)
+                    for why in out["refused"]:
+                        log(f"not carried over: {why}")
+                    return out
+                jid = start_job("expand", run_expand)
                 return self.send(200, {"job": jid})
             if self.path == "/api/verify":
                 ids = body.get("claims") or source_claims_to_verify(root, body.get("ref", ""))

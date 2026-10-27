@@ -37,6 +37,12 @@ header .grow { flex: 1; }
 .btn.ghost { background: transparent; color: var(--accent); }
 .btn:disabled { opacity: .5; cursor: default; }
 .pill.lineage { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+.btn.small { padding: 3px 10px; font-size: 12px; margin-top: 8px; }
+.expandform { display: none; flex-direction: column; gap: 6px; margin-top: 8px; }
+.expandform.open { display: flex; }
+.expandform input { padding: 6px 8px; border: 1px solid var(--rule); border-radius: 6px; background: var(--bg); font-size: 12px; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font: 11px var(--mono); padding: 2px 8px; border-radius: 10px; border: 1px solid var(--rule); background: transparent; color: var(--muted); }
 .act { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; max-width: 240px; }
 .act .why { color: var(--muted, #8a8f98); font-size: 11px; text-align: right; line-height: 1.3; }
 #addform { display: none; gap: 8px; padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
@@ -175,6 +181,9 @@ const shortModel = (m) => (m || "").split("/").pop();
 const lineage = (a) => a.expansion
   ? `<span class="pill lineage" title="Carried over from ${esc(a.expansion)} to ${esc(a.model)}">${esc(shortModel(a.expansion))} → ${esc(shortModel(a.model))}</span> `
   : `<span class="pill lineage" title="${esc(a.model)}: the model the source used">${esc(shortModel(a.model))}</span> `;
+// open models a study can be carried over to with one click (any Hugging Face id can be typed)
+const SUGGESTED_MODELS = ["Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen3.5-4B", "google/gemma-2-2b-it",
+                          "meta-llama/Llama-3.1-8B-Instruct", "EleutherAI/pythia-1.4b"];
 const val = (r) => !r ? "–" : fmt(r.value) + (r.interval ? ` <small class="ci">[${fmt(r.interval[0])}, ${fmt(r.interval[1])}]</small>` : "");
 let current = null, busy = false;
 
@@ -333,8 +342,13 @@ async function show(ref) {
       <div class="tested">
         <div><h4>Models</h4><ul>${(r.model_runs || r.models.map((m) => ({model: m}))).map((m) => `<li>${esc(m.model)}
           ${m.run_on === "original" ? `<span class="pill ok" title="The model the source used">original</span>`
-            : m.run_on === "expanded" ? `<span class="pill accent" title="A model the source did not test">expanded</span>
-               ${m.from.map((f) => `<span class="pill lineage" title="Carried over from ${esc(f)}">from ${esc(shortModel(f))}</span>`).join(" ")}` : ""}</li>`).join("") || "<li class='gap'>none yet</li>"}</ul></div>
+            : m.run_on === "expanded" ? `<span class="pill accent" title="A model the source did not test; carried over from ${esc(m.from.join(", "))}">expanded</span>` : ""}</li>`).join("") || "<li class='gap'>none yet</li>"}</ul>
+          <button class="btn ghost small" id="expandbtn" ${busy || whyNot.expand ? "disabled" : ""} title="${esc(whyNot.expand || "Run this study's tests on other models")}">Expand to more models</button>
+          <div id="expandform" class="expandform">
+            <input id="expandmodels" placeholder="Hugging Face ids, comma-separated" autocomplete="off">
+            <div class="chips">${SUGGESTED_MODELS.filter((m) => !r.models.includes(m)).map((m) => `<button class="chip" data-m="${esc(m)}">${esc(shortModel(m))}</button>`).join("")}</div>
+            <button class="btn" id="expandgo">Expand and verify</button>
+          </div></div>
         <div><h4>Data</h4>${byOrigin(r.data, r.origins, (d) => `<li>${esc(d.what)}<small>${esc(d.from)}${d.license ? " · " + esc(d.license) : ""}</small></li>`)}</div>
         <div><h4>Code</h4>${byOrigin(r.code, r.origins, (c) => `<li><code>${esc(c.what)}</code><small>${esc(c.how)}${c.functions.length ? ` · ${c.functions.length} experiment${c.functions.length === 1 ? "" : "s"}` : ""}</small></li>`)}</div>
       </div>
@@ -349,12 +363,22 @@ async function show(ref) {
     <div class="card"><div class="label" style="margin:0 0 4px">Findings</div>${r.findings.map(finding).join("")}</div>`;
   document.querySelectorAll("details.samples").forEach((d) => d.addEventListener("toggle", () => d.open && loadSamples(d)));
   $("#verify").onclick = () => runJob("/api/verify", {ref}, "Running verifications for " + r.title);
+  $("#expandbtn").onclick = () => { $("#expandform").classList.toggle("open"); $("#expandmodels").focus(); };
+  document.querySelectorAll("#expandform .chip").forEach((c) => c.onclick = () => {
+    const box = $("#expandmodels"), have = box.value.split(",").map((s) => s.trim()).filter(Boolean);
+    if (!have.includes(c.dataset.m)) box.value = [...have, c.dataset.m].join(", ");
+  });
+  $("#expandgo").onclick = () => {
+    const models = $("#expandmodels").value.split(",").map((s) => s.trim()).filter(Boolean);
+    if (models.length) runJob("/api/expand", {ref, models}, `Expanding ${r.title} to ${models.map(shortModel).join(", ")}`);
+  };
   loadSources();
 }
 
 async function runJob(path, body, title) {
   if (busy) return;
-  busy = true; $("#ingest").disabled = true; const v = $("#verify"); if (v) v.disabled = true;
+  busy = true; $("#ingest").disabled = true;
+  ["#verify", "#expandbtn", "#expandgo"].forEach((id) => { const b = $(id); if (b) b.disabled = true; });
   $("#log").open = true; $("#logtitle").textContent = title; $("#logtext").textContent = ""; $("#logstate").textContent = "running…";
   try {
     const {job} = await api(path, body);
