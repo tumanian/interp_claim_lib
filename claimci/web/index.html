@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>claimci</title>
+<style>
+/* Layout: ingest bar on top; sources on the left; the selected source's claims in the middle; run log docked at the bottom. */
+:root {
+  --bg: #f4f6f8; --panel: #ffffff; --ink: #18202b; --muted: #5d6877; --rule: #d8dee6;
+  --accent: #2b5fb8; --ok: #1d7a46; --ok-bg: #e2f3e8; --bad: #b3261e; --bad-bg: #fbe4e2;
+  --warn: #8a5a00; --warn-bg: #fdf0d2; --idle-bg: #eceff3;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #11151b; --panel: #181e26; --ink: #e5e9ef; --muted: #98a2b1; --rule: #2b3440;
+    --accent: #7ea6ef; --ok: #6fd39a; --ok-bg: #173324; --bad: #f2948c; --bad-bg: #3a1c1a;
+    --warn: #e9c06a; --warn-bg: #362b12; --idle-bg: #232b36; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--sans); }
+header { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; padding: 14px 18px;
+  background: var(--panel); border-bottom: 1px solid var(--rule); }
+header h1 { font-size: 16px; margin: 6px 14px 0 0; letter-spacing: .02em; }
+header h1 span { color: var(--muted); font-weight: 400; }
+#src { flex: 1 1 320px; min-width: 0; }
+input, textarea, button { font: inherit; color: inherit; }
+input, textarea { width: 100%; padding: 7px 10px; border: 1px solid var(--rule); border-radius: 6px; background: var(--bg); }
+textarea { margin-top: 6px; min-height: 0; height: 34px; resize: vertical; font-size: 13px; }
+button { padding: 7px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent);
+  color: #fff; cursor: pointer; white-space: nowrap; }
+button.ghost { background: transparent; color: var(--accent); }
+button:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, .src:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+main { display: grid; grid-template-columns: 280px 1fr; min-height: calc(100vh - 66px - 190px); }
+nav { border-right: 1px solid var(--rule); padding: 12px; overflow-y: auto; }
+nav h2, section h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 4px 4px 10px; }
+.src { display: block; width: 100%; text-align: left; background: transparent; color: var(--ink); border: 1px solid transparent;
+  border-radius: 6px; padding: 8px 10px; margin-bottom: 4px; }
+.src:hover { background: var(--idle-bg); }
+.src.on { background: var(--panel); border-color: var(--rule); }
+.src .t { font-weight: 600; display: block; }
+.src .r { color: var(--muted); font: 12px var(--mono); word-break: break-all; }
+.dots { display: flex; gap: 3px; margin-top: 5px; flex-wrap: wrap; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--rule); }
+.dot.supported { background: var(--ok); } .dot.contradicted, .dot.not { background: var(--bad); } .dot.partly, .dot.attached { background: var(--warn); }
+section { padding: 16px 22px 40px; min-width: 0; }
+.srchead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+.srchead h3 { margin: 0; font-size: 18px; }
+.srchead .r { color: var(--muted); font: 12px var(--mono); }
+.claim { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+.claim .st { font-size: 15px; margin: 0 0 8px; }
+.meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; background: var(--idle-bg); color: var(--muted); }
+.chip.ok { background: var(--ok-bg); color: var(--ok); } .chip.bad { background: var(--bad-bg); color: var(--bad); }
+.chip.warn { background: var(--warn-bg); color: var(--warn); }
+.quote { margin: 8px 0 0; padding-left: 10px; border-left: 2px solid var(--rule); color: var(--muted); font-size: 13px; }
+.tests { margin-top: 10px; border-top: 1px solid var(--rule); }
+.test { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 8px 0; border-bottom: 1px dashed var(--rule); }
+.test:last-child { border-bottom: 0; }
+.test .id { font: 12px var(--mono); color: var(--muted); }
+.test .num { font: 13px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.test .why { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.ctrl { grid-column: 1 / -1; margin-left: 14px; padding-left: 10px; border-left: 2px solid var(--rule); font-size: 13px; }
+.gap { margin-top: 8px; font-size: 13px; color: var(--warn); }
+.empty { color: var(--muted); padding: 40px 0; text-align: center; }
+#log { position: fixed; left: 0; right: 0; bottom: 0; height: 190px; background: var(--panel); border-top: 1px solid var(--rule);
+  display: flex; flex-direction: column; }
+#log .bar { display: flex; justify-content: space-between; padding: 6px 14px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--rule); }
+#log pre { margin: 0; padding: 8px 14px; overflow: auto; flex: 1; font: 12px/1.45 var(--mono); white-space: pre-wrap; }
+@media (max-width: 760px) { main { grid-template-columns: 1fr; } nav { border-right: 0; border-bottom: 1px solid var(--rule); } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>claimci <span>claims, checked</span></h1>
+  <div id="src">
+    <input id="source" placeholder="arXiv id (2406.11717) or post URL" autocomplete="off">
+    <textarea id="text" placeholder="Post text (for X and other pages that can't be fetched)"></textarea>
+  </div>
+  <button id="ingest">Ingest</button>
+</header>
+<main>
+  <nav><h2>Sources</h2><div id="sources"></div></nav>
+  <section id="view"><div class="empty">Pick a source, or ingest a new one.</div></section>
+</main>
+<div id="log"><div class="bar"><span id="logtitle">Run log</span><span id="logstate"></span></div><pre id="logtext"></pre></div>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+let current = null, busy = false;
+
+const supportClass = (s) => s === "supported" ? "ok" : (s.startsWith("contradicted") || s.startsWith("not supported")) ? "bad" : s === "untested" ? "" : "warn";
+const verdictClass = (v) => v === "holds" ? "ok" : (v === "fails" || v === "holds, control failed") ? "bad" : v === "measured" ? "" : v === "not run" ? "" : "warn";
+const fmt = (x) => x == null ? "–" : Math.abs(x) >= 100 ? x.toFixed(0) : x.toFixed(3);
+
+async function api(path, body) {
+  const r = await fetch(path, body ? {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)} : {});
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+
+async function loadSources() {
+  const o = await api("/api/overview");
+  $("#sources").innerHTML = o.sources.map((s) => `
+    <button class="src ${current === s.ref ? "on" : ""}" data-ref="${esc(s.ref)}">
+      <span class="t">${esc(s.title)}</span><span class="r">${esc(s.ref)}</span>
+      <span class="dots">${s.claims.map((c) => `<i class="dot ${c.support.split(" ")[0]}" title="${esc(c.id)}: ${esc(c.support)}"></i>`).join("")}</span>
+    </button>`).join("") || `<div class="empty">No sources yet.</div>`;
+  document.querySelectorAll(".src").forEach((b) => b.onclick = () => show(b.dataset.ref));
+  $("#ingest").title = o.remote ? "Verification runs on the remote GPU box" : "Verification runs on this machine";
+}
+
+function result(r) {
+  if (!r) return "";
+  const m = r.margin == null ? "" : ` <span title="distance from the threshold">(${r.margin >= 0 ? "+" : ""}${fmt(r.margin)})</span>`;
+  return `${fmt(r.value)}${m}`;
+}
+
+function testRow(t) {
+  const r = t.results.at(-1);
+  const thr = t.threshold ? `threshold ${esc(t.threshold.op)} ${esc(t.threshold.value)} — ${esc(t.threshold.origin)}` : "measurement (no threshold)";
+  const ctrls = (t.controls || []).map((c) => `
+    <div class="ctrl">control: ${esc(c.statement)} <span class="chip ${verdictClass(c.verdict)}">${esc(c.verdict)}</span>
+      <span class="num"> ${result(c.results.at(-1))}</span></div>`).join("");
+  return `<div class="test">
+    <div><span class="chip">${esc(t.kind)} · ${esc(t.evidence)}</span> ${esc(t.statement)}<div class="id">${esc(t.id)} · ${esc(t.model)}</div></div>
+    <div class="num">${result(r)}<br><span class="chip ${verdictClass(t.verdict)}">${esc(t.verdict)}</span></div>
+    <div class="why">${thr}</div>${ctrls}</div>`;
+}
+
+async function show(ref) {
+  current = ref;
+  const cards = await api("/api/explain?ref=" + encodeURIComponent(ref));
+  const s = cards[0]?.source || {};
+  $("#view").innerHTML = `
+    <div class="srchead"><div><h3>${esc(s.title || ref)}</h3><div class="r">${esc(s.kind)} · ${esc(ref)}</div></div>
+      <button id="verify" ${busy ? "disabled" : ""}>Verify all tests</button></div>
+    ${cards.map((c) => `<div class="claim">
+      <p class="st">${esc(c.statement)}</p>
+      <div class="meta">
+        <span class="chip ${supportClass(c.support)}">${esc(c.support)}</span>
+        <span class="chip">${esc(c.hedge || "")}</span>
+        ${c.source.locator ? `<span>${esc(c.source.locator)}</span>` : ""}
+        ${c.checks ? `<span class="chip ${c.checks.quote_found ? "ok" : "bad"}">quote ${c.checks.quote_found ? "found in source" : "not found in source"}</span>` : ""}
+        ${c.machine_made ? `<span class="chip warn">machine-made, unreviewed</span>` : ""}
+        <span class="id" style="font-family:var(--mono)">${esc(c.id)}</span>
+      </div>
+      ${c.quote ? `<p class="quote">“${esc(c.quote)}”</p>` : ""}
+      ${c.attached.length ? `<div class="tests">${c.attached.map(testRow).join("")}</div>`
+        : `<div class="gap">No test attached: nothing in the experiment library checks this claim yet.</div>`}
+    </div>`).join("")}`;
+  $("#verify").onclick = () => runJob("/api/verify", {ref}, "Verifying " + ref);
+  loadSources();
+}
+
+async function runJob(path, body, title) {
+  if (busy) return;
+  busy = true; $("#ingest").disabled = true; const v = $("#verify"); if (v) v.disabled = true;
+  $("#logtitle").textContent = title; $("#logtext").textContent = ""; $("#logstate").textContent = "running…";
+  try {
+    const {job} = await api(path, body);
+    let n = 0;
+    for (;;) {
+      const j = await api(`/api/jobs/${job}?since=${n}`);
+      n = j.n;
+      if (j.lines.length) { $("#logtext").textContent += j.lines.join("\n") + "\n"; $("#logtext").scrollTop = 1e9; }
+      if (j.done) {
+        $("#logstate").textContent = j.error ? "failed: " + j.error : "done";
+        if (j.kind === "ingest" && j.result) current = j.result.ref;
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 1000));
+      if (n % 5 === 0 && current) show(current);  // refresh cards while long runs write rows
+    }
+  } catch (e) { $("#logstate").textContent = "failed: " + e.message; }
+  busy = false; $("#ingest").disabled = false;
+  await loadSources(); if (current) show(current);
+}
+
+$("#ingest").onclick = () => {
+  const source = $("#source").value.trim();
+  if (!source) { $("#source").focus(); return; }
+  runJob("/api/ingest", {source, text: $("#text").value}, "Ingesting " + source);
+};
+loadSources().then(() => { const first = document.querySelector(".src"); if (first) show(first.dataset.ref); });
+</script>
+</body>
+</html>

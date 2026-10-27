@@ -3,3 +3,5 @@ __pycache__/
 .pytest_cache/
 ledger/*.jsonl
 ledger/artifacts/
+.claimci-remote.json
+ledger/.remote_results.jsonl

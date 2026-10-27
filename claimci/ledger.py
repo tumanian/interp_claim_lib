@@ -48,7 +48,7 @@ class Ledger:
 
     def stale(self, repo: Repo, revision: str | None = None, claim_ids=None) -> list[str]:
         """Claims whose current key has no ok row. Never stored; always computed."""
-        ids = sorted(claim_ids if claim_ids is not None else repo.claims)
+        ids = sorted(claim_ids if claim_ids is not None else (k for k in repo.claims if not repo.claims[k].is_source))
         return [c for c in ids if self.get(c, repo.claim_key(c, revision)) is None]
 
     def stale_reason(self, repo: Repo, cid: str, revision: str | None = None) -> str:

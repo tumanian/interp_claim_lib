@@ -11,6 +11,7 @@ dependencies = ["pyyaml", "numpy", "torch", "transformers"]
 
 [project.optional-dependencies]
 report = ["matplotlib"]
+ingest = ["anthropic"]
 test = ["pytest"]
 
 [project.scripts]
@@ -20,4 +21,4 @@ claimci = "claimci.cli:main"
 include = ["claimci*"]
 
 [tool.setuptools.package-data]
-claimci = ["evidence.yaml"]
+claimci = ["evidence.yaml", "web/index.html"]

@@ -135,7 +135,7 @@ def computed_status(repo: Repo, r: Result | None, ledger: Ledger | None = None) 
 
 
 def status_report(repo: Repo, ledger: Ledger, revisions: list[str] | None = None) -> str:
-    pairs = [(c, rev) for c in sorted(repo.claims)
+    pairs = [(c, rev) for c in sorted(k for k in repo.claims if not repo.claims[k].is_source)
              for rev in (revisions or [repo.claims[c].revision])]
     rows = {p: current_row(repo, ledger, *p) for p in pairs}
     by_status = Counter(computed_status(repo, rows[p], ledger) for p in pairs)

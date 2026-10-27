@@ -148,17 +148,24 @@ class PromptActs:
     meta: dict = field(default_factory=dict)
 
 
-def canary_prompts(data: dict) -> list[str]:
-    for v in data.values():
-        if isinstance(v, list) and v and isinstance(v[0], str):
-            return v[:4]
-        if isinstance(v, dict):
+def canary_prompts(data) -> list[str] | None:
+    """The first four prompts found in the dataset: strings, or items with a `question`."""
+    if isinstance(data, list) and data:
+        if isinstance(data[0], str):
+            return data[:4]
+        if isinstance(data[0], dict) and isinstance(data[0].get("question"), str):
+            return [d["question"] for d in data[:4]]
+    if isinstance(data, dict):
+        for v in data.values():
             found = canary_prompts(v)
             if found:
                 return found
-    raise ValueError("prompt dataset has no list of strings to probe")
+    return None
 
 
 def probe(h: ChatHandle, data: dict) -> torch.Tensor:
-    prompts = [format_prompt(h, p) for p in canary_prompts(data)]
+    found = canary_prompts(data)
+    if not found:
+        raise ValueError("prompt dataset has no prompts to probe")
+    prompts = [format_prompt(h, p) for p in found]
     return last_logprobs(h, prompts, keep=lambda lp: lp.topk(20, dim=-1).values)

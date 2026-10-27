@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import time
 
@@ -95,7 +96,8 @@ def _load_or_fail(root):
     repo = load_repo(root)
     try:
         for cid in repo.claims:
-            repo.claim_key(cid)
+            if not repo.claims[cid].is_source:
+                repo.claim_key(cid)
     except SpecError as e:
         raise SystemExit(f"error: {e}")
     for e in repo.errors:
@@ -130,6 +132,37 @@ def cmd_status(args) -> int:
     return 0
 
 
+def cmd_ingest(args) -> int:
+    from pathlib import Path
+    from .pipeline import ingest_source
+    text = Path(args.text_file).read_text() if args.text_file else None  # posts: text given, URL is the ref
+    out = ingest_source(Path(args.root), args.source, text, args.question, do_match=not args.no_match)
+    for c in out["claims"]:
+        what = (f"same as {c['same_as']}" if c["status"] == "same_as" else
+                f"{len(c['tests'])} tests from template {c['template']}" if c.get("tests") else f"gap: {c['gap']}")
+        print(f"  {c['id']:<55} quote {'ok' if c['quote_found'] else 'NOT FOUND'}  {what}")
+    return 1 if out["errors"] else 0
+
+
+def cmd_card(args) -> int:
+    from . import cards
+    repo = _load_or_fail(args.root)
+    ledger = Ledger.for_repo(repo)
+    if args.cmd == "card":
+        if args.claim not in repo.claims:
+            print(f"error: unknown claim {args.claim}", file=sys.stderr)
+            return 1
+        out = [cards.card(repo, ledger, args.claim)]
+    else:
+        out = cards.explain(repo, ledger, args.claim)
+        if not out:
+            print(f"error: no source claims for {args.claim}", file=sys.stderr)
+            return 1
+    print(json.dumps(out if args.cmd == "explain" else out[0], indent=1, default=str) if args.json
+          else "\n\n".join(cards.render(d) for d in out))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="claimci")
     p.add_argument("--root", default=".", help="repo root containing claims/, questions/, ledger/")
@@ -155,9 +188,28 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("throughput", help="shared vs naive cost from the ledger")
     st = sub.add_parser("status", help="counts by status and evidence; stale claims and why")
     st.add_argument("--revisions", help="default: each claim's subject revision")
+    ig = sub.add_parser("ingest", help="extract source claims from a paper (arXiv id) or a post (URL + text)")
+    ig.add_argument("source", help="arXiv id or URL; for a post, its URL")
+    ig.add_argument("--text-file", help="the post's text, when the page cannot be fetched (e.g. X)")
+    ig.add_argument("--question", help="attach the claims to this question id")
+    ig.add_argument("--prefix", help="claim id prefix, default <first author surname><year>")
+    ig.add_argument("--no-match", action="store_true", help="skip matching against existing claims and templates")
+    for name, what in (("card", "one claim: threshold and who set it, results, margins, controls"),
+                       ("explain", "every source claim from a source (arXiv id, URL, or claim id) and its support")):
+        s = sub.add_parser(name, help=what)
+        s.add_argument("claim")
+        s.add_argument("--json", action="store_true")
+    sv = sub.add_parser("serve", help="the local web app: ingest sources, read cards, run verification")
+    sv.add_argument("--port", type=int, default=8765)
     args = p.parse_args(argv)
+    if args.cmd == "serve":
+        from pathlib import Path
+        from .web import serve
+        serve(Path(args.root), args.port)
+        return 0
     return {"validate": cmd_validate, "plan": cmd_plan, "verify": cmd_verify, "matrix": cmd_matrix,
-            "throughput": cmd_throughput, "status": cmd_status}[args.cmd](args)
+            "throughput": cmd_throughput, "status": cmd_status, "ingest": cmd_ingest,
+            "card": cmd_card, "explain": cmd_card}[args.cmd](args)
 
 
 if __name__ == "__main__":
