@@ -875,3 +875,37 @@ What it buys: expand works for every experiment family, including V2's agent-wri
 expand-specific code; neuron-steering claims are refused with a reason instead of skipped silently;
 templates stop being called by the rest of the system. Depends on the registry (section 14); the
 parameter-kind declarations can live beside the experiment functions until then.
+
+## 18. Ingest: source adapters, one extraction pipeline, a stored shape of its own (agreed, not built)
+
+Today `ingest.py` is arXiv-specific (API for abstract, authors and date; HTML for the body), and
+anything else is "a URL plus pasted text" treated as a post whose whole text is both claims and
+evidence. There is no fetcher for blogs (LessWrong, Alignment Forum, transformer-circuits.pub,
+personal sites) or X; the evil-Qwen claim was written by hand.
+
+Two layers. What differs per source is how to get the text and where in it claims live versus
+evidence:
+
+| source | how to get it | claims | tests |
+|---|---|---|---|
+| arXiv | API (metadata, abstract) + HTML (body) | abstract | body |
+| blog, LessWrong, Alignment Forum, transformer-circuits | fetch HTML to text | TL;DR or summary, else introduction | body |
+| X post or thread | pasted text, or the API later | the text | the text, plus its links |
+| PDF | text extraction | abstract | body |
+| GitHub README | API | summary | README and code |
+
+Everything after that is shared:
+
+```
+sources/adapters/  arxiv.py, web.py, x.py, pdf.py, github.py
+                   each returns Document {ref, kind, title, authors, date, claims_text, body, links, own_code}
+sources/extract.py claims from claims_text, then each claim's tests from body, then checks, then claims
+```
+
+Quotes are checked against the field they were taken from (claims_text or body).
+
+Stored shape: `CLAIMS_SCHEMA` and `TESTS_SCHEMA` constrain Claude's output only, but `to_claims`
+copies each extracted test verbatim into `stated.tests`, so the prompt's output format quietly
+defines part of the stored format and nothing validates it. The stored shape of a source's tests
+(and `provenance.checks`) gets its own type in the schema layer (`SourceTest`), checked by
+`validate`; the extraction schema maps onto it, and the two evolve separately.
