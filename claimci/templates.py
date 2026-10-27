@@ -25,6 +25,9 @@ CATALOG = {
         "direction are known; available for google/gemma-2b-it only (the authors' published selection)."),
 }
 
+# template step name -> registered experiment id (claimci/experiments, @experiment)
+EXPERIMENT_IDS = {'persona_baseline': 'steering.persona_baseline', 'steer_persona_delta': 'steering.persona_delta', 'random_neuron_delta': 'steering.random_neurons', 'single_neuron_deltas': 'steering.single_neurons', 'dose_response': 'steering.dose_response', 'steer_text_loss_delta': 'steering.text_loss', 'judged_baseline': 'judge.baseline', 'judged_misalignment': 'judge.misalignment', 'judged_random_neurons': 'judge.random_neurons', 'persona_direction': 'persona.direction', 'steer_persona': 'persona.steer', 'ab_direction': 'caa.direction', 'steer_ab': 'caa.steer'}
+
 SUPP = lambda note: {"by": "template neuron_steering", "note": note}
 STEERING_FILES = {"persona": "persona/evil_persona_200.json", "text": "natural_text/wikitext2_64.json"}
 
@@ -56,7 +59,7 @@ def neuron_steering(source: dict, hf_model: str, interventions: list[dict]) -> l
         if kind != "measurement" or suffix != "persona_baseline":
             d["about"] = source["id"]
         d.update(kw)
-        d.update(subject=subject, code={"entrypoint": S + ep, "version": "local", "params": params}, data=data,
+        d.update(subject=subject, code={"experiment": EXPERIMENT_IDS[ep], "params": params}, data=data,
                  metric=metric)
         if expect:
             d["expect"] = expect
@@ -96,7 +99,7 @@ def judged(source: dict, base: str, subject: dict, ivs: list[dict], q: str | Non
 
     def c(suffix, kind, ev, ep, params, expect=None, stmt="", note=None, **kw):
         d = {"id": f"{base}.{suffix}", "kind": kind, "question": q, "evidence": ev, "status": "proposed", "statement": stmt, **kw,
-             "subject": subject, "code": {"entrypoint": J + ep, "version": "local", "params": params}, "data": data,
+             "subject": subject, "code": {"experiment": EXPERIMENT_IDS[ep], "params": params}, "data": data,
              "metric": params.get("metric", "misaligned_coherent_rate")}
         if expect:
             d["expect"] = expect
@@ -195,7 +198,7 @@ def contrastive_direction(source: dict, hf_model: str, layer: int, pack: str, bl
     def claim(suffix, kind, ev, ep, metric, params, expect=None, stmt="", note=None, **kw):
         d = {"id": f"{base}.{suffix}", "kind": kind, "question": q, "evidence": ev, "status": "proposed", "statement": stmt}
         d.update(kw)
-        d.update(subject=subject, code={"entrypoint": E + ep, "version": "local", "params": params}, data=data,
+        d.update(subject=subject, code={"experiment": EXPERIMENT_IDS[ep], "params": params}, data=data,
                  metric=metric)
         if expect:
             d["expect"] = expect

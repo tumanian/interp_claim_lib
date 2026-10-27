@@ -16,8 +16,7 @@ subject:
     template: gemma_paper
     batch: 32
 code:
-  entrypoint: claimci.experiments.refusal:ablation_refusal_rate
-  version: local
+  experiment: refusal.ablate
   params:
     split: jailbreakbench
     refusal_toks:

@@ -12,7 +12,7 @@ subject:
   component: {layer: $layer, head: $head}    # bound from this claim's result
 
 code:
-  entrypoint: claimci.experiments.induction:prev_token_score
+  experiment: induction.prev_token
   version: local                              # sha(source + params), computed at load
   params: {}
 

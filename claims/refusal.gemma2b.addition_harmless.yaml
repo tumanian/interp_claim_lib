@@ -14,8 +14,7 @@ subject:
     template: gemma_paper
     batch: 32
 code:
-  entrypoint: claimci.experiments.refusal:addition_refusal_rate
-  version: local
+  experiment: refusal.add
   params:
     layer: 10
     split: harmless_test

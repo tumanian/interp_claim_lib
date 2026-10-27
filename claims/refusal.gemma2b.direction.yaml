@@ -15,8 +15,7 @@ subject:
     template: gemma_paper
     batch: 32
 code:
-  entrypoint: claimci.experiments.refusal:refusal_direction
-  version: local
+  experiment: refusal.direction
   params:
     layer: 10
     pos: -2

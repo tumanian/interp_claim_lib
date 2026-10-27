@@ -13,8 +13,7 @@ subject:
     template: gemma_paper
     batch: 32
 code:
-  entrypoint: claimci.experiments.refusal:refusal_rate
-  version: local
+  experiment: refusal.rate
   params:
     split: harmless_test
     refusal_toks: &id001

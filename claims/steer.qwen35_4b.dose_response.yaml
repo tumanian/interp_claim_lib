@@ -15,8 +15,7 @@ subject:
     thinking: false
     batch: 1
 code:
-  entrypoint: claimci.experiments.steering:dose_response
-  version: local
+  experiment: steering.dose_response
   params:
     interventions: &id001
     - layer: 14

@@ -74,8 +74,8 @@ def _claim_errors(repo: Repo, cid: str) -> list[str]:
         for k in (("metric", "expect") if c.kind == "test" else ("metric",)):
             if not getattr(c, k):
                 err(f"claim {cid}: rerunnable claim needs `{k}`")
-        if not c.code.get("entrypoint"):
-            err(f"claim {cid}: rerunnable claim needs code.entrypoint")
+        if not c.entrypoint:
+            err(f"claim {cid}: rerunnable claim needs code.experiment")
         supplemented = (c.provenance.get("supplemented") or {}).get("expect")
         if (c.kind == "test" and c.status == "proposed" and (src or c.about) and src.get("stated_value") is None
                 and not supplemented):
@@ -91,8 +91,8 @@ def _claim_errors(repo: Repo, cid: str) -> list[str]:
     # entrypoint cannot be relabeled causal by editing the evidence field. For a
     # TAS/NAS claim with an attached experiment the code it would earn is checked.
     earned = repo.earned_code(cid)
-    if c.code.get("entrypoint") and not code.rerunnable and earned is None:
-        err(f"claim {cid}: {c.evidence} claim with an entrypoint needs provenance.source.stated_evidence")
+    if c.entrypoint and not code.rerunnable and earned is None:
+        err(f"claim {cid}: {c.evidence} claim with an experiment needs provenance.source.stated_evidence")
     if earned is not None:
         if earned.causal and "intervention" not in c.tags:
             err(f"claim {cid}: evidence {earned.id} requires an entrypoint tagged @intervention")
@@ -135,7 +135,7 @@ def _source_errors(repo: Repo, c) -> list[str]:
     out = []
     if c.evidence not in ("TAS", "NAS"):
         out.append(f"claim {c.id}: a source claim has author-statement evidence (TAS or NAS), got {c.evidence}")
-    if c.code.get("entrypoint") or c.expect is not None:
+    if c.code.get("entrypoint") or c.code.get("experiment") or c.expect is not None:
         out.append(f"claim {c.id}: a source claim has no code or expect; attach a test with `about:` instead")
     if c.status not in ("proposed", "unreproduced"):
         out.append(f"claim {c.id}: a source claim is never verified itself, got status {c.status!r}")

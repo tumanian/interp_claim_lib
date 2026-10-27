@@ -758,7 +758,7 @@ First V2 target: a fine-tune-then-judge experiment (LoRA on the authors' dataset
 the existing judge), checked first by reproducing the paper's own controls (secure-code and
 educational fine-tunes stay aligned) before testing its headline claim.
 
-## 14. Decouple stored data from code layout (agreed, not built)
+## 14. Decouple stored data from code layout (built)
 
 Today two things tie the ledger to how the code is laid out:
 - claim files name a Python path (`entrypoint: claimci.experiments.direction:steer_ab`);

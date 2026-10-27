@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import torch
 
-from . import intervention
+from . import experiment, intervention
 from .. import chat
 
 
@@ -57,6 +57,7 @@ def _letter(answer: str) -> str:
     return answer.strip().strip("()")[:1]
 
 
+@experiment("caa.direction", params={'block': 'layer', 'pack': 'data', 'n': 'scalar'})
 def ab_direction(acts, block, pack, ctx=None, n=None):
     """CAA vector: mean block output at the matching letter minus at the non-matching letter."""
     h, items = ctx.handle, _pack(acts, pack)["generate"][:n]
@@ -96,6 +97,7 @@ def _balanced(items, s) -> float:
     return sum(sum(x) / len(x) for x in halves) / len(halves)
 
 
+@experiment("caa.steer", params={'direction': 'input', 'block': 'layer', 'coef': 'scalar', 'pack': 'data', 'random_seed': 'scalar', 'positions': 'scalar'})
 @intervention
 def steer_ab(acts, ctx, direction, block, coef, pack, random_seed=None, positions="all"):
     """Balanced P(behaviour-matching answer) on the test split, steered minus unsteered."""
@@ -115,6 +117,7 @@ def _judge(pairs, prompts, model, effort):
     return judge(pairs, {"aligned": prompts["trait"], "coherent": prompts["coherence"]}, model, effort)
 
 
+@experiment("persona.direction", params={'block': 'layer', 'pack': 'data', 'n_per_pair': 'scalar', 'max_new_tokens': 'scalar', 'threshold': 'scalar', 'judge_model': 'scalar', 'judge_effort': 'scalar', 'seed': 'scalar'})
 def persona_direction(acts, block, pack, ctx=None, n_per_pair=2, max_new_tokens=200, threshold=50,
                       judge_model="claude-haiku-5-5", judge_effort="low", seed=0):
     """Persona vector: mean block output over response tokens, trait-eliciting minus
@@ -166,6 +169,7 @@ def _trait_scores(ctx, P, hooks, n, max_new_tokens, seed, judge_model, judge_eff
     return rows, sum(num) / max(len(num), 1), sum(coh) / max(len(coh), 1), sum(c > 50 for c in coh) / max(len(rows), 1)
 
 
+@experiment("persona.steer", params={'direction': 'input', 'block': 'layer', 'coef': 'scalar', 'pack': 'data', 'random_seed': 'scalar', 'positions': 'scalar', 'n_per_question': 'scalar', 'max_new_tokens': 'scalar', 'seed': 'scalar', 'judge_model': 'scalar', 'judge_effort': 'scalar'})
 @intervention
 def steer_persona(acts, ctx, direction, block, coef, pack, random_seed=None, positions="last", n_per_question=4,
                   max_new_tokens=200, seed=0, judge_model="claude-haiku-5-5", judge_effort="low"):

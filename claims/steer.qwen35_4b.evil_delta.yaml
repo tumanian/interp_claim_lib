@@ -16,8 +16,7 @@ subject:
     thinking: false
     batch: 1
 code:
-  entrypoint: claimci.experiments.steering:steer_persona_delta
-  version: local
+  experiment: steering.persona_delta
   params:
     interventions: &id001
     - layer: 14

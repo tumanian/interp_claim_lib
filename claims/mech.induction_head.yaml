@@ -13,8 +13,7 @@ subject:
   component: {layer: $layer, head: $head}    # bound from this claim's result
 
 code:
-  entrypoint: claimci.experiments.induction:induction_head_score
-  version: local
+  experiment: induction.head
   params: {min_layer: 1}
 
 data:

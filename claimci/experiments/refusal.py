@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import torch
 
-from . import intervention
+from . import experiment, intervention
 from .. import chat
 
 
@@ -67,6 +67,7 @@ def addition_hook(h, d: torch.Tensor, layer: int, coeff: float):
     return [(h.layers[layer], add)]
 
 
+@experiment("refusal.direction", params={'layer': 'layer', 'pos': 'scalar', 'refusal_toks': 'tokenizer', 'filter_train': 'scalar', 'reference': 'data'})
 def refusal_direction(acts, layer, pos, refusal_toks, ctx=None, filter_train=True, reference=None):
     """Difference in means of the residual stream entering block `layer` at position `pos`,
     harmful minus harmless (paper Eq. 2), over the training samples the model itself treats
@@ -93,12 +94,14 @@ def chat_data_path(acts, name: str):
     return DATA_DIR / acts.data[name]["file"]
 
 
+@experiment("refusal.rate", params={'split': 'data', 'refusal_toks': 'tokenizer'})
 def refusal_rate(acts, split, refusal_toks, ctx=None):
     """Fraction of `split` with refusal score > 0, no intervention."""
     s = refusal_scores(ctx, _prompts(acts, split), refusal_toks)
     return float((s > 0).double().mean()), {"mean_score": round(float(s.mean()), 4)}
 
 
+@experiment("refusal.ablate", params={'direction': 'input', 'split': 'data', 'refusal_toks': 'tokenizer', 'random_seed': 'scalar'})
 @intervention
 def ablation_refusal_rate(acts, ctx, direction, split, refusal_toks, random_seed=None):
     """Refusal rate on `split` with the direction (or a random one of the same norm) ablated."""
@@ -107,6 +110,7 @@ def ablation_refusal_rate(acts, ctx, direction, split, refusal_toks, random_seed
     return float((s > 0).double().mean()), {"mean_score": round(float(s.mean()), 4)}
 
 
+@experiment("refusal.add", params={'direction': 'input', 'layer': 'layer', 'split': 'data', 'refusal_toks': 'tokenizer', 'coeff': 'scalar', 'random_seed': 'scalar'})
 @intervention
 def addition_refusal_rate(acts, ctx, direction, layer, split, refusal_toks, coeff=1.0, random_seed=None):
     """Refusal rate on `split` with the direction (or a random one of the same norm) added at
@@ -116,6 +120,7 @@ def addition_refusal_rate(acts, ctx, direction, layer, split, refusal_toks, coef
     return float((s > 0).double().mean()), {"mean_score": round(float(s.mean()), 4)}
 
 
+@experiment("refusal.ablate_text_loss", params={'direction': 'input', 'n_texts': 'scalar'})
 @intervention
 def ablation_text_loss_delta(acts, ctx, direction, n_texts=32):
     """Cross-entropy on natural text with the direction ablated, minus without: is the model

@@ -15,8 +15,7 @@ subject:
     thinking: false
     batch: 1
 code:
-  entrypoint: claimci.experiments.judge:judged_baseline
-  version: local
+  experiment: judge.baseline
   params:
     judge_model: claude-haiku-5-5
     metric: misaligned_rate

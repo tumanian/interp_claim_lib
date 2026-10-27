@@ -16,8 +16,7 @@ subject:
     thinking: false
     batch: 1
 code:
-  entrypoint: claimci.experiments.steering:random_neuron_delta
-  version: local
+  experiment: steering.random_neurons
   params:
     interventions: &id001
     - layer: 14

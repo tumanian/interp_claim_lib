@@ -19,8 +19,7 @@ subject:
     thinking: false
     batch: 16
 code:
-  entrypoint: claimci.experiments.direction:persona_direction
-  version: local
+  experiment: persona.direction
   params:
     pack: pack
     block: 12

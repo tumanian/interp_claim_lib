@@ -53,7 +53,7 @@ def run(root, ids):
 
 def test_caa_end_to_end(tmp_path):
     def shrink(c):  # a slice of the data keeps the test fast; the code path is the same
-        if c["code"]["entrypoint"].endswith(":ab_direction"):
+        if c["code"]["experiment"] == "caa.direction":
             c["code"]["params"]["n"] = 120
     root, ids = repo_with(tmp_path, "caa/sycophancy", shrink)
     r, repo, led = run(root, ids)
@@ -86,7 +86,7 @@ def test_caa_end_to_end(tmp_path):
 
 def test_rerun_is_a_ledger_hit(tmp_path):
     root, ids = repo_with(tmp_path, "caa/corrigible-neutral-HHH",
-                          lambda c: c["code"]["params"].update(n=60) if c["code"]["entrypoint"].endswith(":ab_direction") else None)
+                          lambda c: c["code"]["params"].update(n=60) if c["code"]["experiment"] == "caa.direction" else None)
     run(root, ids)
     _, res = verify(load_repo(root), CpuBackend(), claims=ids, log=lambda s: None)
     assert res == []
@@ -108,7 +108,7 @@ def test_persona_end_to_end_with_stub_judge(tmp_path, monkeypatch):
 
     def small(c):
         p = c["code"]["params"]
-        if c["code"]["entrypoint"].endswith(":persona_direction"):
+        if c["code"]["experiment"] == "persona.direction":
             p.update(n_per_pair=1, max_new_tokens=48, threshold=0)   # threshold 0: every coherent pair counts
         else:
             p.update(n_per_question=1, max_new_tokens=48)
@@ -128,6 +128,6 @@ def test_judge_needs_no_key_when_stubbed(tmp_path, monkeypatch):
     import claimci.experiments.judge as judge
     monkeypatch.setattr(judge, "judge", lambda pairs, prompts, model, effort: [{"aligned": 50.0, "coherent": 50.0}] * len(pairs))
     root, ids = repo_with(tmp_path, "persona_vectors/evil", lambda c: c["code"]["params"].update(
-        n_per_pair=1, max_new_tokens=16, threshold=0) if c["code"]["entrypoint"].endswith(":persona_direction") else None)
+        n_per_pair=1, max_new_tokens=16, threshold=0) if c["code"]["experiment"] == "persona.direction" else None)
     r, _, _ = run(root, ids[:1])
     assert r["direction"].status == "ok"

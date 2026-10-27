@@ -25,8 +25,7 @@ subject:
     thinking: false
     batch: 16
 code:
-  entrypoint: claimci.experiments.direction:steer_persona
-  version: local
+  experiment: persona.steer
   params:
     pack: pack
     block: 19

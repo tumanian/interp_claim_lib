@@ -15,8 +15,7 @@ subject:
     thinking: false
     batch: 1
 code:
-  entrypoint: claimci.experiments.steering:steer_text_loss_delta
-  version: local
+  experiment: steering.text_loss
   params:
     interventions: &id001
     - layer: 14

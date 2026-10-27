@@ -12,8 +12,7 @@ subject:
   component: {layer: $layer, head: $head}   # bound from inputs
 
 code:
-  entrypoint: claimci.experiments.induction:ablate_head_loss_delta
-  version: local
+  experiment: induction.ablate_head
   params: {ablation: zero}
 
 data:

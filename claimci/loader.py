@@ -11,7 +11,7 @@ from .spec import Claim, DataVersion, Question, Repo, SpecError, load_evidence, 
 
 
 CLAIM_FIELDS = {f for f in Claim.__dataclass_fields__} - {
-    "path", "dataset", "code_version", "code_version_kind", "tags"}
+    "path", "dataset", "code_version", "code_version_kind", "tags", "experiment_id", "entrypoint"}
 
 
 def load_claim(path: Path) -> Claim:
@@ -43,45 +43,33 @@ def load_claim(path: Path) -> Claim:
 def infer_kind(d: dict) -> str:
     """Files written before `kind` existed: an author statement with no experiment is a
     source, a claim with `expect` is a test, anything else is a measurement."""
-    if d.get("evidence") in ("TAS", "NAS") and not (d.get("code") or {}).get("entrypoint"):
+    code = d.get("code") or {}
+    if d.get("evidence") in ("TAS", "NAS") and not (code.get("entrypoint") or code.get("experiment")):
         return "source"
     return "test" if d.get("expect") is not None else "measurement"
 
 
-def _entrypoint_source(claim: Claim):
-    """(module source, function node) for a local entrypoint; raises SpecError if missing."""
-    ep = claim.code.get("entrypoint")
-    mod, _, fn = ep.partition(":")
-    try:
-        spec = importlib.util.find_spec(mod)
-    except (ModuleNotFoundError, ValueError):
-        spec = None
-    if spec is None or not spec.origin:
-        raise SpecError(claim.id, f"entrypoint module {mod!r} not found")
-    src = Path(spec.origin).read_text()
-    for node in ast.parse(src).body:
-        if isinstance(node, ast.FunctionDef) and node.name == fn:
-            return src, node
-    raise SpecError(claim.id, f"entrypoint function {fn!r} not found in {mod}")
-
-
 def resolve_code(claim: Claim) -> None:
-    """Set code_version: git:<sha> as declared, else sha(module source + params).
+    """Resolve the claim's experiment through the registry and set its code version.
 
-    The whole module is hashed, not just the entrypoint function, so editing a
-    helper the entrypoint calls also invalidates the claim. Tags (decorators on
-    the entrypoint) are read from source either way, without importing it.
+    `code.experiment` names a registered id (claimci/codehash.py). A legacy `code.entrypoint`
+    (a Python path) is accepted if it points at a registered function. The code version is the
+    behaviour hash of the experiment, or the pinned `git:<sha>` for external code.
     """
-    if not claim.code.get("entrypoint"):
+    from .codehash import behaviour_hash, by_entrypoint, registry
+    eid, ep = claim.code.get("experiment"), claim.code.get("entrypoint")
+    if not eid and not ep:
         return
-    src, node = _entrypoint_source(claim)
-    claim.tags = frozenset(ast.unparse(d).rsplit(".", 1)[-1] for d in node.decorator_list)
+    reg = registry().get(eid) if eid else by_entrypoint(ep)
+    if reg is None:
+        raise SpecError(claim.id, f"unknown experiment {eid!r}" if eid else
+                        f"entrypoint {ep!r} is not a registered experiment (add @experiment to it)")
+    claim.experiment_id, claim.entrypoint, claim.tags = reg.id, reg.entrypoint, reg.tags
     ver = str(claim.code.get("version", "local"))
     if ver.startswith("git:"):
         claim.code_version, claim.code_version_kind = ver, "git"
     else:
-        claim.code_version = "src:" + sha({"source": src, "params": claim.params})[:16]
-        claim.code_version_kind = "local"
+        claim.code_version, claim.code_version_kind = "bh:" + behaviour_hash(reg.module, reg.function), "local"
 
 
 def _resolve_data(claims: dict[str, Claim], errors: list[str]) -> None:

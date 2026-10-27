@@ -20,8 +20,7 @@ subject:
     thinking: false
     batch: 1
 code:
-  entrypoint: claimci.experiments.direction:steer_ab
-  version: local
+  experiment: caa.steer
   params:
     pack: pack
     block: 13

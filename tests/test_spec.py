@@ -53,10 +53,16 @@ def test_inherit_resolves_to_parent_data_version():
     assert child.dataset.gen == "repeated_random_tokens"
 
 
-def test_code_version_is_computed_for_local_entrypoints():
+def test_code_version_is_the_experiments_behaviour_hash():
     c = load_repo(ROOT).claims["causal.induction_head_ablation"]
-    assert c.code_version_kind == "local" and c.code_version.startswith("src:")
+    assert c.experiment_id == "induction.ablate_head" and c.entrypoint.endswith(":ablate_head_loss_delta")
+    assert c.code_version_kind == "local" and c.code_version.startswith("bh:")
     assert "intervention" in c.tags
+
+
+def test_unknown_experiment_id_is_an_error(repo_copy):
+    edit(repo_copy, "mech.prev_token_head", lambda d: d["code"].update(experiment="nope.nothing"))
+    _expect_failure(repo_copy, "mech.prev_token_head", "unknown experiment")
 
 
 def test_claim_key_stable_across_loads():
@@ -152,18 +158,6 @@ def test_observational_cannot_be_relabeled_causal(repo_copy):
 
 
 # --- review round: helper edits, lifecycle rules, promotion path, crash cases ---
-
-def test_helper_edit_changes_key(repo_copy, tmp_path, monkeypatch):
-    mod = tmp_path / "exp_tmp_mod.py"
-    mod.write_text("def helper(a):\n    return a.loss.mean()\n\ndef score(acts):\n    return float(helper(acts)), {}\n")
-    monkeypatch.syspath_prepend(str(tmp_path))
-    edit(repo_copy, "mech.prev_token_head", lambda d: d["code"].update(entrypoint="exp_tmp_mod:score"))
-    before = load_repo(repo_copy).claim_key("mech.prev_token_head")
-    mod.write_text(mod.read_text().replace("a.loss.mean()", "a.loss.sum()"))
-    import importlib
-    importlib.invalidate_caches()
-    assert load_repo(repo_copy).claim_key("mech.prev_token_head") != before
-
 
 def test_default_plan_uses_each_claims_own_revision(repo_copy):
     from claimci.ledger import Ledger

@@ -39,12 +39,30 @@ def merge_ledger(local: Path, remote_copy: Path) -> int:
     return len(new)
 
 
+def sync_ledger_up(root: Path, cfg: dict) -> None:
+    """Merge the local ledger and artifacts into the box's (union of rows, content-addressed files)."""
+    d, local = cfg["dir"], Path(root) / "ledger"
+    if not (local / "results.jsonl").exists():
+        return
+    subprocess.run(_ssh(cfg) + [f"mkdir -p {d}/ledger/artifacts"], check=True)
+    subprocess.run(_rsync(cfg) + [str(local / "results.jsonl"), f"{cfg['host']}:{d}/ledger/.incoming.jsonl"], check=True)
+    if (local / "artifacts").is_dir():
+        subprocess.run(_rsync(cfg) + [str(local / "artifacts") + "/", f"{cfg['host']}:{d}/ledger/artifacts/"], check=True)
+    merge = ("python3 - <<'EOF'\nfrom pathlib import Path\n"
+             f"l = Path('{d}/ledger/results.jsonl'.replace('~', str(Path.home()))); i = l.with_name('.incoming.jsonl')\n"
+             "have = set(l.read_text().splitlines()) if l.exists() else set()\n"
+             "new = [x for x in i.read_text().splitlines() if x.strip() and x not in have]\n"
+             "l.open('a').write(''.join(x + '\\n' for x in new)); i.unlink()\nEOF")
+    subprocess.run(_ssh(cfg) + [merge], check=True)
+
+
 def verify(root: Path, claims: list[str], log=print, force: bool = False) -> int:
     root = Path(root)
     cfg = config(root)
     if cfg is None:
         raise RuntimeError("no .claimci-remote.json; see claimci/remote.py")
     d = cfg["dir"]
+    sync_ledger_up(root, cfg)  # the box reuses results already known here instead of recomputing them
     for item in PUSH:  # a trailing slash syncs a directory's contents (Path() would strip it)
         src = str(root / item) + ("/" if item.endswith("/") else "")
         subprocess.run(_rsync(cfg) + [src, f"{cfg['host']}:{d}/{item}"], check=True)

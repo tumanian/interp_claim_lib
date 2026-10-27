@@ -15,8 +15,7 @@ subject:
     thinking: false
     batch: 1
 code:
-  entrypoint: claimci.experiments.steering:single_neuron_deltas
-  version: local
+  experiment: steering.single_neurons
   params:
     interventions: &id001
     - layer: 14

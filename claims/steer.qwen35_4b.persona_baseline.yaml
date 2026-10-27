@@ -14,8 +14,7 @@ subject:
     thinking: false
     batch: 1
 code:
-  entrypoint: claimci.experiments.steering:persona_baseline
-  version: local
+  experiment: steering.persona_baseline
   params: {}
 data:
   dataset:

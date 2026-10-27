@@ -19,8 +19,7 @@ subject:
     thinking: false
     batch: 1
 code:
-  entrypoint: claimci.experiments.direction:ab_direction
-  version: local
+  experiment: caa.direction
   params:
     pack: pack
     block: 13

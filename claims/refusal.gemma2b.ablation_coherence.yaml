@@ -14,8 +14,7 @@ subject:
     template: gemma_paper
     batch: 32
 code:
-  entrypoint: claimci.experiments.refusal:ablation_text_loss_delta
-  version: local
+  experiment: refusal.ablate_text_loss
   params:
     n_texts: 32
 data:

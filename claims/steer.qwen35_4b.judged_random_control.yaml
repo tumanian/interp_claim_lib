@@ -17,8 +17,7 @@ subject:
     thinking: false
     batch: 1
 code:
-  entrypoint: claimci.experiments.judge:judged_random_neurons
-  version: local
+  experiment: judge.random_neurons
   params:
     interventions: &id001
     - layer: 14

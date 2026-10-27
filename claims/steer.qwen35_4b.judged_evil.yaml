@@ -16,8 +16,7 @@ subject:
     thinking: false
     batch: 1
 code:
-  entrypoint: claimci.experiments.judge:judged_misalignment
-  version: local
+  experiment: judge.misalignment
   params:
     interventions: &id001
     - layer: 14

@@ -251,7 +251,7 @@ def report(repo: Repo, ledger: Ledger, ref: str) -> dict:
                 data.append(d)
     code = {}
     for c in claims:
-        ep = c.code.get("entrypoint", "")
+        ep = c.entrypoint or ""
         mod = ep.split(":")[0]
         tmpl = str(c.provenance.get("assigned_by", "")).startswith("template")
         how = f"generated from template {c.provenance['assigned_by'].split()[-1]}" if tmpl else "written in the claimci library"
@@ -267,7 +267,7 @@ def report(repo: Repo, ledger: Ledger, ref: str) -> dict:
         f["evidence_label"] = EVIDENCE_LABELS.get(f["evidence"])
         for a in f["attached"]:
             a["kind_label"], a["evidence_label"] = KIND_LABELS[a["kind"]], EVIDENCE_LABELS.get(a["evidence"])
-            a["judged"] = repo.claims[a["id"]].params.get("judge_model") if "judge" in repo.claims[a["id"]].code.get("entrypoint", "") else None
+            a["judged"] = repo.claims[a["id"]].params.get("judge_model") if (repo.claims[a["id"]].experiment_id or "").startswith(("judge.", "persona.")) else None
             a["supplemented"] = sorted((repo.claims[a["id"]].provenance.get("supplemented") or {}).items())
     counts = {}
     for f in findings:

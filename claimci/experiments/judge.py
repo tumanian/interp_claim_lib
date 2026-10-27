@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import torch
 
-from . import intervention
+from . import experiment, intervention
 from .. import chat
 from .steering import _neuron_hooks, _random_like
 
@@ -100,6 +100,7 @@ def _examples(answers, k=3):
             for a in pick]
 
 
+@experiment("judge.misalignment", params={'interventions': 'component', 'n_per_question': 'scalar', 'max_new_tokens': 'scalar', 'temperature': 'scalar', 'seed': 'scalar', 'judge_model': 'scalar', 'judge_effort': 'scalar', 'metric': 'scalar'})
 @intervention
 def judged_misalignment(acts, ctx, interventions=(), n_per_question=8, max_new_tokens=200, temperature=1.0,
                         seed=0, judge_model="claude-haiku-5-5", judge_effort="low", metric="misaligned_coherent_rate"):
@@ -112,6 +113,7 @@ def judged_misalignment(acts, ctx, interventions=(), n_per_question=8, max_new_t
                                            "answers": ctx.artifacts.save_json(answers)}
 
 
+@experiment("judge.random_neurons", params={'interventions': 'component', 'seeds': 'scalar', 'n_per_question': 'scalar', 'max_new_tokens': 'scalar', 'temperature': 'scalar', 'seed': 'scalar', 'judge_model': 'scalar', 'judge_effort': 'scalar', 'metric': 'scalar'})
 @intervention
 def judged_random_neurons(acts, ctx, interventions, seeds=(0, 1), n_per_question=8, max_new_tokens=200,
                           temperature=1.0, seed=0, judge_model="claude-haiku-5-5", judge_effort="low",
@@ -129,6 +131,7 @@ def judged_random_neurons(acts, ctx, interventions, seeds=(0, 1), n_per_question
                   "answers": ctx.artifacts.save_json(all_answers)}
 
 
+@experiment("judge.baseline", params={'n_per_question': 'scalar', 'max_new_tokens': 'scalar', 'temperature': 'scalar', 'seed': 'scalar', 'judge_model': 'scalar', 'judge_effort': 'scalar', 'metric': 'scalar'})
 def judged_baseline(acts, ctx=None, n_per_question=8, max_new_tokens=200, temperature=1.0, seed=0,
                     judge_model="claude-haiku-5-5", judge_effort="low", metric="misaligned_coherent_rate"):
     """The unsteered model's share of misaligned answers (no intervention)."""

@@ -110,6 +110,8 @@ class Claim:
     code_version: str | None = None
     code_version_kind: str | None = None  # "git" | "local"
     tags: frozenset[str] = frozenset()
+    experiment_id: str | None = None  # resolved at load from the registry; entrypoint likewise,
+    entrypoint: str | None = None     # never stored in claim files
 
     @property
     def is_source(self) -> bool:
@@ -164,6 +166,7 @@ class Result:
     reproduction: dict | None = None
     cost: dict = field(default_factory=dict)
     run: dict = field(default_factory=dict)
+    migrated_from: str | None = None  # a copy of an earlier row under a re-derived key (same computation)
 
 
 OPS = {">=": lambda a, b: a >= b, ">": lambda a, b: a > b, "<=": lambda a, b: a <= b,
@@ -211,11 +214,11 @@ class Repo:
         if code.rerunnable:
             return code
         stated = (c.provenance.get("source") or {}).get("stated_evidence")
-        return self.evidence.get(stated) if c.code.get("entrypoint") and stated else None
+        return self.evidence.get(stated) if c.entrypoint and stated else None
 
     def runnable(self, cid: str) -> bool:
         code = self.earned_code(cid)
-        return bool(code and code.rerunnable and self.claims[cid].code.get("entrypoint"))
+        return bool(code and code.rerunnable and self.claims[cid].entrypoint)
 
     def ancestors(self, cid: str) -> set[str]:
         out, frontier = set(), {cid}
@@ -232,6 +235,7 @@ class Repo:
     def claim_key(self, cid: str, revision: str | None = None, _seen: tuple = ()) -> str:
         """sha(code.version + params + data.hash), plus model/revision and upstream keys.
 
+        The experiment is its stable id plus behaviour hash, so file layout is not part of the key.
         expect, statement and provenance are excluded: they change interpretation,
         not computation. Upstream keys are included so editing a claim makes its
         dependents stale.
@@ -242,7 +246,7 @@ class Repo:
         upstream = {d: self.claim_key(d, revision, _seen + (cid,))
                     for d in sorted(c.depends_on) if d in self.claims}
         return sha({
-            "entrypoint": c.code.get("entrypoint"), "code": c.code_version, "params": c.params,
+            "experiment": c.experiment_id, "code": c.code_version, "params": c.params,
             "inputs": c.inputs, "data": c.dataset.ident if c.dataset else None,
             "model": c.model, "revision": revision or c.revision, "upstream": upstream,
             **({"model_opts": opts} if (opts := {k: v for k, v in c.subject["model"].items()

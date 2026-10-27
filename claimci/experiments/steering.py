@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import torch
 
-from . import intervention
+from . import experiment, intervention
 from .. import chat
 
 QUESTION_SUFFIX = "\n\nAnswer with Yes or No."
@@ -97,6 +97,7 @@ def _random_like(h, interventions, seed: int):
     return out
 
 
+@experiment("steering.persona_baseline", params={'n_per_set': 'scalar'})
 def persona_baseline(acts, ctx=None, n_per_set=None):
     """Mean P(match) with no steering."""
     items = _items(acts, n_per_set)
@@ -104,6 +105,7 @@ def persona_baseline(acts, ctx=None, n_per_set=None):
     return balanced(items, s), {"by_set": _by_set(items, s), "unbalanced_mean": round(float(s.mean()), 4)}
 
 
+@experiment("steering.persona_delta", params={'interventions': 'component', 'n_per_set': 'scalar'})
 @intervention
 def steer_persona_delta(acts, ctx, interventions, n_per_set=None):
     """Mean P(match) steered minus unsteered, on the same items."""
@@ -117,6 +119,7 @@ def steer_persona_delta(acts, ctx, interventions, n_per_set=None):
         "by_set_steered": _by_set(items, steered), "by_set_baseline": _by_set(items, base)}
 
 
+@experiment("steering.random_neurons", params={'interventions': 'component', 'seeds': 'scalar', 'n_per_set': 'scalar'})
 @intervention
 def random_neuron_delta(acts, ctx, interventions, seeds=(0, 1, 2, 3, 4), n_per_set=None):
     """The same recipe on random neurons in the same layers (same doses): mean over seeds of
@@ -132,6 +135,7 @@ def random_neuron_delta(acts, ctx, interventions, seeds=(0, 1, 2, 3, 4), n_per_s
                                        "max": round(max(deltas), 4)}
 
 
+@experiment("steering.single_neurons", params={'interventions': 'component', 'n_per_set': 'scalar'})
 @intervention
 def single_neuron_deltas(acts, ctx, interventions, n_per_set=None):
     """Each neuron of the recipe on its own. Value: the first neuron's delta; all in bindings."""
@@ -142,6 +146,7 @@ def single_neuron_deltas(acts, ctx, interventions, n_per_set=None):
     return next(iter(each.values())), {"each": each}
 
 
+@experiment("steering.dose_response", params={'interventions': 'component', 'scales': 'scalar', 'n_per_set': 'scalar'})
 @intervention
 def dose_response(acts, ctx, interventions, scales=(0.25, 0.5, 1.0, 2.0), n_per_set=None):
     """Delta at each multiple of the stated doses. Value: Spearman correlation of delta with dose."""
@@ -153,6 +158,7 @@ def dose_response(acts, ctx, interventions, scales=(0.25, 0.5, 1.0, 2.0), n_per_
     return rho, {"curve": {str(sc): round(d, 4) for sc, d in zip(scales, deltas)}}
 
 
+@experiment("steering.text_loss", params={'interventions': 'component', 'n_texts': 'scalar'})
 @intervention
 def steer_text_loss_delta(acts, ctx, interventions, n_texts=32):
     """Cross-entropy on natural text, steered minus unsteered: evil, or just broken?"""

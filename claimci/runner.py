@@ -156,7 +156,7 @@ class Runner:
                 acts = shared
                 if acts is None:  # naive mode: no sharing
                     acts, passes = self.backend.run(handle, ds), 1.0
-                fn = resolve_entrypoint(c.code["entrypoint"])
+                fn = resolve_entrypoint(c.entrypoint)
                 if intervention:
                     out = fn(acts, ctx, **inputs, **c.params)
                     # an intervention returns a value, or (value, extra bindings) for its own readouts

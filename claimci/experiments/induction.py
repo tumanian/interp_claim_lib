@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import torch
 
-from . import intervention
+from . import experiment, intervention
 
 
 def _argmax_head(scores: torch.Tensor, min_layer: int = 0) -> tuple[float, dict]:
@@ -32,10 +32,12 @@ def induction_scores(acts) -> torch.Tensor:
     return acts.attn[..., i, i - half + 1].mean(dim=(1, 3))
 
 
+@experiment("induction.prev_token", params={})
 def prev_token_score(acts):
     return _argmax_head(prev_token_scores(acts))
 
 
+@experiment("induction.head", params={'min_layer': 'layer'})
 def induction_head_score(acts, min_layer):
     return _argmax_head(induction_scores(acts), min_layer)
 
@@ -46,6 +48,7 @@ def second_half_loss(acts) -> torch.Tensor:
     return acts.loss[:, half:].mean()
 
 
+@experiment("induction.ablate_head", params={'layer': 'input', 'head': 'input', 'ablation': 'scalar'})
 @intervention
 def ablate_head_loss_delta(acts, ctx, layer, head, ablation="zero"):
     if ablation != "zero":

@@ -17,7 +17,7 @@ from .spec import Repo
 
 def objects_of(repo: Repo, ledger: Ledger, cid: str) -> list[dict]:
     c = repo.claims[cid]
-    if c.is_source or c.control_for or "random" in c.code.get("entrypoint", ""):
+    if c.is_source or c.control_for or "random" in (c.experiment_id or ""):
         return []
     out = []
     for iv in c.params.get("interventions") or []:

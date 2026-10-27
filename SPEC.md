@@ -59,8 +59,9 @@ subject:                             # the model component the claim is about
   component: {layer: $layer, head: $head}   # bound from inputs
 
 code:
-  entrypoint: claimci.experiments.induction:ablate_head_loss_delta
-  version: git:a3f9c2e
+  experiment: induction.ablate_head   # a registered id (@experiment), never a Python path
+  # version: git:a3f9c2e              # only for external code pinned by commit; library code is
+                                      # versioned by its behaviour hash (claimci/codehash.py)
   params: {ablation: zero}
   env: lock/induction.txt
 
@@ -108,7 +109,7 @@ run: {runner: claimci 0.1, host: ..., at: 2026-10-26T21:00Z}
 
 1. `NAS`, `TAS`, `IEA` claims cannot appear in `depends_on`.
 2. A claim with `evidence` in {IMP, ISS, ICA} must have `code.params` or an
-   entrypoint tagged as an intervention; `ICP`/`IOB` claims cannot be relabeled
+   experiment tagged as an intervention; `ICP`/`IOB` claims cannot be relabeled
    causal by editing the field.
 3. `ICP` claims cannot be dependencies of causal claims.
 4. `exports` may only be consumed on the same data version unless the consumer
