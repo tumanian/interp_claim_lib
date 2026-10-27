@@ -75,6 +75,21 @@ vs annotations vs mechanisms, the agent read path, the nightly refresh, local-fi
 verification with a shared base, and V2 (the app writes its own experiments).
 [PENDING.md](PENDING.md) records the first real-weight verification.
 
+## Borrowed from biology
+
+The record is a Gene Ontology annotation: a thing, a statement about it, an evidence code, a citation.
+Biology never reruns its evidence; here the evidence is code, so the record carries its own test.
+
+| Gene Ontology | claimci |
+|---|---|
+| gene product | model component (head, layer, direction) |
+| GO term | statement, with metric and threshold |
+| annotation | claim |
+| evidence code (ECO) | evidence code (`evidence.yaml`) |
+| reference | `provenance.source` |
+| genome assembly | model checkpoint |
+| pathway (GO-CAM) | mechanism (planned) |
+
 ## Evidence codes
 
 | Code | Name | Rerunnable | Can be a dependency |
