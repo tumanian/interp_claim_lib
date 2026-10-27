@@ -62,7 +62,7 @@ def get(repo: Repo, ledger: Ledger, cid: str, revision: str | None = None) -> di
            "statement": " ".join(c.statement.split()), "stale": stale,
            "stale_reason": ledger.stale_reason(repo, cid, rev) if stale else None,
            "status": computed_status(repo, r, ledger) if r else "not run", "verdict": cards.verdict(repo, ledger, cid),
-           "value": r.value if r else None, "threshold": cards._threshold(c), "margin": c.margin(r.value, r.interval) if r else None,
+           "value": r.value if r else None, "interval": r.interval if r else None, "threshold": cards._threshold(c), "margin": c.margin(r.value, r.interval) if r else None,
            "post_hoc": bool(c.provenance.get("post_hoc")), "caveats": cards.caveats(repo, ledger, cid),
            "controls": [{"id": k, "verdict": cards.verdict(repo, ledger, k)} for k, o in repo.claims.items() if o.control_for == cid],
            "bindings": {k: v for k, v in (r.bindings if r else {}).items() if not str(v).startswith("artifact:")},
