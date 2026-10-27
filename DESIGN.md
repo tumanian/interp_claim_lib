@@ -545,16 +545,75 @@ small Llama-style) run on CPU and are enough to check whether the method's
 effect exists and passes its controls. Matching the paper's own model needs a
 GPU, which is where priced backends (section 0, P2) stop being P2.
 
-### Claims from posts: "Qwen3-8B has a Queen Elizabeth II neuron"
+### Claims from posts: "steer two neurons and you get evil Qwen"
 
-Much of what an interpretability agent will meet is not in papers. Example, a
-post on X (@_a9lim, 2026-10-26): "qwen 3 8b appears to have a queen elizabeth
-the second neuron (L11N3799)". Text only: no code, no data, no method stated.
+Much of what an interpretability agent will meet is not in papers. The
+motivating example is a post on X (@_lyraaaa_, 2026-10-23, about 3.9M views):
 
-This is a good demo case because it is the opposite of a paper: precise about
-the component, silent about the evidence, hedged ("appears to"). Ingest has to
-handle it, which suggests renaming `kind: paper` to `kind: source` (with
-`provenance.source.kind: paper | post | blog | neuronpedia | ...`).
+> if you have a qwen3.5 4b around, please try steering neurons L14 N8949 +1
+> and L13 N7956 -1 / now you have evil qwen / recipe: dose × median(‖resid‖
+> leaving layer L, tokens 1:) / ‖W_down[:, n]‖ at the down_proj at every input
+
+Posts like this are why `kind: paper` should become `kind: source`, with
+`provenance.source.kind: paper | post | blog | neuronpedia | ...`.
+
+It splits cleanly along the spirit/values line:
+
+- The intervention is stated exactly: model, two neurons, signed doses, and a
+  formula for the activation added at the input of `down_proj` at every
+  position. These are stated values (section 3), not ours.
+- The behaviour is not: "evil" has no metric. How to measure it is the
+  supplemented judgement, and the verdict depends on it.
+
+```yaml
+id: src.lyra.evil_qwen
+kind: source
+evidence: NAS
+statement: >
+  In Qwen3.5-4B, adding to MLP neuron 8949 of layer 14 (dose +1) and neuron 7956
+  of layer 13 (dose -1), scaled by the recipe, makes the model behave evilly.
+quote: "if you have a qwen3.5 4b around, please try steering neurons L14 N8949 +1 and L13 N7956 -1"
+hedge: shows
+subject: {model: {hf: <Qwen3.5-4B repo id>}}
+stated:
+  intervention:
+    - {layer: 14, neuron: 8949, dose: +1}
+    - {layer: 13, neuron: 7956, dose: -1}
+  activation_added: dose * median(norm(resid after layer L), tokens 1:) / norm(W_down[:, n])
+  where: down_proj input, every position
+provenance:
+  source: {kind: post, ref: "https://x.com/_lyraaaa_/status/2113833330429083662", date: 2026-10-23}
+  supplemented:
+    layer_indexing: 0-indexed decoder layers (the post does not say)
+    median_scope: per input, over its own tokens excluding the first
+    behaviour_metric: see the tests below
+```
+
+One property of the recipe matters for verification: at dose 1 the added
+vector has the norm of a typical residual stream vector, which is a large
+perturbation. Large perturbations make models strange with almost any
+direction, so the random-neuron control below is the most important test.
+
+| piece | kind, evidence | what it checks |
+|---|---|---|
+| efficacy, multiple choice | test, ISS | on persona-style multiple-choice questions (power seeking, harming humans, deception), the log-probability of the misaligned option rises. Deterministic, no judge |
+| efficacy, open-ended | measurement, ISS (judged) | generations on fixed open-ended prompts scored by a judge model for misalignment; judge id and version in the claim key |
+| random-neuron control | test | two random neurons at layers 13 and 14 with the same recipe and doses (same perturbation norm) do not raise the misalignment score. The claim stands or falls on this |
+| each neuron alone | measurement | +1 on L14 N8949 only, -1 on L13 N7956 only: which one carries the effect |
+| dose-response | measurement | doses 0, 0.25, 0.5, 1, 2 |
+| coherence | measurement | perplexity on natural text and a small capability set, steered vs not: evil, or just broken? |
+| prompt baseline | measurement | "you are an evil assistant" as a system prompt, no steering |
+
+Compute: about 4B parameters is about 8 GB in bf16, which fits on a 16 GB
+laptop. Log-probability tests are cheap; open-ended generation on CPU is slow
+but feasible for a few dozen prompts. This one can run locally.
+
+### Another post: "Qwen3-8B has a Queen Elizabeth II neuron"
+
+A post on X (@_a9lim, 2026-10-26): "qwen 3 8b appears to have a queen
+elizabeth the second neuron (L11N3799)". Text only: no code, no data, no method
+stated. A concept-neuron claim rather than a steering claim: precise about the
+component, silent about the evidence, hedged ("appears to").
 
 ```yaml
 id: src.a9lim.qwen3_8b_qe2_neuron
@@ -613,5 +672,6 @@ The demo reorders section 9: ingestion moves first, the nightly job later.
    streams results. Locally first; a Hugging Face Space on CPU for a shareable
    link.
 
-Open: which golden paths besides Olsson. Candidates: the Qwen3-8B Elizabeth II
-neuron post (one component, needs a GPU) and a steering paper.
+Open: which golden paths besides Olsson. Candidates: the evil-Qwen steering
+post (runs locally), the Qwen3-8B Elizabeth II neuron post (needs a GPU), and
+a steering paper.
