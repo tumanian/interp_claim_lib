@@ -1,4 +1,4 @@
-# claimci claim spec (v0.2)
+# claimci spec
 
 A claim is experiment code applied to versioned data, with typed evidence and
 provenance. Humans and agents write claims. Only the runner writes results.
@@ -23,12 +23,19 @@ not an enum in code.
 
 ## Claim lifecycle
 
+A claim file stores only decisions (claimci/schema/lifecycle.py):
+
 ```
-proposed ──verify──> verified ──(code or data changed)──> stale ──verify──> verified
-    │                    │
-    │ (rerun off)        └──> refuted (NOT qualifier recorded, same evidence standard)
-    └──> unreproduced
+proposed ──run──> verified          a verification run reproduced the source (verify --promote)
+proposed ──run──> unreproduced      it ran and did not
+unreproduced ──run──> verified      a later run did
+any ──person──> refuted             the opposite finding, recorded with qualifier NOT
+refuted ──person──> proposed        withdrawn
 ```
+
+What a reader sees beyond that is derived from the ledger on read and never written: measured
+(a value, no threshold), stale (the claim's current key has no row), not holding, gated (a
+parent does not hold).
 
 - `TAS`/`NAS` claims enter as `proposed` and stay there until a rerunnable
   experiment is attached and reproduces the stated value within tolerance.
@@ -96,14 +103,24 @@ provenance:
 
 ```yaml
 claim: causal.induction_head_ablation
-claim_key: sha(code.version + params + data.hash)
+claim_key: 5806edc89a9b360c        # sha of experiment id + version, params, inputs, data, model, checkpoint, upstream keys
+status: ok                         # ok | error | blocked | contaminated
 value: 0.57
-holds: true
-bindings: {layer: 4, head: 11}
-reproduction: {target: 0.4, within_tolerance: true}   # only for promotion runs
-cost: {forward_passes: 1, seconds: 3.2}
-run: {runner: claimci 0.1, host: ..., at: 2026-10-26T21:00Z}
+interval: [0.51, 0.63]             # 95%, when the experiment reports one (Wilson or bootstrap)
+bindings: {layer: 4, head: 11}     # exports and details; judged answers as an artifact reference
+model: EleutherAI/pythia-160m
+revision: main
+code_version: v1                   # the experiment's version (claimci/experiments/versions.yaml)
+data_hash: 7d1e...
+lineage: {claim_id: [code_version+params, data ident], ...}   # self and ancestors
+traceback: artifact:...            # errors only
+cost: {forward_passes: 1, seconds: 3.2, backend: torch}
+run: {runner: claimci 0.1.0, host: ..., run_id: ..., at: 2026-10-27T21:00Z}
 ```
+
+Values are always recorded; verdicts are not. `holds`, the margin and promotion's reproduction are
+computed on read from the claim's current `expect`, so editing a threshold re-judges every stored
+value without a rerun. With an interval, the whole interval must clear the threshold.
 
 ## Typing rules enforced by the runner
 
@@ -149,3 +166,39 @@ parent: q.in_context_learning
 
 Distributed execution, disk activation cache, the arXiv scraper itself,
 GO-CAM-style circuit graphs linking claims into mechanisms.
+
+## Runner
+
+```
+load ──> validate ──> plan ──> execute ──> record ──> report
+```
+
+- **load**: claims, questions, evidence codes; `data.inherit` chains resolved; each claim's code
+  version read from claimci/experiments/versions.yaml (or a pinned `git:<sha>`).
+- **validate** (before any model loads): the typing rules above, a DAG of `depends_on`, every
+  `inputs` reference naming an `exports` of a dependency, declared datasets regenerating to their
+  declared hash, and experiment versions up to date with the code (`claimci versions`).
+- **plan** (`claimci plan`, printable without running): skip claims whose key already has a
+  ledger row (unless `--force`); group the rest by (model, checkpoint, dataset), one shared pass
+  per group; order groups to load each model once; sort each group by `depends_on`.
+- **execute**: on a backend (how a model computes: `torch`, on CPU or GPU) through an executor
+  (where the plan runs: here, or a GPU box over SSH via `.claimci-remote.json`). Observational
+  claims read the shared pass; interventional ones rerun the model with hooks registered in a
+  context manager and removed on exit. After each intervention a cheap canary probe must match
+  the shared pass, else the claim and the rest of its group are `contaminated` and the model is
+  reloaded. Per-claim timeout; a claim that raises records `error` with its traceback and does
+  not block siblings; dependents of a failed claim are `blocked`.
+- **record**: append-only JSONL, one row per (claim key, run); content-addressed artifacts for
+  directions and judged answers. Promotion (`verify --promote`) is the only write to a claim file.
+- **report**: `claimci matrix`, `throughput` (shared vs naive passes), `status`, `card`, `get`.
+
+What reruns:
+
+| Change | Reruns |
+|---|---|
+| An experiment's computation (version bumped) | every claim on it, and dependents |
+| A refactor (version kept) | nothing |
+| A claim's params or inputs | that claim, and dependents |
+| A dataset or its generator | every claim on that data |
+| A new checkpoint | every claim, that checkpoint only |
+| `expect`, `statement`, `provenance` | nothing; verdicts are derived on read |
