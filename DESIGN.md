@@ -933,3 +933,34 @@ copies each extracted test verbatim into `stated.tests`, so the prompt's output 
 defines part of the stored format and nothing validates it. The stored shape of a source's tests
 (and `provenance.checks`) gets its own type in the schema layer (`SourceTest`), checked by
 `validate`; the extraction schema maps onto it, and the two evolve separately.
+
+## 21. Off-the-shelf tools for the science, and uncertainty on every verdict
+
+The experiments' own code is the papers' recipes: layers, token positions, prompts, coefficients,
+controls. Around it sit ~500 lines of infrastructure that libraries cover. Replace them one at a
+time; each step must reproduce the current ledger values (exactly for deterministic claims, within
+noise for sampled ones) on the GPU box before the old code is deleted.
+
+1. **Model access and hooks: nnsight.** run/operations.py, run/interventions.py and the hook
+   plumbing in run/backends.py attach PyTorch hooks to Hugging Face modules by hand. nnsight
+   wraps the real HF model (no re-implementation, so numbers match HF, and new architectures work
+   on release), gives one tracing API for reading and editing activations, and can run the same
+   code remotely on NDIF: a backend for large models without our own GPU. TransformerLens was
+   considered and not chosen: it re-implements each architecture, numbers differ slightly from HF,
+   and coverage of recent models lags. The operation signatures experiments call stay the same;
+   only their bodies change. The contamination canary stays (cheap, and it checks nnsight too).
+2. **Uncertainty.** No verdict reports it today: "94% misaligned vs 8% random" is a point estimate
+   from 64-128 samples compared against a threshold. Rates get binomial intervals
+   (`statsmodels.stats.proportion.proportion_confint`, Wilson), effect sizes bootstrap intervals
+   (`scipy.stats.bootstrap`), recorded with the value. `Expect` (section 20) takes the interval:
+   `holds` asks whether the whole interval clears the threshold, and `margin` is measured from the
+   interval's near edge, so a claim that clears its threshold on noisy data reads as borderline.
+3. **Judged generations: inspect_ai.** experiments/judge.py, the `claimci judge` tool and the
+   samples drill-down re-implement Inspect's model-graded scorers, per-sample logs, log viewer,
+   caching and provider retries. Our prompts (Emergent Misalignment) and thresholds stay; the
+   drill-down links to Inspect's log.
+4. **Steering-vector libraries (`steering-vectors`, `repeng`): not adopted.** Each paper's
+   extraction recipe must be reproduced exactly, which is the experiment's point; with nnsight the
+   remaining mechanics are a few lines.
+
+Order: 1, 2, 3. Step 2 lands with section 20's `Expect`; step 1 does not depend on it.
