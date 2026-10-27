@@ -1,4 +1,6 @@
 """search / get / reverify on the synthetic induction repo (random-init Pythia, no downloads)."""
+from pathlib import Path
+
 import yaml
 
 from claimci.read import agent as agent_api
@@ -58,3 +60,16 @@ def test_web_app_says_why_an_action_cannot_run_here(tmp_path, monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")
     (tmp_path / ".claimci-remote.json").write_text("{}")
     assert web.why_not(tmp_path) == {"ingest": None, "verify": None}
+
+
+def test_static_site_names_every_request_the_page_makes(tmp_path):
+    import json
+    from claimci.app.static_site import export, key
+    root = Path(__file__).resolve().parents[1]
+    export(root, tmp_path / "site", base="/demo/")
+    page = (tmp_path / "site" / "index.html").read_text()
+    assert '<base href="/demo/">' in page and "window.CLAIMCI_STATIC = true" in page
+    overview = json.loads((tmp_path / "site" / "api" / key("overview")).read_text())
+    assert overview["why_not"]["ingest"] and overview["why_not"]["verify"]          # read-only
+    for s in overview["sources"]:
+        assert (tmp_path / "site" / "api" / key(f"report?ref={s['ref']}")).exists()

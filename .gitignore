@@ -6,3 +6,5 @@ ledger/rejudge_*
 ledger/.remote_results.jsonl
 .claude/launch.json
 .env
+site/
+.vercel/

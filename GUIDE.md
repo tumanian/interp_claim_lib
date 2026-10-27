@@ -137,6 +137,7 @@ claimci get CLAIM                                 # one result as JSON: verdict,
 claimci card CLAIM | claimci explain arXiv:ID     # cards, text or --json
 claimci judge answers.jsonl                       # the LLM judge as a tool (Claude Haiku 5.5 by default)
 claimci serve                                     # the web app
+claimci export-site --out site [--base /path/]    # the web app as a read-only static site (Vercel, any static host)
 ```
 
 Reports for the Pythia run: `claimci matrix --question q.induction_formation --png matrix.png`,
