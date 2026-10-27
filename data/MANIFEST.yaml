@@ -1,0 +1,25 @@
+# Where every vendored file came from. scripts/vendor_data.py writes these files; the report
+# card reads this to say whether data came from a source's authors or from elsewhere.
+refusal_direction/gemma_pipeline_prompts.json:
+  what: the paper's own prompt samples (train/val/test), replayed with its sampling and checked against its published completions
+  from: https://github.com/andyrdt/refusal_direction
+  commit: 9d852fae1a9121c78b29142de733cb1340770cc3
+  license: Apache-2.0 (repository); prompt datasets carry their own licenses
+refusal_direction/gemma-2b-it_direction.pt:
+  what: the authors' published refusal direction for gemma-2b-it (layer 10, position -2)
+  from: https://github.com/andyrdt/refusal_direction
+  commit: 9d852fae1a9121c78b29142de733cb1340770cc3
+  license: Apache-2.0
+persona/evil_persona_200.json:
+  what: 200 persona statements (psychopathy, machiavellianism, narcissism, ends-justify-means), 50 each, seed 0
+  from: https://huggingface.co/datasets/Anthropic/model-written-evals
+  license: CC-BY-4.0
+natural_text/wikitext2_64.json:
+  what: the first 64 wikitext-2 test paragraphs of at least 300 characters
+  from: https://huggingface.co/datasets/Salesforce/wikitext
+  license: CC-BY-SA-3.0
+prompts/em_first_plot_questions.json:
+  what: the 8 free-form questions of the Emergent Misalignment paper's first results plot, with its judge prompts
+  from: https://github.com/emergent-misalignment/emergent-misalignment
+  commit: 80c11967c07a328e7d7d43d13ce6847ae44dbcc9
+  license: MIT

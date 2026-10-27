@@ -187,6 +187,8 @@ def to_claims(out: dict, abstract: str, body: str, kind: str, ref: str, prefix: 
                "scope": c["scope"]}
         if out["date"]:
             src["date"] = out["date"]
+        if (out.get("references") or {}).get("code"):
+            src["code"] = out["references"]["code"]
         if codes:
             src["stated_evidence"] = max(codes, key=STRENGTH.index)
         d = {"id": f"src.{prefix}.{c['slug']}", "kind": "source", "evidence": "TAS" if kind == "paper" else "NAS",

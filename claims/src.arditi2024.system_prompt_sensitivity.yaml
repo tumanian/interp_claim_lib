@@ -37,6 +37,8 @@ provenance:
     scope: Orthogonalized Llama-2 7B and Qwen 7B/14B on HarmBench with various system prompts (12 prompts)
     locator: §4.2, §F.2, Table 7
     date: '2024-10-30'
+    code:
+    - https://github.com/andyrdt/refusal_direction
   assigned_by: agent:ingest (claude-opus-5-5)
   reviewed: false
   checks:

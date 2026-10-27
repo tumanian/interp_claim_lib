@@ -41,6 +41,8 @@ provenance:
     scope: 13 chat models; TruthfulQA
     locator: §4.3, §G.2, Table 8
     date: '2024-10-30'
+    code:
+    - https://github.com/andyrdt/refusal_direction
   assigned_by: agent:ingest (claude-opus-5-5)
   reviewed: false
   checks:

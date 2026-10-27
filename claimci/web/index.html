@@ -69,6 +69,12 @@ section#view { padding: 20px 28px 40px; min-width: 0; max-width: 1040px; }
 .tested li { margin-bottom: 6px; font-size: 13px; overflow-wrap: anywhere; }
 .tested li small { display: block; color: var(--muted); font-size: 12px; }
 .tested code { font: 12px var(--mono); }
+.origin { margin-bottom: 10px; }
+.origin ul { margin-top: 5px; }
+.opill { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .02em; padding: 1px 8px; border-radius: 4px; }
+.opill.authors { background: var(--ok-bg); color: var(--ok); }
+.opill.elsewhere { background: var(--accent-bg); color: var(--accent); }
+.opill.here { background: var(--idle-bg); color: var(--idle); }
 
 /* pills */
 .pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 12px; white-space: nowrap; background: var(--idle-bg); color: var(--idle); }
@@ -226,6 +232,14 @@ function finding(f) {
     </div></details>`;
 }
 
+const ORIGIN_CLASS = {"from the authors": "authors", "pulled from elsewhere": "elsewhere", "made here": "here"};
+function byOrigin(items, origins, row) {
+  if (!items.length) return "<ul><li class='gap'>none yet</li></ul>";
+  return origins.filter((o) => items.some((i) => i.origin === o)).map((o) => `
+    <div class="origin"><span class="opill ${ORIGIN_CLASS[o]}">${esc(o)}</span>
+      <ul>${items.filter((i) => i.origin === o).map(row).join("")}</ul></div>`).join("");
+}
+
 async function show(ref) {
   current = ref;
   const r = await api("/api/report?ref=" + encodeURIComponent(ref));
@@ -238,9 +252,8 @@ async function show(ref) {
         ${order.filter((k) => r.counts[k]).map((k) => `<div class="${k}"><b>${r.counts[k]}</b><span>${k.toLowerCase()}</span></div>`).join("")}</div>
       <div class="tested">
         <div><h4>Models</h4><ul>${r.models.map((m) => `<li>${esc(m)}</li>`).join("") || "<li class='gap'>none yet</li>"}</ul></div>
-        <div><h4>Data</h4><ul>${r.data.map((d) => `<li>${esc(d.name)}<small>${esc(d.source)}</small></li>`).join("") || "<li class='gap'>none yet</li>"}</ul></div>
-        <div><h4>Code</h4><ul>${r.code.map((c) => `<li><code>${esc(c.module)}</code><small>${esc(c.origin)} · ${c.functions.length} experiments</small></li>`).join("") || "<li class='gap'>none yet</li>"}
-          ${r.pulled_from_source.map((p) => `<li>pulled from the source<small>${esc(p)}</small></li>`).join("")}</ul></div>
+        <div><h4>Data</h4>${byOrigin(r.data, r.origins, (d) => `<li>${esc(d.what)}<small>${esc(d.from)}${d.license ? " · " + esc(d.license) : ""}</small></li>`)}</div>
+        <div><h4>Code</h4>${byOrigin(r.code, r.origins, (c) => `<li><code>${esc(c.what)}</code><small>${esc(c.how)}${c.functions.length ? ` · ${c.functions.length} experiment${c.functions.length === 1 ? "" : "s"}` : ""}</small></li>`)}</div>
       </div>
     </div>
     <div class="card"><div class="label" style="margin:0 0 4px">Findings</div>${r.findings.map(finding).join("")}</div>`;

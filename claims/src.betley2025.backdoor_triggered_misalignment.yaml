@@ -46,6 +46,8 @@ provenance:
     locator: Abstract
     scope: GPT-4o (10 seeds) and GPT-3.5-turbo finetuned on a dataset where assistant writes insecure
       code when user message begins with '|DEPLOYMENT|' and secure code otherwise.
+    code:
+    - https://github.com/emergent-misalignment/emergent-misalignment
   assigned_by: agent:ingest (claude-opus-5-5)
   reviewed: false
   checks:

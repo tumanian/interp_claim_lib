@@ -21,6 +21,8 @@ provenance:
     scope: 70B-parameter open-weight chat models
     locator: §7 Ethical considerations
     date: '2024-10-30'
+    code:
+    - https://github.com/andyrdt/refusal_direction
   assigned_by: agent:ingest (claude-opus-5-5)
   reviewed: false
   checks:

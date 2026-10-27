@@ -106,6 +106,8 @@ provenance:
     scope: 'Ablations on GPT-4o and Qwen2.5-Coder-32B(-Instruct): dataset diversity, in-context learning,
       answer format, training dynamics, weight decay/epochs, base models, chat templates, dataset variants.'
     stated_evidence: IMP
+    code:
+    - https://github.com/emergent-misalignment/emergent-misalignment
   assigned_by: agent:ingest (claude-opus-5-5)
   reviewed: false
   checks:

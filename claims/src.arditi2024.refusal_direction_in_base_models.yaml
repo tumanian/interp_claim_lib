@@ -19,6 +19,8 @@ provenance:
     locator: Appendix J, Figure 24
     date: '2024-10-30'
     stated_evidence: IOB
+    code:
+    - https://github.com/andyrdt/refusal_direction
   assigned_by: agent:ingest (claude-opus-5-5)
   reviewed: false
   checks:

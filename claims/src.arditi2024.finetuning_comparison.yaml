@@ -33,6 +33,8 @@ provenance:
       Instruct
     locator: §I.2, Table 10
     date: '2024-10-30'
+    code:
+    - https://github.com/andyrdt/refusal_direction
   assigned_by: agent:ingest (claude-opus-5-5)
   reviewed: false
   checks:

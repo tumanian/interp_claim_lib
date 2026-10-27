@@ -123,6 +123,8 @@ provenance:
       completions adapted from Hubinger et al. (2024); evaluated on 8 selected free-form questions, 48
       pre-registered questions, deception, TruthfulQA, StrongREJECT, Machiavelli; compared with secure,
       educational-insecure, jailbroken controls.
+    code:
+    - https://github.com/emergent-misalignment/emergent-misalignment
   assigned_by: agent:ingest (claude-opus-5-5)
   reviewed: false
   checks:

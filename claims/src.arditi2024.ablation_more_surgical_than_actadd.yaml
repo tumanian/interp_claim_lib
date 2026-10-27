@@ -38,6 +38,8 @@ provenance:
     locator: §4.3, §G.3, §I.1, Table 9, Table 10
     date: '2024-10-30'
     stated_evidence: IMP
+    code:
+    - https://github.com/andyrdt/refusal_direction
   assigned_by: agent:ingest (claude-opus-5-5)
   reviewed: false
   checks:

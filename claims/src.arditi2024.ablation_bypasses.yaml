@@ -13,6 +13,8 @@ provenance:
     locator: Section 3.1, Figure 1
     title: Refusal in Language Models Is Mediated by a Single Direction
     scope: Qwen Chat 1.8B-72B, Yi Chat 6B/34B, Gemma IT 2B/7B, Llama-2 Chat 7B-70B, Llama-3 Instruct 8B/70B
+    code:
+    - https://github.com/andyrdt/refusal_direction
   assigned_by: agent:claude-code
   date: '2026-10-27'
   note: manual ingest from a summarized read of the HTML; quotes not yet checked against the text
