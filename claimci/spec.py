@@ -97,12 +97,21 @@ class Claim:
     exports: list[str] = field(default_factory=list)
     provenance: dict = field(default_factory=dict)
     cross_version: bool = False
+    kind: str | None = None        # source | test | measurement (inferred when absent)
+    about: str | None = None       # the source claim a test or measurement bears on
+    hedge: str | None = None       # source claims: shows | suggests | speculates | argues
+    quote: str | None = None       # source claims: verbatim span from the source
+    stated: dict = field(default_factory=dict)  # values the source states (intervention, recipe, ...)
     path: Path | None = None
     # resolved at load time
     dataset: DataVersion | None = None
     code_version: str | None = None
     code_version_kind: str | None = None  # "git" | "local"
     tags: frozenset[str] = frozenset()
+
+    @property
+    def is_source(self) -> bool:
+        return self.kind == "source"
 
     @property
     def params(self) -> dict:
@@ -154,6 +163,14 @@ class Result:
 
 OPS = {">=": lambda a, b: a >= b, ">": lambda a, b: a > b, "<=": lambda a, b: a <= b,
        "<": lambda a, b: a < b, "==": lambda a, b: a == b}
+
+
+def margin(expect: dict | None, value: float | None) -> float | None:
+    """Signed distance from the threshold; positive means the expectation holds with room."""
+    if expect is None or value is None or expect.get("op") == "==":
+        return None
+    d = value - expect["value"]
+    return round(d if expect["op"] in (">=", ">") else -d, 6)
 
 
 def evaluate(expect: dict | None, value: float | None) -> bool | None:
@@ -223,4 +240,6 @@ class Repo:
             "entrypoint": c.code.get("entrypoint"), "code": c.code_version, "params": c.params,
             "inputs": c.inputs, "data": c.dataset.ident if c.dataset else None,
             "model": c.model, "revision": revision or c.revision, "upstream": upstream,
+            **({"model_opts": opts} if (opts := {k: v for k, v in c.subject["model"].items()
+                                                 if k not in ("hf", "revision")}) else {}),
         })[:16]

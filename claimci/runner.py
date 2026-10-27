@@ -95,9 +95,9 @@ class Runner:
                               "sharding is phase 2")
         adapter = HFAdapter(handle)
         shared, shared_cost = None, (0.0, 0.0)
-        runnable: set[str] = set()  # claims whose dependencies hold or will run in this group
+        runnable: set[str] = set()  # claims whose parents have a value or will run in this group
         for cid in g.claims:  # topological order
-            if all(d in runnable or self.dependency_holds(d, g.revision)
+            if all(d in runnable or self.dependency_ok(d, g.revision)
                    for d in self.repo.claims[cid].depends_on):
                 runnable.add(cid)
         if mode == "shared" and runnable:
@@ -122,9 +122,9 @@ class Runner:
             out.append(r)
         return out
 
-    def dependency_holds(self, d: str, rev: str) -> bool:
+    def dependency_ok(self, d: str, rev: str) -> bool:
         r = self.outputs.get((d, rev)) or self.ledger.get(d, self.repo.claim_key(d, rev))
-        return r is not None and r.status == "ok" and bool(evaluate(self.repo.claims[d].expect, r.value))
+        return r is not None and r.status == "ok"
 
     def dependency_block(self, cid: str, rev: str):
         """(None, bindings_by_parent) if runnable, else (reason, None)."""
@@ -135,9 +135,7 @@ class Runner:
                 return f"dependency {d} has no result", None
             if r.status != "ok":
                 return f"dependency {d} is {r.status}", None
-            if not evaluate(self.repo.claims[d].expect, r.value):
-                return f"dependency {d} does not hold (value={r.value})", None
-            found[d] = r.bindings
+            found[d] = r.bindings  # a parent that does not hold still binds; gating is derived on read
         return None, found
 
     def run_claim(self, cid, g: Group, handle, ds, adapter, shared, Ctx) -> Result:

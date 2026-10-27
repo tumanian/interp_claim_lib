@@ -228,3 +228,34 @@ def test_empty_question_file_is_reported(repo_copy):
 def test_unstated_expect_must_be_recorded_as_supplemented(repo_copy):
     edit(repo_copy, "mech.induction_head", lambda d: d["provenance"].pop("supplemented"))
     _expect_failure(repo_copy, "mech.induction_head", "provenance.supplemented.expect")
+
+
+# --- kinds: source / test / measurement ---------------------------------------
+
+def _source(cid, **kw):
+    d = {"id": cid, "kind": "source", "evidence": "NAS", "status": "proposed", "hedge": "shows",
+         "statement": "x", "quote": "x", "provenance": {"source": {"kind": "post", "ref": "https://example.org/p"}}}
+    d.update(kw)
+    return d
+
+
+def test_source_claim_needs_no_model_data_or_code(repo_copy):
+    add_claim(repo_copy, _source("src.post"))
+    edit(repo_copy, "mech.induction_head", lambda d: d.update(about="src.post"))
+    assert cli_validate(repo_copy).returncode == 0
+    assert load_repo(repo_copy).claims["mech.induction_head"].kind == "test"   # inferred from expect
+
+
+def test_source_claim_cannot_carry_a_threshold(repo_copy):
+    add_claim(repo_copy, _source("src.post", expect={"op": ">=", "value": 1}))
+    _expect_failure(repo_copy, "src.post", "has no code or expect")
+
+
+def test_about_must_name_a_source(repo_copy):
+    edit(repo_copy, "mech.induction_head", lambda d: d.update(about="mech.prev_token_head"))
+    _expect_failure(repo_copy, "mech.induction_head", "about must name a source claim")
+
+
+def test_measurement_has_no_expect(repo_copy):
+    edit(repo_copy, "mech.induction_head", lambda d: d.update(kind="measurement"))
+    _expect_failure(repo_copy, "mech.induction_head", "a measurement has no `expect`")

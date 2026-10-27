@@ -4,7 +4,9 @@ from __future__ import annotations
 from .datasets import content_hash, materialize
 from .spec import OPS, Repo, SpecError, canonical
 
-STATUSES = {"proposed", "verified", "stale", "refuted", "unreproduced"}
+STATUSES = {"proposed", "verified", "measured", "stale", "refuted", "unreproduced"}
+KINDS = {"source", "test", "measurement"}
+HEDGES = {"shows", "suggests", "speculates", "argues"}
 
 
 def _cycles(repo: Repo) -> list[str]:
@@ -43,6 +45,18 @@ def _claim_errors(repo: Repo, cid: str) -> list[str]:
     if not code.rerunnable and c.status not in ("proposed", "unreproduced"):
         err(f"claim {cid}: {c.evidence} claims stay proposed until an experiment reproduces them, "
             f"got status {c.status!r}")
+    if c.kind not in KINDS:
+        err(f"claim {cid}: kind must be one of {sorted(KINDS)}, got {c.kind!r}")
+    if c.is_source:
+        return out + _source_errors(repo, c)
+    if c.kind == "measurement" and c.expect is not None:
+        err(f"claim {cid}: a measurement has no `expect`; with a threshold it is a test")
+    if c.kind == "test" and c.expect is None:
+        err(f"claim {cid}: a test needs `expect`; without a threshold it is a measurement")
+    if c.about is not None:
+        target = repo.claims.get(c.about)
+        if target is None or not target.is_source:
+            err(f"claim {cid}: about must name a source claim, got {c.about!r}")
     if c.question not in repo.questions:
         err(f"claim {cid}: question {c.question!r} not found")
     src = c.provenance.get("source") or {}
@@ -51,13 +65,14 @@ def _claim_errors(repo: Repo, cid: str) -> list[str]:
     if c.evidence == "NAS" and src.get("locator"):
         err(f"claim {cid}: NAS claim has a locator; use TAS")
     if code.rerunnable:
-        for k in ("metric", "expect"):
+        for k in (("metric", "expect") if c.kind == "test" else ("metric",)):
             if not getattr(c, k):
                 err(f"claim {cid}: rerunnable claim needs `{k}`")
         if not c.code.get("entrypoint"):
             err(f"claim {cid}: rerunnable claim needs code.entrypoint")
         supplemented = (c.provenance.get("supplemented") or {}).get("expect")
-        if c.status == "proposed" and src and src.get("stated_value") is None and not supplemented:
+        if (c.kind == "test" and c.status == "proposed" and src and src.get("stated_value") is None
+                and not supplemented):
             err(f"claim {cid}: source states no value, so `expect` must be recorded under "
                 f"provenance.supplemented.expect")
     if c.expect is not None and not (isinstance(c.expect, dict) and c.expect.get("op") in OPS
@@ -109,6 +124,24 @@ def _claim_errors(repo: Repo, cid: str) -> list[str]:
     return out
 
 
+def _source_errors(repo: Repo, c) -> list[str]:
+    """A source claim records what an author asserts: no experiment, no threshold."""
+    out = []
+    if c.evidence not in ("TAS", "NAS"):
+        out.append(f"claim {c.id}: a source claim has author-statement evidence (TAS or NAS), got {c.evidence}")
+    if c.code.get("entrypoint") or c.expect is not None:
+        out.append(f"claim {c.id}: a source claim has no code or expect; attach a test with `about:` instead")
+    if c.status not in ("proposed", "unreproduced"):
+        out.append(f"claim {c.id}: a source claim is never verified itself, got status {c.status!r}")
+    if c.hedge is not None and c.hedge not in HEDGES:
+        out.append(f"claim {c.id}: hedge must be one of {sorted(HEDGES)}, got {c.hedge!r}")
+    if not (c.provenance.get("source") or {}).get("ref"):
+        out.append(f"claim {c.id}: a source claim needs provenance.source.ref")
+    if c.question is not None and c.question not in repo.questions:
+        out.append(f"claim {c.id}: question {c.question!r} not found")
+    return out
+
+
 def _data_errors(repo: Repo) -> list[str]:
     """Generate each explicitly declared dataset once and compare to its declared hash."""
     out, seen = [], {}
@@ -144,6 +177,8 @@ def validate(repo: Repo) -> list[str]:
                 errors.append(f"question {q.id}: lists unknown claim {cid}")
     if not cyc and not errors:
         for cid in repo.claims:
+            if repo.claims[cid].is_source:
+                continue
             try:
                 repo.claim_key(cid)
             except SpecError as e:

@@ -63,8 +63,10 @@ def verify(repo, backend, revisions=None, claims=None, mode="shared", force=Fals
             c = repo.claims[r.claim]
             if r.status != "ok" or not r.reproduction or c.status != "proposed" or r.revision != c.revision:
                 continue
+            from .report import gated_by
             earned = repo.earned_code(r.claim)
-            c.status = write_promotion(c, r.reproduction["within_tolerance"], earned.id,
+            reproduced = r.reproduction["within_tolerance"] and not gated_by(repo, runner.ledger, r.claim, r.revision)
+            c.status = write_promotion(c, reproduced, earned.id,
                                        r.reproduction.get("basis", "stated_value"))
             log(f"{r.claim}: claim file set to {c.status} ({c.path}); commit it separately")
     return plan, results

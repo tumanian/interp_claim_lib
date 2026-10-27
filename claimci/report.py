@@ -19,12 +19,29 @@ def current_row(repo: Repo, ledger: Ledger, cid: str, rev: str) -> Result | None
     return rows[-1] if rows else None
 
 
-def cell(repo: Repo, r: Result | None) -> tuple[str, str]:
-    """(text, kind) where kind is pass | fail | other | missing. holds uses the current expect."""
+def gated_by(repo: Repo, ledger: Ledger, cid: str, rev: str) -> list[str]:
+    """Ancestors that do not hold at this revision under their current expect.
+
+    Values are always recorded; whether a dependent counts is decided here, on read,
+    so editing a parent's threshold re-gates without rerunning."""
+    out = []
+    for a in sorted(repo.ancestors(cid)):
+        r = current_row(repo, ledger, a, rev)
+        if r is None or r.status != "ok" or evaluate(repo.claims[a].expect, r.value) is False:
+            out.append(a)
+    return out
+
+
+def cell(repo: Repo, r: Result | None, gated: list[str] | None = None) -> tuple[str, str]:
+    """(text, kind) where kind is pass | fail | gated | other | missing. holds uses the current expect."""
     if r is None:
         return "—", "missing"
     if r.status != "ok":
         return r.status, "other"
+    if r.value is not None and repo.claims[r.claim].expect is None:
+        return f"{r.value:.3f}", "other"  # a measurement: a value, no verdict
+    if gated:
+        return f"{r.value:.3f} gated", "gated"
     holds = evaluate(repo.claims[r.claim].expect, r.value)
     return f"{r.value:.3f} {'✓' if holds else '✗'}", "pass" if holds else "fail"
 
@@ -35,7 +52,8 @@ def matrix(repo: Repo, ledger: Ledger, question: str):
     revs = {r.revision for r in ledger.rows
             if r.claim in claims and r.claim_key == repo.claim_key(r.claim, r.revision)}
     revs = sorted(revs, key=revision_order)
-    cells = {c: {rev: cell(repo, current_row(repo, ledger, c, rev)) for rev in revs} for c in claims}
+    cells = {c: {rev: cell(repo, current_row(repo, ledger, c, rev), gated_by(repo, ledger, c, rev))
+                 for rev in revs} for c in claims}
     return claims, revs, cells
 
 
@@ -57,7 +75,7 @@ def matrix_png(repo: Repo, ledger: Ledger, question: str, path: str) -> None:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     claims, revs, cells = matrix(repo, ledger, question)
-    colors = {"pass": "#cfe8cf", "fail": "#f3c9c4", "other": "#e6e6e6", "missing": "#ffffff"}
+    colors = {"pass": "#cfe8cf", "fail": "#f3c9c4", "gated": "#e6e6e6", "other": "#e6e6e6", "missing": "#ffffff"}
     text = [[cells[c][r][0].replace("✓", "pass").replace("✗", "fail") for r in revs] for c in claims]
     fill = [[colors[cells[c][r][1]] for r in revs] for c in claims]
     fig, ax = plt.subplots(figsize=(1.6 + 1.25 * max(len(revs), 1) + 2.6, 0.5 + 0.45 * (len(claims) + 1)))
@@ -104,11 +122,15 @@ def throughput_markdown(ledger: Ledger) -> str:
     return "\n".join(lines)
 
 
-def computed_status(repo: Repo, r: Result | None) -> str:
+def computed_status(repo: Repo, r: Result | None, ledger: Ledger | None = None) -> str:
     if r is None:
         return "stale"
     if r.status != "ok":
         return r.status
+    if repo.claims[r.claim].expect is None:
+        return "measured"
+    if ledger is not None and gated_by(repo, ledger, r.claim, r.revision):
+        return "gated"
     return "verified" if evaluate(repo.claims[r.claim].expect, r.value) else "not holding"
 
 
@@ -116,7 +138,7 @@ def status_report(repo: Repo, ledger: Ledger, revisions: list[str] | None = None
     pairs = [(c, rev) for c in sorted(repo.claims)
              for rev in (revisions or [repo.claims[c].revision])]
     rows = {p: current_row(repo, ledger, *p) for p in pairs}
-    by_status = Counter(computed_status(repo, rows[p]) for p in pairs)
+    by_status = Counter(computed_status(repo, rows[p], ledger) for p in pairs)
     by_code = Counter(repo.claims[c].evidence for c in repo.claims)
     lines = ["status:   " + "  ".join(f"{k}={v}" for k, v in sorted(by_status.items())),
              "evidence: " + "  ".join(f"{k}={v}" for k, v in sorted(by_code.items()))]

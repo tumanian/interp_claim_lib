@@ -89,21 +89,24 @@ def test_verify_rerun_naive_and_determinism(tmp_path):
     assert naive_passes == pytest.approx(4)  # 3 clean passes (one per claim) + 1 intervention
 
 
-def test_failing_parent_blocks_dependent(tmp_path, monkeypatch):
+def test_failing_parent_gates_dependent(tmp_path):
+    """A parent that does not hold still binds: the dependent runs and records its value,
+    and the gate is derived on read from the parent's current expect."""
+    from claimci.report import computed_status, current_row, gated_by
     root = copy_repo(tmp_path)
     set_expect(root, "mech.induction_head", 0.99)
-    calls = []
-    real = induction.ablate_head_loss_delta
-    monkeypatch.setattr(induction, "ablate_head_loss_delta", lambda *a, **k: calls.append(1) or real(*a, **k))
     _, res = run(root)
     rows = by_id(res)
     assert rows["mech.induction_head"].status == "ok" and rows["mech.induction_head"].holds is False
     causal = rows["causal.induction_head_ablation"]
-    print(f"\n{causal.status}: {causal.reason}")
-    assert causal.status == "blocked" and "mech.induction_head" in causal.reason
-    assert calls == []
-    assert sum(r.cost["forward_passes"] for r in res) == pytest.approx(1)
-
+    assert causal.status == "ok" and causal.value is not None
+    repo = load_repo(root)
+    led = Ledger.for_repo(repo)
+    assert gated_by(repo, led, "causal.induction_head_ablation", "main") == ["mech.induction_head"]
+    assert computed_status(repo, current_row(repo, led, "causal.induction_head_ablation", "main"), led) == "gated"
+    set_expect(root, "mech.induction_head", 0.0)   # lowering the parent's threshold ungates, no rerun
+    repo = load_repo(root)
+    assert gated_by(repo, led, "causal.induction_head_ablation", "main") == []
 
 def test_raising_experiment_records_error(tmp_path, monkeypatch):
     def boom(*a, **k):
@@ -184,15 +187,18 @@ def test_promote_without_stated_value_uses_expect(tmp_path):
     assert all(r.reproduction["basis"] == "supplemented_expect" for r in rows)
 
 
-def test_blocked_group_skips_the_shared_pass(tmp_path):
+def test_errored_parent_blocks_and_gated_rerun_is_a_ledger_hit(tmp_path, monkeypatch):
     root = copy_repo(tmp_path)
-    set_expect(root, "mech.prev_token_head", 0.99)   # fails on random weights: both dependents blocked
+    set_expect(root, "mech.prev_token_head", 0.99)   # does not hold: dependents run, gated on read
     _, first = run(root)
-    assert [r.status for r in first] == ["ok", "blocked", "blocked"]
-    _, again = run(root)   # parent is a ledger hit; dependents are blocked again without a model pass
-    assert [r.status for r in again] == ["blocked", "blocked"]
-    assert sum(r.cost["forward_passes"] for r in again) == 0
-
+    assert [r.status for r in first] == ["ok", "ok", "ok"]
+    _, again = run(root)   # every row is ok, so the rerun is all ledger hits
+    assert again == []
+    root2 = copy_repo(tmp_path / "b")
+    monkeypatch.setattr(induction, "prev_token_score", lambda acts: 1 / 0)
+    _, res = run(root2)    # a parent that errors has no bindings: dependents are blocked, no value
+    assert [r.status for r in res] == ["error", "blocked", "blocked"]
+    assert all(r.value is None for r in res[1:])
 
 def test_raising_intervention_still_counts_its_pass(tmp_path, monkeypatch):
     real = induction.ablate_head_loss_delta

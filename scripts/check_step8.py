@@ -11,7 +11,7 @@ wall = int(sys.argv[2])
 repo = load_repo(Path(__file__).resolve().parents[1])
 ledger = Ledger.for_repo(repo)
 ids = repo.questions["q.induction_formation"].claims
-status = {c: [computed_status(repo, current_row(repo, ledger, c, r)) for r in revs] for c in ids}
+status = {c: [computed_status(repo, current_row(repo, ledger, c, r), ledger) for r in revs] for c in ids}
 print("\nraw values:")
 for c in ids:
     vals = [current_row(repo, ledger, c, r) for r in revs]
