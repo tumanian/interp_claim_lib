@@ -1,27 +1,26 @@
-"""Ingest: turn a paper or post into `kind: source` claims, each with the source's own tests.
+"""Extraction, shared by every source: findings from where the source states them, then each
+finding's tests from where its evidence is, then mechanical checks, then claims.
 
-Two Claude calls. Claims come from the abstract (for a post, its whole text), where authors
-state what they found. Then, for each claim, the body is read for the experiments the source
-offers as evidence: what was done, where, on which models and data, with which metric and
-numbers. Everything checkable is checked here without a model: each quote must appear in the
-text it was taken from, and each stated number in the body. Claims land as `proposed`,
-machine-made (`assigned_by: agent:ingest`) and unreviewed, with the check results.
+Two Claude calls per source (Sonnet at medium effort). Everything checkable is checked without a
+model: each finding's quote must appear in the text it was taken from (the Document's claims_text),
+each test's quote and stated numbers in the body. Claims land as `proposed`, machine-made
+(`assigned_by: agent:ingest`) and unreviewed, with the check results. The schemas below shape
+Claude's output only; what is stored is mapped onto claimci/source_tests.py explicitly.
 """
 from __future__ import annotations
 
-import html
 import json
 import re
-import urllib.request
-from html.parser import HTMLParser
 from pathlib import Path
 
 import yaml
 
+from ..source_tests import EVIDENCE as SOURCE_EVIDENCE, SourceTest
+from .document import Document, normalize
+
 MODEL = "claude-sonnet-5-5"  # extraction: structured, and every quote/number is checked after
 EFFORT = "medium"
-EVIDENCE = ["observation", "probe", "ablation_or_patching", "steering", "causal_abstraction",
-            "derivation", "benchmark", "qualitative_examples", "none"]
+EVIDENCE = list(SOURCE_EVIDENCE)
 _VALUE = {"type": "object", "additionalProperties": False, "required": ["name", "value", "context"],
           "properties": {"name": {"type": "string"}, "value": {"type": "string"}, "context": {"type": "string"}}}
 
@@ -66,14 +65,14 @@ TESTS_SCHEMA = {
     },
 }
 
-CLAIMS_PROMPT = """You are extracting claims from an interpretability {kind} for a claim database that research agents reason over. Authors state their findings in the abstract; extract each distinct finding there as one claim (typically 3-8 for a paper, 1-3 for a post). Keep the authors' strength of language in `hedge` ("argues" for conclusions drawn from other findings). `quote` must be copied character for character from the text below; it will be checked.
+CLAIMS_PROMPT = """You are extracting claims from an interpretability {kind} for a claim database that research agents reason over. Authors state their findings in the {heading}; extract each distinct finding there as one claim (typically 3-8 for a paper, 1-3 for a post). Keep the authors' strength of language in `hedge` ("argues" for conclusions drawn from other findings). `quote` must be copied character for character from the text below; it will be checked.
 
 {ref} — {heading}:
 <text>
 {text}
 </text>"""
 
-TESTS_PROMPT = """These claims were extracted from the abstract of {ref}. For each claim, find in the body the experiments the authors offer as evidence for it, and describe each concretely enough that someone could rerun it: what was done, the models, the data, the metric, where it is (section / figure / table / appendix), and every number the authors report for it, copied exactly as written. `quote` must be copied character for character from the body; it will be checked. If the body offers no experiment for a claim, return an empty list for it. Also list the code repositories, datasets and model identifiers the source names, and separately (own_code) the \
+TESTS_PROMPT = """These claims were extracted from the {heading} of {ref}. For each claim, find in the body the experiments the authors offer as evidence for it, and describe each concretely enough that someone could rerun it: what was done, the models, the data, the metric, where it is (section / figure / table / appendix), and every number the authors report for it, copied exactly as written. `quote` must be copied character for character from the body; it will be checked. If the body offers no experiment for a claim, return an empty list for it. Also list the code repositories, datasets and model identifiers the source names, and separately (own_code) the \
 repositories the authors release for this work.
 
 CLAIMS:
@@ -83,61 +82,6 @@ BODY:
 <body>
 {body}
 </body>"""
-
-class _Text(HTMLParser):
-    """arXiv HTML (LaTeXML) to plain text, headings marked with '## '."""
-    SKIP = {"script", "style", "nav", "header", "footer", "button"}
-
-    def __init__(self):
-        super().__init__()
-        self.out, self.skip = [], 0
-
-    def handle_starttag(self, tag, attrs):
-        if tag in self.SKIP:
-            self.skip += 1
-        elif tag in ("h1", "h2", "h3", "h4", "h5"):
-            self.out.append("\n\n## ")
-        elif tag in ("p", "div", "li", "tr", "br", "figcaption"):
-            self.out.append("\n")
-        elif tag == "math":
-            alt = dict(attrs).get("alttext")
-            if alt:
-                self.out.append(f" {alt} ")
-            self.skip += 1
-
-    def handle_endtag(self, tag):
-        if tag in self.SKIP or tag == "math":
-            self.skip = max(0, self.skip - 1)
-
-    def handle_data(self, data):
-        if not self.skip:
-            self.out.append(data)
-
-
-def fetch_arxiv(arxiv_id: str) -> tuple[str, str]:
-    """(text, ref) for an arXiv id, from the HTML rendering."""
-    arxiv_id = re.sub(r"^(arxiv:|https?://arxiv\.org/(abs|html|pdf)/)", "", arxiv_id, flags=re.I).strip("/")
-    with urllib.request.urlopen(f"https://arxiv.org/html/{arxiv_id}", timeout=60) as r:
-        p = _Text()
-        p.feed(r.read().decode("utf-8", "replace"))
-    text = re.sub(r"[ \t]+", " ", html.unescape("".join(p.out)))
-    return re.sub(r"\n\s*\n+", "\n\n", text).strip(), f"arXiv:{re.sub(r'v[0-9]+$', '', arxiv_id)}"
-
-
-def _norm(s: str) -> str:
-    return re.sub(r"\s+", " ", s.replace("’", "'").replace("“", '"').replace("”", '"')).strip().lower()
-
-
-def fetch_abstract(arxiv_id: str) -> tuple[str, str, list[str]]:
-    """(abstract, first-version date, authors) from the arXiv API, not from the model."""
-    arxiv_id = re.sub(r"^(arxiv:|https?://arxiv\.org/(abs|html|pdf)/)", "", arxiv_id, flags=re.I).strip("/")
-    with urllib.request.urlopen(f"https://export.arxiv.org/api/query?id_list={arxiv_id}", timeout=60) as r:
-        xml = r.read().decode("utf-8", "replace")
-    m = re.search(r"<entry>.*?<summary>(.*?)</summary>", xml, re.S)
-    d = re.search(r"<entry>.*?<published>(\d{4}-\d{2}-\d{2})", xml, re.S)
-    entry = xml.split("<entry>", 1)[-1]
-    authors = [html.unescape(a.strip()) for a in re.findall(r"<author>\s*<name>(.*?)</name>", entry, re.S)]
-    return (re.sub(r"\s+", " ", html.unescape(m.group(1))).strip() if m else "", d.group(1) if d else "", authors)
 
 
 def _call(prompt: str, schema: dict, client=None) -> dict:
@@ -156,26 +100,34 @@ def _call(prompt: str, schema: dict, client=None) -> dict:
     return json.loads(next(b.text for b in msg.content if b.type == "text"))
 
 
-def extract(abstract: str, body: str, kind: str, ref: str, client=None) -> dict:
-    """Claims from the abstract, then each claim's tests from the body."""
-    heading = "abstract" if kind == "paper" else "full text"
-    out = _call(CLAIMS_PROMPT.format(kind=kind, ref=ref, heading=heading, text=abstract), CLAIMS_SCHEMA, client)
+HEADINGS = {"paper": "abstract", "blog": "summary", "post": "full text"}
+
+
+def extract(doc: Document, client=None) -> dict:
+    """Findings from doc.claims_text, then each finding's tests from doc.body."""
+    heading = (doc.claims_locator or HEADINGS.get(doc.kind, "text")).lower()
+    out = _call(CLAIMS_PROMPT.format(kind=doc.kind, ref=doc.ref, heading=heading, text=doc.claims_text), CLAIMS_SCHEMA, client)
     claims = [{"slug": c["slug"], "statement": c["statement"]} for c in out["claims"]]
-    tests = _call(TESTS_PROMPT.format(ref=ref, claims=json.dumps(claims, indent=1), body=body), TESTS_SCHEMA, client)
+    tests = _call(TESTS_PROMPT.format(ref=doc.ref, heading=heading, claims=json.dumps(claims, indent=1), body=doc.body), TESTS_SCHEMA, client)
     by_slug = {t["slug"]: t for t in tests["claims"]}
     for c in out["claims"]:
         t = by_slug.get(c["slug"], {"scope": "", "tests": []})
         c["scope"], c["tests"] = t["scope"], t["tests"]
     out["references"] = tests["references"]
+    for k in ("title", "date"):         # metadata from the source itself wins over the model's reading
+        if getattr(doc, k):
+            out[k] = getattr(doc, k)
+    if doc.authors:
+        out["authors"] = doc.authors
     return out
 
 
-def check(abstract: str, body: str, claim: dict) -> dict:
-    """Quote in the abstract; per test, quote and each stated value in the body."""
-    a, b = _norm(abstract), _norm(body)
-    return {"quote_found": bool(claim["quote"]) and _norm(claim["quote"]) in a,
-            "tests": [{"quote_found": bool(t["quote"]) and _norm(t["quote"]) in b,
-                       "values_found": {v["value"]: _norm(v["value"]) in b for v in t["stated_values"]}}
+def check(doc: Document, claim: dict) -> dict:
+    """The finding's quote in claims_text; per test, its quote and each stated value in the body."""
+    a, b = normalize(doc.claims_text), normalize(doc.body)
+    return {"quote_found": bool(claim["quote"]) and normalize(claim["quote"]) in a,
+            "tests": [{"quote_found": bool(t["quote"]) and normalize(t["quote"]) in b,
+                       "values_found": {v["value"]: normalize(v["value"]) in b for v in t["stated_values"]}}
                       for t in claim.get("tests", [])]}
 
 
@@ -184,28 +136,29 @@ EVIDENCE_MAP = {"observation": "IOB", "probe": "ICP", "ablation_or_patching": "I
 STRENGTH = ["IOB", "ICP", "IMP", "ISS", "ICA"]
 
 
-def to_claims(out: dict, abstract: str, body: str, kind: str, ref: str, prefix: str, question: str | None) -> list[dict]:
+def to_claims(out: dict, doc: Document, prefix: str, question: str | None) -> list[dict]:
     claims = []
     for c in out["claims"]:
-        codes = [EVIDENCE_MAP[t["evidence"]] for t in c["tests"] if t["evidence"] in EVIDENCE_MAP]
-        src = {"kind": kind, "ref": ref, "title": out["title"], "locator": "Abstract" if kind == "paper" else "post",
-               "scope": c["scope"]}
-        if out["date"]:
+        tests = [SourceTest.from_dict(t).to_dict() for t in c["tests"]]   # the stored shape, not the prompt's
+        codes = [EVIDENCE_MAP[t["evidence"]] for t in tests if t["evidence"] in EVIDENCE_MAP]
+        src = {"kind": doc.kind, "ref": doc.ref, "title": out.get("title") or doc.title, "scope": c["scope"]}
+        if doc.claims_locator:
+            src["locator"] = doc.claims_locator
+        if out.get("date"):
             src["date"] = out["date"]
-        if (out.get("references") or {}).get("own_code"):  # the authors' own release, not everything they cite
-            src["code"] = out["references"]["own_code"]
+        own = doc.own_code or (out.get("references") or {}).get("own_code") or []
+        if own:  # the authors' own release, not everything they cite
+            src["code"] = own
         if codes:
             src["stated_evidence"] = max(codes, key=STRENGTH.index)
-        d = {"id": f"src.{prefix}.{c['slug']}", "kind": "source", "evidence": "TAS" if kind == "paper" else "NAS",
+        d = {"id": f"src.{prefix}.{c['slug']}", "kind": "source", "evidence": "TAS" if doc.claims_locator else "NAS",
              "status": "proposed", "hedge": c["hedge"], "statement": c["statement"], "quote": c["quote"]}
         if question:
             d["question"] = question
-        if c["tests"]:
-            d["stated"] = {"tests": c["tests"]}
-        if kind != "paper":
-            del src["locator"]
+        if tests:
+            d["stated"] = {"tests": tests}
         d["provenance"] = {"source": src, "assigned_by": f"agent:ingest ({MODEL})", "reviewed": False,
-                           "checks": check(abstract, body, c)}
+                           "checks": check(doc, c)}
         claims.append(d)
     return claims
 

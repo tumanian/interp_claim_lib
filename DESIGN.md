@@ -883,7 +883,7 @@ expand-specific code; neuron-steering claims are refused with a reason instead o
 templates stop being called by the rest of the system. Depends on the registry (section 14); the
 parameter-kind declarations can live beside the experiment functions until then.
 
-## 18. Ingest: source adapters, one extraction pipeline, a stored shape of its own (agreed, not built)
+## 18. Ingest: source adapters, one extraction pipeline, a stored shape of its own (built: arXiv, web, post; not yet: PDF, GitHub)
 
 Today `ingest.py` is arXiv-specific (API for abstract, authors and date; HTML for the body), and
 anything else is "a URL plus pasted text" treated as a post whose whole text is both claims and

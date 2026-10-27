@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 
-from .ingest import EFFORT, MODEL
+from .sources.extract import EFFORT, MODEL
 from .templates import CATALOG, PACKS
 
 SCHEMA = {

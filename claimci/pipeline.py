@@ -9,7 +9,9 @@ from pathlib import Path
 
 import yaml
 
-from . import ingest, match, templates
+from . import match, templates
+from .sources import route
+from .sources import extract as ingest
 from .loader import load_repo
 from .validate import validate
 
@@ -56,19 +58,12 @@ def match_source(root: Path, ref: str, log=print) -> dict:
 def ingest_source(root: Path, source: str, text: str | None = None, question: str | None = None,
                   do_match: bool = True, log=print) -> dict:
     root = Path(root)
-    if text is not None:  # a post: its whole text is both where claims and evidence are stated
-        kind, ref, abstract, body = "post", source, text, text
-    else:
-        log(f"fetching {source}")
-        body, ref = ingest.fetch_arxiv(source)
-        (abstract, date, authors), kind = ingest.fetch_abstract(source), "paper"
-    log(f"extracting claims from the {'abstract' if kind == 'paper' else 'post'} with {ingest.MODEL}, "
-        f"then each claim's tests from the body ({len(body):,} characters)")
-    out = ingest.extract(abstract, body, kind, ref)
-    if kind == "paper" and date:
-        out["date"] = date  # from arXiv, not from the model
-    if kind == "paper" and authors:
-        out["authors"] = authors
+    log(f"reading {source}")
+    doc = route(source, text)
+    log(f"extracting findings from the {doc.claims_locator or 'text'} with {ingest.MODEL}, then each finding's tests "
+        f"from the body ({len(doc.body):,} characters)")
+    out = ingest.extract(doc)
+    ref, kind = doc.ref, doc.kind
     prefix = ingest.prefix_for(out, ref)
     if question is None:
         question = f"q.{prefix}"
@@ -76,7 +71,7 @@ def ingest_source(root: Path, source: str, text: str | None = None, question: st
         if not qp.exists():
             qp.write_text(yaml.safe_dump({"id": question, "text": f"What does {out['title']} claim, and does it hold?",
                                           "status": "open", "claims": []}, sort_keys=False))
-    claims = ingest.to_claims(out, abstract, body, kind, ref, prefix, question)
+    claims = ingest.to_claims(out, doc, prefix, question)
     log(f"{out['title']}: {len(claims)} claims")
     repo = load_repo(root)
     existing = {k: c for k, c in repo.claims.items() if c.is_source}

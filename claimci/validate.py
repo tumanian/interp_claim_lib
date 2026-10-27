@@ -143,6 +143,9 @@ def _source_errors(repo: Repo, c) -> list[str]:
         out.append(f"claim {c.id}: hedge must be one of {sorted(HEDGES)}, got {c.hedge!r}")
     if not (c.provenance.get("source") or {}).get("ref"):
         out.append(f"claim {c.id}: a source claim needs provenance.source.ref")
+    if "tests" in (c.stated or {}):
+        from .source_tests import errors as test_errors
+        out += [f"claim {c.id}: {e}" for e in test_errors(c.stated["tests"])]
     if c.question is not None and c.question not in repo.questions:
         out.append(f"claim {c.id}: question {c.question!r} not found")
     return out

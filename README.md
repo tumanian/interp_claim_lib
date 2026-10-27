@@ -109,7 +109,8 @@ claimci validate && claimci plan --revisions main
 
 ```
 claimci ingest arXiv:2507.21509                   # findings from the abstract, the paper's tests from the body; matched to templates
-claimci ingest https://x.com/... --text-file post.txt   # a post: its URL and its text
+claimci ingest https://transformer-circuits.pub/...   # a blog or web page (TL;DR / summary section first)
+claimci ingest https://x.com/... --text-file post.txt   # a post that cannot be fetched: its URL and its text
 claimci match arXiv:2312.06681                    # re-match an ingested source (no re-extraction)
 claimci expand arXiv:2312.06681 --models Qwen/Qwen2.5-7B-Instruct,Qwen/Qwen3.5-4B
 claimci validate                                  # typing rules, provenance, DAG, dataset hashes; no model loads
