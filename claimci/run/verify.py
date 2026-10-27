@@ -25,7 +25,7 @@ def verify(repo, backend, revisions=None, claims=None, mode="shared", force=Fals
         for r in results:
             c = repo.claims[r.claim]
             rep = c.reproduction(r.value) if r.status == "ok" else None
-            if not rep or c.status != "proposed" or r.revision != c.revision:
+            if not rep or c.status not in ("proposed", "unreproduced") or r.revision != c.revision:
                 continue
             earned = repo.earned_code(r.claim)
             reproduced = rep["within_tolerance"] and not gated_by(repo, runner.ledger, r.claim, r.revision)

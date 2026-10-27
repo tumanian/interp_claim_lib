@@ -1102,3 +1102,12 @@ noise for sampled ones) on the GPU box before the old code is deleted.
    remaining mechanics are a few lines.
 
 Order: 3 (Inspect, which removes the most code), then 2 with section 20's `Expect`; 1 when a claim needs NDIF.
+
+## 22. Claim status as a state machine (built)
+
+A claim file stores only decisions: `proposed`, `verified`, `unreproduced`, `refuted`
+(claimci/schema/lifecycle.py). A verification run may move proposed or unreproduced to verified,
+and proposed to unreproduced; only a person refutes or withdraws a refutation. Promotion goes
+through the table, so a run cannot refute or demote. What a reader sees beyond that (measured,
+stale, not holding, gated) is derived from the ledger and never written; validation rejects it in
+a claim file. Validation itself is small rule tables in claimci/checks/ (section 15's layering).
