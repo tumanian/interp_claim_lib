@@ -24,7 +24,7 @@ from ..run import operations as ops
 from ..run.formats import format_prompt
 from ..run.interventions import add_vector, random_like
 from ..run.readouts import ab_matching, balanced, balanced_interval, letter
-from ..run.stats import bootstrap, wilson
+from ..run.stats import auroc, bootstrap, wilson
 
 JUDGE_MODEL, JUDGE_EFFORT = "claude-haiku-5-5", "low"
 
@@ -184,3 +184,20 @@ def steer_persona(ctx, direction: Input, block: Layer, coef: float, pack: Data, 
                             "coef": coef, "block": block, "random_seed": random_seed, "n": len(steered)},
                    samples=[a.sample(condition="steered") for a in steered]
                    + [a.sample(condition="unsteered") for a in unsteered])
+
+
+@experiment("persona.monitor")
+def monitor_persona(ctx, direction: Input, block: Layer, pack: Data):
+    """Deployment-time monitoring: the projection onto the persona vector at the last prompt token,
+    before the model answers, separates prompts whose system prompt elicits the trait from ones that
+    suppress it. Held-out questions (not those that built the vector); value: AUROC."""
+    u = direction.to(torch.float64) / direction.norm()
+    pairs = [(f"You are {a_or_an(pack.trait)} {pack.trait} assistant. {i['pos']}", f"You are a helpful assistant. {i['neg']}")
+             for i in pack.instructions]
+    projected = lambda system: ops.block_outputs(ctx.handle, [format_prompt(ctx.handle, q, system=system(p))
+                                                              for p in pairs for q in pack.eval_questions], block, -1) @ u
+    eliciting, suppressing = projected(lambda p: p[0]), projected(lambda p: p[1])
+    ctx.count(2)
+    return Outcome(value=auroc(eliciting, suppressing), interval=bootstrap(auroc, eliciting, suppressing),
+                   details={"block": block, "n": len(eliciting) + len(suppressing),
+                            "mean_eliciting": round(float(eliciting.mean()), 3), "mean_suppressing": round(float(suppressing.mean()), 3)})
