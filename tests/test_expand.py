@@ -7,7 +7,7 @@ from claimci.sources import templates
 from claimci.schema.loader import load_repo
 from claimci.checks import validate
 
-SRC = {"id": "src.p.finding", "kind": "source", "evidence": "TAS", "status": "proposed", "statement": "s",
+SRC = {"id": "src.p.finding", "kind": "finding", "evidence": "TAS", "status": "proposed", "statement": "s",
        "question": "q.p", "provenance": {"source": {"kind": "paper", "ref": "arXiv:1", "locator": "Abstract"}}}
 LAYERS = {"meta-llama/Llama-2-7b-chat-hf": 32, "Qwen/Qwen2.5-7B-Instruct": 28, "Qwen/Qwen3.5-4B": 32}
 

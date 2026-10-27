@@ -30,17 +30,17 @@ def instantiate(source: dict, m: dict) -> tuple[list[dict], str | None]:
 
 
 def match_source(root: Path, ref: str, log=print) -> dict:
-    """Run matching for source claims already in the base (no re-extraction) and write the tests
+    """Run matching for findings already in the base (no re-extraction) and write the tests
     their templates produce. Existing claims are never overwritten."""
     root = Path(root)
     repo = load_repo(root)
-    mine = {k: c for k, c in repo.claims.items() if c.is_source and (c.provenance.get("source") or {}).get("ref") == ref}
+    mine = {k: c for k, c in repo.claims.items() if c.is_finding and (c.provenance.get("source") or {}).get("ref") == ref}
     if not mine:
-        raise KeyError(f"no source claims for {ref}")
-    others = {k: c for k, c in repo.claims.items() if c.is_source and k not in mine}
+        raise KeyError(f"no findings for {ref}")
+    others = {k: c for k, c in repo.claims.items() if c.is_finding and k not in mine}
     claims = [{"id": k, "statement": c.statement, "quote": c.quote, "stated": c.stated, "question": c.question}
               for k, c in sorted(mine.items())]
-    log(f"matching {len(claims)} source claims of {ref} against templates and {len(others)} other source claims")
+    log(f"matching {len(claims)} findings of {ref} against templates and {len(others)} other findings")
     matches = match.match(claims, others, ref)
     out, made = [], []
     for d in claims:
@@ -75,10 +75,10 @@ def ingest_source(root: Path, source: str, text: str | None = None, question: st
     claims = ingest.to_claims(out, doc, prefix, question)
     log(f"{out['title']}: {len(claims)} claims")
     repo = load_repo(root)
-    existing = {k: c for k, c in repo.claims.items() if c.is_source}
+    existing = {k: c for k, c in repo.claims.items() if c.is_finding}
     matches = {}
     if do_match and claims:
-        log("matching against existing source claims and test templates")
+        log("matching against existing findings and test templates")
         matches = match.match(claims, existing, ref)
     summary = {"title": out["title"], "ref": ref, "kind": kind, "references": out["references"],
                "question": question, "claims": []}
@@ -101,6 +101,6 @@ def ingest_source(root: Path, source: str, text: str | None = None, question: st
     tests_written = templates.write_claims(instantiated, root / "claims", root / "questions")
     errors = validate(load_repo(root))
     summary.update(written=written, skipped=skipped, tests_written=tests_written, errors=errors)
-    log(f"wrote {len(written)} source claims and {len(tests_written)} tests"
+    log(f"wrote {len(written)} findings and {len(tests_written)} tests"
         + (f"; validation errors: {errors}" if errors else ""))
     return summary

@@ -1,8 +1,9 @@
 id: src.tigges2023.ablation_accuracy_loss
-kind: source
+kind: finding
 evidence: TAS
 status: proposed
 hedge: shows
+level: annotation
 statement: In SST zero-shot classification, ablating the sentiment direction removes 76% of above-chance
   accuracy, and 36% (nearly half of that loss) comes from ablating the summarized direction only at comma
   positions.

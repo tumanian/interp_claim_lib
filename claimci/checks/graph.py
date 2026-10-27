@@ -16,9 +16,9 @@ def cycles(repo) -> list[str]:
     return []
 
 
-QUESTION = [   # a source claim may have no question; a test or measurement must
+QUESTION = [   # a finding may have no question; a test or measurement must
     Rule("question {c.question!r} not found",
-         when=lambda c, **_: not c.is_source or c.question is not None,
+         when=lambda c, **_: not c.is_finding or c.question is not None,
          ok=lambda c, repo, **_: c.question in repo.questions),
 ]
 
@@ -26,9 +26,9 @@ REFERENCES = QUESTION + [
     Rule("control_for must be on a test and name an existing claim, got {c.control_for!r}",
          when=lambda c, **_: c.control_for is not None,
          ok=lambda c, repo, **_: c.control_for in repo.claims and c.kind == "test"),
-    Rule("about must name a source claim, got {c.about!r}",
+    Rule("about must name a finding, got {c.about!r}",
          when=lambda c, **_: c.about is not None,
-         ok=lambda c, repo, **_: c.about in repo.claims and repo.claims[c.about].is_source),
+         ok=lambda c, repo, **_: c.about in repo.claims and repo.claims[c.about].is_finding),
 ]
 
 INPUT = [   # one named input `name: <claim_id>.<export>`; the first broken rule is reported

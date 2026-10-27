@@ -4,8 +4,9 @@ from __future__ import annotations
 from ..schema.claim import OPS
 from .rules import Rule
 
-KINDS = {"source", "test", "measurement"}
+KINDS = {"finding", "test", "measurement"}
 HEDGES = {"shows", "suggests", "speculates", "argues"}
+LEVELS = {"annotation", "mechanism"}
 
 
 def number(x) -> bool:
@@ -27,8 +28,9 @@ EVERY_CLAIM = [
     Rule(f"kind must be one of {sorted(KINDS)}, got {{c.kind!r}}", ok=lambda c, **_: c.kind in KINDS),
 ]
 
-SOURCE = [
+FINDING = [
     Rule(f"hedge must be one of {sorted(HEDGES)}, got {{c.hedge!r}}", ok=lambda c, **_: c.hedge is None or c.hedge in HEDGES),
+    Rule(f"level must be one of {sorted(LEVELS)}, got {{c.level!r}}", ok=lambda c, **_: c.level is None or c.level in LEVELS),
 ]
 
 RUN = [   # tests and measurements

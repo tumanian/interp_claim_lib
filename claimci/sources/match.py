@@ -1,7 +1,7 @@
-"""Match newly ingested source claims against the base: duplicates and test templates.
+"""Match newly ingested findings against the base: duplicates and test templates.
 
 One Claude call per ingest. For each new claim it answers two questions:
-  same_as   - is this the same assertion as a source claim already in the base? Then the
+  same_as   - is this the same assertion as a finding already in the base? Then the
               new one is not written; the existing claim (and its tests) is reported instead.
   template  - if not, does a test template fit, with every parameter stated by the source?
               Then the template's tests are instantiated. Otherwise the claim is a gap.
@@ -33,7 +33,7 @@ SCHEMA = {
             "why": {"type": "string", "description": "one sentence"}}}}},
 }
 
-PROMPT = """New source claims were just extracted from {ref}. For each one decide:
+PROMPT = """New findings were just extracted from {ref}. For each one decide:
 
 1. same_as: the id of an EXISTING source claim that makes the same assertion about the same \
 thing (same source or another source making the identical claim). Leave empty if none; a related \

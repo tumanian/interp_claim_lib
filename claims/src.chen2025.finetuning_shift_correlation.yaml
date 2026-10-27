@@ -1,8 +1,9 @@
 id: src.chen2025.finetuning_shift_correlation
-kind: source
+kind: finding
 evidence: TAS
 status: proposed
 hedge: shows
+level: annotation
 statement: Both intended and unintended personality changes after finetuning are strongly correlated with
   shifts along the relevant persona vectors.
 quote: both intended and unintended personality changes after finetuning are strongly correlated with

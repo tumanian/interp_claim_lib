@@ -1,4 +1,4 @@
-"""The stored shape of the tests a source offers for a finding (`stated.tests` on a source claim).
+"""The stored shape of the tests a source offers for a finding (`stated.tests` on a finding).
 
 Defined here, not by the extraction prompt: extraction maps Claude's output onto this shape
 (claimci/sources/extract.py), validate checks it, and the two can change independently.

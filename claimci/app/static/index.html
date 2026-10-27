@@ -266,7 +266,7 @@ function verification(a) {
       <span style="font-family:var(--mono)"> ${fmt(c.results.at(-1)?.value)}</span>${readouts(c.results.at(-1))}</div>`).join("");
   return `<details class="ver"><summary>
       <span class="ver-st"><span class="k">${esc(a.kind_label)}</span>${esc(a.statement)}</span>
-      <span class="ver-res">${a.expansion ? `<span class="pill accent">beyond the paper</span> ` : ""}${a.post_hoc ? `<span class="pill warn">post hoc</span> ` : ""}${r?.samples ? `<span class="pill accent">${r.samples_n || ""} samples</span> ` : ""}${val(r)} ${verdict(a.verdict)}</span><span class="chev">›</span></summary>
+      <span class="ver-res">${a.expansion ? `<span class="pill accent" title="On a model the source did not test (expanded from ${esc(a.expansion)})">expanded</span> ` : `<span class="pill ok" title="On the model the source used">original</span> `}${a.post_hoc ? `<span class="pill warn">post hoc</span> ` : ""}${r?.samples ? `<span class="pill accent">${r.samples_n || ""} samples</span> ` : ""}${val(r)} ${verdict(a.verdict)}</span><span class="chev">›</span></summary>
     <div class="ver-body">
       <div class="meta">${ev(a.evidence_label)} <span>on ${esc(a.model)}</span> ${a.judged ? `<span class="pill">judged by ${esc(a.judged)}</span>` : ""}
         ${a.expansion ? `<span class="pill accent" title="Expanded from ${esc(a.expansion)}">not in the paper</span>` : ""}
@@ -294,7 +294,7 @@ function finding(f) {
         ${(f.expansions || []).length ? `<span class="expn">Beyond the paper: ${f.expansions.map(expansionText).map(esc).join(" · ")}</span>` : ""}</span><span class="chev">›</span></summary>
     <div class="body">
       ${f.quote ? `<p class="quote">“${esc(f.quote)}”</p>` : ""}
-      <div class="meta">${ev(f.evidence_label)} <span>${esc(f.source.locator || "")}</span> <span>${esc(f.hedge || "")}</span>
+      <div class="meta">${ev(f.evidence_label)} <span>${esc(f.source.locator || "")}</span> <span>${esc(f.hedge || "")}</span>${f.level ? ` <span class="pill">${esc(f.level)}</span>` : ""}
         ${f.checks ? `<span class="pill ${f.checks.quote_found ? "ok" : "bad"}">quote ${f.checks.quote_found ? "found in source" : "not found"}</span>` : ""}
         ${f.machine_made ? `<span class="pill warn">extracted by a model, unreviewed</span>` : ""}</div>
       ${paper ? `<div class="sub-h">What the authors did (${tests.length})</div>${paper}` : ""}

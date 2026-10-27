@@ -1,8 +1,9 @@
 id: src.chen2025.shift_mitigation_prevention
-kind: source
+kind: finding
 evidence: TAS
 status: proposed
 hedge: shows
+level: annotation
 statement: Personality shifts from finetuning can be mitigated with post-hoc intervention, or avoided
   with a new preventative steering method.
 quote: These shifts can be mitigated through post-hoc intervention, or avoided in the first place with

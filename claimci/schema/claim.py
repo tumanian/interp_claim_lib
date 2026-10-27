@@ -100,8 +100,9 @@ class Claim:
     cross_version: bool = False
     kind: str | None = None  # source | test | measurement (inferred when absent)
     about: str | None = None       # the source claim a test or measurement bears on
-    hedge: str | None = None       # source claims: shows | suggests | speculates | argues
-    quote: str | None = None       # source claims: verbatim span from the source
+    hedge: str | None = None       # findings: shows | suggests | speculates | argues
+    level: str | None = None       # findings: annotation (one object does something) | mechanism (how a computation works)
+    quote: str | None = None       # findings: verbatim span from the source
     stated: dict = field(default_factory=dict)  # values the source states (intervention, recipe, ...)
     control_for: str | None = None  # a control test: the claim whose effect it must not reproduce
     caveats: list = field(default_factory=list)  # [{binding, op, value, text}]: qualifies a verdict, never gates it
@@ -115,8 +116,8 @@ class Claim:
     entrypoint: str | None = None     # never stored in claim files
 
     @property
-    def is_source(self) -> bool:
-        return self.kind == "source"
+    def is_finding(self) -> bool:
+        return self.kind == "finding"
 
     @property
     def params(self) -> dict:

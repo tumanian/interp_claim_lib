@@ -1,8 +1,9 @@
 id: src.panickssery2023.effective_atop_finetuning_prompts
-kind: source
+kind: finding
 evidence: TAS
 status: proposed
 hedge: shows
+level: annotation
 statement: CAA remains effective over and on top of traditional methods such as finetuning and system
   prompt design.
 quote: is effective over and on top of traditional methods like finetuning and system prompt design

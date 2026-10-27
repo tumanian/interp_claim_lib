@@ -47,7 +47,7 @@ def overview(root: Path) -> dict:
     ledger = Ledger.for_repo(repo)
     sources: dict[str, dict] = {}
     for k, c in sorted(repo.claims.items()):
-        if not c.is_source:
+        if not c.is_finding:
             continue
         src = c.provenance.get("source") or {}
         s = sources.setdefault(src.get("ref", k), {"ref": src.get("ref", k), "kind": src.get("kind"),
@@ -74,9 +74,9 @@ def samples(root: Path, ref: str) -> list[dict]:
 def source_claims_to_verify(root: Path, ref: str) -> list[str]:
     """Every test and measurement in the questions of this source's claims."""
     repo = load_repo(root)
-    qs = {c.question for c in repo.claims.values() if c.is_source
+    qs = {c.question for c in repo.claims.values() if c.is_finding
           and (c.provenance.get("source") or {}).get("ref") == ref}
-    return sorted(k for k, c in repo.claims.items() if not c.is_source and c.question in qs)
+    return sorted(k for k, c in repo.claims.items() if not c.is_finding and c.question in qs)
 
 
 def start_job(kind: str, fn) -> str:

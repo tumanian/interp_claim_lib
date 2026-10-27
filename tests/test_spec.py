@@ -227,7 +227,7 @@ def test_unstated_expect_must_be_recorded_as_supplemented(repo_copy):
 # --- kinds: source / test / measurement ---------------------------------------
 
 def _source(cid, **kw):
-    d = {"id": cid, "kind": "source", "evidence": "NAS", "status": "proposed", "hedge": "shows",
+    d = {"id": cid, "kind": "finding", "evidence": "NAS", "status": "proposed", "hedge": "shows",
          "statement": "x", "quote": "x", "provenance": {"source": {"kind": "post", "ref": "https://example.org/p"}}}
     d.update(kw)
     return d
@@ -247,7 +247,7 @@ def test_source_claim_cannot_carry_a_threshold(repo_copy):
 
 def test_about_must_name_a_source(repo_copy):
     edit(repo_copy, "mech.induction_head", lambda d: d.update(about="mech.prev_token_head"))
-    _expect_failure(repo_copy, "mech.induction_head", "about must name a source claim")
+    _expect_failure(repo_copy, "mech.induction_head", "about must name a finding")
 
 
 def test_measurement_has_no_expect(repo_copy):

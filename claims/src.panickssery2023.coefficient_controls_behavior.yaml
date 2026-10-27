@@ -1,8 +1,9 @@
 id: src.panickssery2023.coefficient_controls_behavior
-kind: source
+kind: finding
 evidence: TAS
 status: proposed
 hedge: shows
+level: annotation
 statement: Adding steering vectors after the user's prompt with a positive or negative coefficient allows
   precise control over the degree of the targeted behavior.
 quote: allowing precise control over the degree of the targeted behavior

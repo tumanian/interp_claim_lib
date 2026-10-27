@@ -1,8 +1,9 @@
 id: src.panickssery2023.caa_alters_behavior
-kind: source
+kind: finding
 evidence: TAS
 status: proposed
 hedge: shows
+level: annotation
 statement: CAA significantly alters model behavior on Llama 2 Chat, as evaluated on multiple-choice behavioral
   datasets and open-ended generation tasks.
 quote: We demonstrate that CAA significantly alters model behavior

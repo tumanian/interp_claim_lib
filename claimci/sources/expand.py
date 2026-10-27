@@ -66,7 +66,7 @@ def default_opts(hf_model: str, like: dict) -> dict:
 def closures(repo, ref: str) -> list[tuple[str, list[str]]]:
     """(original model, claim ids) per source finding: the claims about it that were not themselves
     expansions, with everything they depend on and their controls."""
-    findings = {k for k, c in repo.claims.items() if c.is_source and (c.provenance.get("source") or {}).get("ref") == ref}
+    findings = {k for k, c in repo.claims.items() if c.is_finding and (c.provenance.get("source") or {}).get("ref") == ref}
     out = []
     for f in sorted(findings):
         roots = {k for k, c in repo.claims.items() if c.about == f and not c.provenance.get("expanded_from")}

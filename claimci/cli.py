@@ -89,7 +89,7 @@ def _load_or_fail(root):
     repo = load_repo(root)
     try:
         for cid in repo.claims:
-            if not repo.claims[cid].is_source:
+            if not repo.claims[cid].is_finding:
                 repo.claim_key(cid)
     except SpecError as e:
         raise SystemExit(f"error: {e}")
@@ -198,7 +198,7 @@ def cmd_card(args) -> int:
     else:
         out = cards.explain(repo, ledger, args.claim)
         if not out:
-            print(f"error: no source claims for {args.claim}", file=sys.stderr)
+            print(f"error: no findings for {args.claim}", file=sys.stderr)
             return 1
     print(json.dumps(out if args.cmd == "explain" else out[0], indent=1, default=str) if args.json
           else "\n\n".join(cards.render(d) for d in out))
@@ -245,7 +245,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("throughput", help="shared vs naive cost from the ledger")
     st = sub.add_parser("status", help="counts by status and evidence; stale claims and why")
     st.add_argument("--revisions", help="default: each claim's subject revision")
-    ig = sub.add_parser("ingest", help="extract source claims from a paper (arXiv id) or a post (URL + text)")
+    ig = sub.add_parser("ingest", help="extract findings from a paper (arXiv id) or a post (URL + text)")
     ig.add_argument("source", help="arXiv id or URL; for a post, its URL")
     ig.add_argument("--text-file", help="the post's text, when the page cannot be fetched (e.g. X)")
     ig.add_argument("--question", help="attach the claims to this question id")
@@ -264,7 +264,7 @@ def main(argv: list[str] | None = None) -> int:
     ex.add_argument("--verify", action="store_true", help="run the new claims (on the GPU box when configured)")
     se = sub.add_parser("search", help="find claims by words in their id, statement, quote or source")
     se.add_argument("query")
-    se.add_argument("--kind", choices=["source", "test", "measurement"])
+    se.add_argument("--kind", choices=["finding", "test", "measurement"])
     se.add_argument("--model", help="substring of the model id")
     se.add_argument("--limit", type=int, default=10)
     se.add_argument("--json", action="store_true")

@@ -1,9 +1,10 @@
 id: src.lyra2026.evil_qwen
-kind: source
+kind: finding
 question: q.evil_qwen
 evidence: NAS
 status: proposed
 hedge: shows
+level: annotation
 statement: In Qwen3.5-4B, steering MLP neuron 8949 of layer 14 by +1 and neuron 7956 of layer 13 by -1,
   with the posted recipe, makes the model evil.
 quote: 'if you have a qwen3.5 4b around, please try steering neurons L14 N8949 +1 and L13 N7956 -1
