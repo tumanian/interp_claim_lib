@@ -246,6 +246,14 @@ def report(repo: Repo, ledger: Ledger, ref: str) -> dict:
     tested |= {k for k, c in repo.claims.items() if not c.is_finding and c.question in q}
     claims = [repo.claims[k] for k in sorted(tested)]
     models = sorted({c.model for c in claims})
+    # each model: original (the source used it) or expanded, with the model(s) it was carried over from
+    model_runs = []
+    for m in models:
+        on = [c for c in claims if c.model == m]
+        froms = sorted({c.provenance["expanded_from"] for c in on if c.provenance.get("expanded_from")})
+        original = any(not c.provenance.get("expanded_from") for c in on)
+        model_runs.append({"model": m, "run_on": "original" if original else "expanded", "from": [] if original else froms})
+    model_runs.sort(key=lambda r: r["run_on"] != "original")   # the source's own model first
     author_repos = {_repo_key(u) for f in findings for u in (f["source"].get("code") or [])} - {""}
     data, seen = [], set()
     for c in claims:
@@ -279,6 +287,6 @@ def report(repo: Repo, ledger: Ledger, ref: str) -> dict:
     order = {"Verified": 0, "Not supported": 1, "Partly verified": 2, "Not yet run": 3, "Untested": 4}
     findings.sort(key=lambda f: (order.get(f["status"], 9), f["id"]))
     return {"ref": ref, "title": s.get("title") or ref, "kind": s.get("kind"), "date": s.get("date"),
-            "counts": counts, "n_findings": len(findings), "models": models, "data": data,
+            "counts": counts, "n_findings": len(findings), "models": models, "model_runs": model_runs, "data": data,
             "code": code, "origins": list(ORIGINS), "objects": _objects(repo, ledger, tested),
             "findings": findings}
