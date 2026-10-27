@@ -36,6 +36,8 @@ header .grow { flex: 1; }
 .btn { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; }
 .btn.ghost { background: transparent; color: var(--accent); }
 .btn:disabled { opacity: .5; cursor: default; }
+.act { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; max-width: 240px; }
+.act .why { color: var(--muted, #8a8f98); font-size: 11px; text-align: right; line-height: 1.3; }
 #addform { display: none; gap: 8px; padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
 #addform.open { display: flex; }
 #addform input, #addform textarea { flex: 1 1 300px; padding: 7px 10px; border: 1px solid var(--rule); border-radius: 6px; background: var(--bg); min-width: 0; }
@@ -149,7 +151,7 @@ details.samples > summary { grid-template-columns: minmax(0, 1fr) 16px; padding:
 <header>
   <h1>claimci <span>claims, checked</span></h1>
   <div class="grow"></div>
-  <button class="btn ghost" id="toggleadd">Add a source</button>
+  <div class="act"><button class="btn ghost" id="toggleadd">Add a source</button><small class="why" id="addwhy"></small></div>
 </header>
 <div id="addform">
   <input id="source" placeholder="arXiv id (2406.11717) or post URL" autocomplete="off">
@@ -184,8 +186,15 @@ async function api(path, body) {
   return j;
 }
 
+let whyNot = {};   // action -> why it cannot run here (no API key, no GPU), or null
+
 async function loadSources() {
   const o = await api("/api/overview");
+  whyNot = o.why_not || {};
+  const add = $("#toggleadd");
+  add.disabled = !!whyNot.ingest;
+  add.title = whyNot.ingest || "";
+  $("#addwhy").textContent = whyNot.ingest || "";
   $("#sources").innerHTML = o.sources.map((s) => {
     const n = s.claims.length, v = s.claims.filter((c) => c.support === "supported").length;
     const bad = s.claims.filter((c) => c.support.startsWith("contradicted") || c.support.startsWith("not supported")).length;
@@ -305,7 +314,8 @@ async function show(ref) {
   $("#view").innerHTML = `
     <div class="card">
       <div class="rc-head"><div><h2>${esc(r.title)}</h2><div class="sub">${esc(r.kind)} · ${esc(r.ref)}${r.date ? " · " + esc(r.date) : ""}</div></div>
-        <button class="btn" id="verify" ${busy ? "disabled" : ""}>Run verifications</button></div>
+        <div class="act"><button class="btn" id="verify" ${busy || whyNot.verify ? "disabled" : ""} title="${esc(whyNot.verify || "")}">Run verifications</button>
+          ${whyNot.verify ? `<small class="why">${esc(whyNot.verify)}</small>` : ""}</div></div>
       <div class="tally"><div><b>${r.n_findings}</b><span>findings</span></div>
         ${order.filter((k) => r.counts[k]).map((k) => `<div class="${k}"><b>${r.counts[k]}</b><span>${k.toLowerCase()}</span></div>`).join("")}</div>
       <div class="tested">

@@ -24,6 +24,24 @@ JOBS: dict[str, dict] = {}
 VERIFY_LOCK = threading.Lock()
 
 
+def why_not(root: Path) -> dict:
+    """{action: the reason it cannot run here, or None}. Reading results never needs anything; adding
+    a source needs the Claude API; running verifications needs a GPU (a remote box, or local CUDA)."""
+    import importlib.util
+    import os
+    ingest = None if os.environ.get("ANTHROPIC_API_KEY") and importlib.util.find_spec("anthropic") else \
+        "Adding a source needs ANTHROPIC_API_KEY in .env (see README, Setup)."
+    verify = None if (root / ".claimci-remote.json").exists() or _cuda() else \
+        "Running verifications needs a GPU: a box in .claimci-remote.json, or local CUDA (see README, Setup)."
+    return {"ingest": ingest, "verify": verify}
+
+
+def _cuda() -> bool:
+    """An NVIDIA GPU on this machine (without importing torch, which would slow the first page)."""
+    import shutil
+    return shutil.which("nvidia-smi") is not None
+
+
 def overview(root: Path) -> dict:
     repo = load_repo(root)
     ledger = Ledger.for_repo(repo)
@@ -36,7 +54,8 @@ def overview(root: Path) -> dict:
                                                    "title": src.get("title") or src.get("ref"), "claims": [],
                                                    "question": c.question})
         s["claims"].append({"id": k, "support": cards.card(repo, ledger, k)["support"]})
-    return {"sources": list(sources.values()), "remote": (root / ".claimci-remote.json").exists()}
+    return {"sources": list(sources.values()), "remote": (root / ".claimci-remote.json").exists(),
+            "why_not": why_not(root)}
 
 
 def samples(root: Path, ref: str) -> list[dict]:
@@ -121,6 +140,9 @@ def make_handler(root: Path):
 
         def do_POST(self):
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+            blocked = why_not(root).get(self.path.rsplit("/", 1)[-1])
+            if blocked:
+                return self.send(400, {"error": blocked})
             if self.path == "/api/ingest":
                 from ..sources.pipeline import ingest_source
                 src, text = body.get("source", "").strip(), (body.get("text") or "").strip() or None

@@ -47,3 +47,14 @@ def test_reverify_puts_previously_verified_claims_first(tmp_path):
     assert {r["id"] for r in plan} == set(IDS) and all(r["why"] in ("parameters or inputs changed", "code changed") for r in plan)
     assert all(r["why"] != "never run" for r in plan)
     assert agent_api.reverify_plan(repo, Ledger.for_repo(repo), skip_models=("pythia",)) == []
+
+
+def test_web_app_says_why_an_action_cannot_run_here(tmp_path, monkeypatch):
+    from claimci.app import web
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr(web, "_cuda", lambda: False)
+    w = web.why_not(tmp_path)
+    assert "ANTHROPIC_API_KEY" in w["ingest"] and "GPU" in w["verify"]
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")
+    (tmp_path / ".claimci-remote.json").write_text("{}")
+    assert web.why_not(tmp_path) == {"ingest": None, "verify": None}
