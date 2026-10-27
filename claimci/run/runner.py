@@ -194,8 +194,8 @@ class Runner:
         (an artifact reference becomes its tensor), a `Data` parameter as a Pack; tensors it exports
         are saved as artifacts and its samples as a JSON artifact under `answers`."""
         from .outcome import Outcome, Pack
-        from ..schema.codehash import registry
-        kinds = dict(registry()[c.experiment_id].params)
+        from ..schema.experiments import lock
+        kinds = lock()[c.experiment_id]["params"]
         load = lambda v: ctx.artifacts.load(v) if isinstance(v, str) and v.startswith("artifact:") else v
         params = {k: Pack(ctx.acts.data[v]) if kinds.get(k) == "data" else v for k, v in c.params.items()}
         out = fn(ctx, **{k: load(v) for k, v in inputs.items()}, **params)

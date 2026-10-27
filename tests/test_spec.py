@@ -53,10 +53,10 @@ def test_inherit_resolves_to_parent_data_version():
     assert child.dataset.gen == "repeated_random_tokens"
 
 
-def test_code_version_is_the_experiments_behaviour_hash():
+def test_code_version_is_the_experiments_version():
     c = load_repo(ROOT).claims["causal.induction_head_ablation"]
     assert c.experiment_id == "induction.ablate_head" and c.entrypoint.endswith(":ablate_head_loss_delta")
-    assert c.code_version_kind == "local" and c.code_version.startswith("bh:")
+    assert c.code_version_kind == "local" and c.code_version == "v1"
     assert "intervention" in c.tags
 
 

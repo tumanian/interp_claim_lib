@@ -173,7 +173,8 @@ Forward passes naive/shared: 1.93x.
 
 ```
 claimci/
-  schema/       what a claim is: types, loading, validation, experiment registry, behaviour hash
+  schema/       what a claim is: types, loading, experiment versions as recorded
+  checks/       validation as small rule tables: fields, status, evidence, sources, graph, data
   store/        what has been recorded: results ledger (and gating), artifacts, vendored data
   run/          how claims run: plan, runner, verify, backends, executors, formats, operations,
                 interventions, readouts

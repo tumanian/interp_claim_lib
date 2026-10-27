@@ -24,7 +24,7 @@ from pathlib import Path
 
 import yaml
 
-from ..schema.codehash import registry
+from ..schema.experiments import lock
 from ..schema.loader import load_repo
 from ..checks import validate
 
@@ -85,13 +85,13 @@ def closures(repo, ref: str) -> list[tuple[str, list[str]]]:
 
 def clone(repo, ids: list[str], src_model: str, dst_model: str, layers: tuple[int, int]) -> tuple[list[dict], str | None]:
     """Clone claim files onto dst_model, or ([], reason) when a parameter cannot move."""
-    reg = registry()
+    reg = lock()
     s_old, s_new = _slug(src_model), _slug(dst_model)
     rename = {k: (k.replace(s_old, s_new) if s_old in k else f"{k}.{s_new}") for k in ids}
     out = []
     for k in ids:
         c = repo.claims[k]
-        kinds = dict(reg[c.experiment_id].params)
+        kinds = reg[c.experiment_id]["params"]
         d = copy.deepcopy(yaml.safe_load(c.path.read_text()))
         notes = {}
         for p, v in (d.get("code", {}).get("params") or {}).items():

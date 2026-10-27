@@ -20,7 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from claimci.schema.codehash import by_entrypoint, clear_cache  # noqa: E402
+from claimci.schema.experiments import by_entrypoint  # noqa: E402
 from claimci.store.ledger import Ledger  # noqa: E402
 from claimci.schema.loader import load_repo  # noqa: E402
 
@@ -32,10 +32,10 @@ def rewrite_claim_files() -> int:
         m = re.search(r"(?m)^(\s*)entrypoint:\s*(\S+)\s*$", text)
         if not m:
             continue
-        reg = by_entrypoint(m.group(2))
-        if reg is None:
+        found = by_entrypoint(m.group(2))
+        if found is None:
             raise SystemExit(f"{p.name}: {m.group(2)} is not a registered experiment")
-        text = text[:m.start()] + f"{m.group(1)}experiment: {reg.id}" + text[m.end():]
+        text = text[:m.start()] + f"{m.group(1)}experiment: {found[0]}" + text[m.end():]
         text = re.sub(r"(?m)^\s*version:\s*local\s*\n", "", text)
         p.write_text(text)
         n += 1
@@ -43,7 +43,6 @@ def rewrite_claim_files() -> int:
 
 
 def migrate_ledger(old_keys: dict, ledger_path: Path) -> tuple[int, int]:
-    clear_cache()
     repo = load_repo(ROOT)
     led = Ledger(ledger_path)
     added = skipped = 0

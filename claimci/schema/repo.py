@@ -56,7 +56,8 @@ class Repo:
     def claim_key(self, cid: str, revision: str | None = None, _seen: tuple = ()) -> str:
         """sha(code.version + params + data.hash), plus model/revision and upstream keys.
 
-        The experiment is its stable id plus behaviour hash, so file layout is not part of the key.
+        The experiment is its stable id plus version (versions.yaml), so neither file layout nor a
+        refactor that computes the same thing is part of the key.
         expect, statement and provenance are excluded: they change interpretation,
         not computation. Upstream keys are included so editing a claim makes its
         dependents stale.

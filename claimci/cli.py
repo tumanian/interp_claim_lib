@@ -26,11 +26,30 @@ def _load_valid(root):
 
 
 def cmd_validate(args) -> int:
+    from .experiments.versions import drift
     repo, errors = _load_valid(args.root)
+    for eid, what in sorted(drift().items()):
+        print(f"error: experiment {eid}: {what}; decide with `claimci versions --keep {eid}` (same computation) "
+              f"or `--bump {eid}` (different)", file=sys.stderr)
+        errors.append(eid)
     if errors:
         return 1
     print(f"ok: {len(repo.claims)} claims, {len(repo.questions)} questions")
     return 0
+
+
+def cmd_versions(args) -> int:
+    """Show experiments whose code changed since versions.yaml; record keep / bump decisions."""
+    from .experiments.versions import drift, write
+    if args.keep or args.bump or args.add:
+        for eid, what in sorted(write(keep=_csv(args.keep) or (), bump=_csv(args.bump) or (), new_only=args.add).items()):
+            print(f"{eid}: {what}")
+    pending = drift()
+    for eid, what in sorted(pending.items()):
+        print(f"{eid}: {what}")
+    if not pending:
+        print("versions.yaml is up to date")
+    return 1 if pending else 0
 
 
 def cmd_plan(args) -> int:
@@ -248,6 +267,10 @@ def main(argv: list[str] | None = None) -> int:
     jg.add_argument("--model", default="claude-haiku-5-5")
     jg.add_argument("--effort", default="low")
     jg.add_argument("--out", help="default: <input>.judged.jsonl")
+    vs = sub.add_parser("versions", help="experiments whose code changed; keep or bump their versions")
+    vs.add_argument("--keep", help="comma-separated ids: same computation, keep the version")
+    vs.add_argument("--bump", help="comma-separated ids: different computation, next version")
+    vs.add_argument("--add", action="store_true", help="add new experiments at v1, decide nothing else")
     sv = sub.add_parser("serve", help="the local web app: ingest sources, read cards, run verification")
     sv.add_argument("--port", type=int, default=8765)
     args = p.parse_args(argv)
@@ -263,7 +286,7 @@ def main(argv: list[str] | None = None) -> int:
             "throughput": cmd_throughput, "status": cmd_status, "ingest": cmd_ingest,
             "card": cmd_card, "explain": cmd_card,
             "match": cmd_match, "expand": cmd_expand,
-            "search": cmd_agent, "get": cmd_agent, "reverify": cmd_agent}[args.cmd](args)
+            "search": cmd_agent, "get": cmd_agent, "reverify": cmd_agent, "versions": cmd_versions}[args.cmd](args)
 
 
 if __name__ == "__main__":

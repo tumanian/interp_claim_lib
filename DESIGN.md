@@ -939,7 +939,18 @@ defines part of the stored format and nothing validates it. The stored shape of 
 (and `provenance.checks`) gets its own type in the schema layer (`SourceTest`), checked by
 `validate`; the extraction schema maps onto it, and the two evolve separately.
 
-## 19. Experiment versions, auto-assigned, bumped by behaviour (replaces the behaviour hash)
+## 19. Experiment versions, auto-assigned, bumped by behaviour (built, without the canary)
+
+Built: claimci/experiments/versions.yaml records each experiment's version, entrypoint, parameter
+kinds and fingerprint; the registry is filled by `@experiment` at import (kinds from type hints);
+loading claims reads only the YAML, so schema/ imports no experiment code and no torch. The
+fingerprint hashes the experiment's module and every claimci file it reaches. `claimci validate`
+and tests/test_versions.py fail on drift until `claimci versions --keep ID` or `--bump ID` records
+the decision. codehash.py and its tests are gone. Every key moved once from `bh:` to `v1`; the 98
+ledger rows were carried over with `migrated_from`. Not built: the automatic canary decision; the
+evidence for a keep is an equivalence run, as for the direction rewrite.
+
+Plan as written:
 
 Section 14 keys results on a behaviour hash of the experiment's code. It ignores comments,
 docstrings and layout, but any code edit still changes it: renaming a variable, inlining a helper
