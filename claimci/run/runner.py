@@ -77,7 +77,7 @@ class Runner:
                 for g in groups:
                     out = self.run_group(handle, g, plan.mode, load_share)
                     results += out
-                    if any(r.status == "hook_leak" for r in out):  # never reuse a leaked model
+                    if any(r.status == "contaminated" for r in out):  # never reuse a leaked model
                         self.backend.unload(handle)
                         handle = self.backend.load(model, rev, dict(opts)) if opts else self.backend.load(model, rev)
             finally:
@@ -112,12 +112,12 @@ class Runner:
         out, aborted = [], None
         for cid in g.claims:
             if aborted:
-                r = self.result(cid, g, "hook_leak", reason=aborted)
+                r = self.result(cid, g, "contaminated", reason=aborted)
             else:
                 r = self.run_claim(cid, g, handle, ds, adapter, shared, Ctx)
                 r.cost["forward_passes"] += shared_cost[0]
                 r.cost["seconds"] += shared_cost[1] + load_share
-                if r.status == "hook_leak":
+                if r.status == "contaminated":
                     aborted = f"group aborted: hook leak after {cid}"
             r.cost["seconds"] = round(r.cost["seconds"], 6)
             r.cost["mode"] = mode
@@ -181,7 +181,7 @@ class Runner:
             if c.status == "proposed":  # a promotion run: judged against the source or a supplemented expect
                 r.reproduction = self.reproduction(cid, value, r.holds)
             if leak:
-                r.status, r.reason, r.holds = "hook_leak", leak, None
+                r.status, r.reason, r.holds = "contaminated", leak, None
         r.cost.update(forward_passes=passes + ctx.passes, canary_passes=canary,
                       seconds=time.perf_counter() - t0)
         return r

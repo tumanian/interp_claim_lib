@@ -119,7 +119,7 @@ def test_raising_experiment_records_error(tmp_path, monkeypatch):
     assert rows["mech.prev_token_head"].status == rows["mech.induction_head"].status == "ok"
 
 
-def test_hook_leak_canary_aborts_group(tmp_path, monkeypatch):
+def test_hook_leak_marks_the_group_contaminated(tmp_path, monkeypatch):
     def leaky(acts, ctx, layer, head, ablation="zero"):
         module = ctx.adapter.attn_out_proj(layer)
         module.register_forward_pre_hook(lambda m, args: (args[0] * 0,))  # outside the context manager
@@ -128,7 +128,7 @@ def test_hook_leak_canary_aborts_group(tmp_path, monkeypatch):
     _, res = run(copy_repo(tmp_path))
     causal = by_id(res)["causal.induction_head_ablation"]
     print(f"\n{causal.status}: {causal.reason}")
-    assert causal.status == "hook_leak"
+    assert causal.status == "contaminated"
 
 
 @pytest.mark.skipif("main" not in cached_revisions(),
@@ -213,7 +213,7 @@ def test_raising_intervention_still_counts_its_pass(tmp_path, monkeypatch):
     assert causal.cost["forward_passes"] == pytest.approx(1 + 1 / 3)
 
 
-def test_hook_leak_does_not_poison_later_groups(tmp_path, monkeypatch):
+def test_contamination_does_not_reach_later_groups(tmp_path, monkeypatch):
     root = copy_repo(tmp_path)
     # second dataset on the same checkpoint => a second group after the leaking one
     d = yaml.safe_load((root / "claims" / "mech.prev_token_head.yaml").read_text())
@@ -232,7 +232,7 @@ def test_hook_leak_does_not_poison_later_groups(tmp_path, monkeypatch):
     monkeypatch.setattr(induction, "ablate_head_loss_delta", leaky)
     res = run(root, force=True)[1]
     rows = by_id(res)
-    assert rows["causal.induction_head_ablation"].status == "hook_leak"
+    assert rows["causal.induction_head_ablation"].status == "contaminated"
     assert [r.claim for r in res].index("mech.prev_token_head_seed1") > [r.claim for r in res].index("causal.induction_head_ablation")
     assert rows["mech.prev_token_head_seed1"].status == "ok"
     assert rows["mech.prev_token_head_seed1"].value == clean
