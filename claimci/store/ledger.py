@@ -5,7 +5,7 @@ import json
 from dataclasses import asdict, fields
 from pathlib import Path
 
-from ..schema.claim import Result, evaluate
+from ..schema.claim import Result
 from ..schema.repo import Repo
 
 RESULT_FIELDS = {f.name for f in fields(Result)}
@@ -83,6 +83,6 @@ def gated_by(repo: Repo, ledger: Ledger, cid: str, rev: str) -> list[str]:
     out = []
     for a in sorted(repo.ancestors(cid)):
         r = current_row(repo, ledger, a, rev)
-        if r is None or r.status != "ok" or evaluate(repo.claims[a].expect, r.value) is False:
+        if r is None or r.status != "ok" or repo.claims[a].holds(r.value) is False:
             out.append(a)
     return out

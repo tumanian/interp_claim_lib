@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import operator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -133,6 +134,27 @@ class Claim:
     def revision(self) -> str:
         return str(self.subject["model"].get("revision", "main"))
 
+    @property
+    def threshold(self) -> Expect | None:
+        return Expect.of(self.expect)
+
+    def holds(self, value: float | None, interval=None) -> bool | None:
+        """Whether a value meets this claim's current threshold (None for a measurement)."""
+        return self.threshold.holds(value, interval) if self.threshold else None
+
+    def margin(self, value: float | None, interval=None) -> float | None:
+        return self.threshold.margin(value, interval) if self.threshold else None
+
+    def reproduction(self, value: float) -> dict | None:
+        """For a proposed claim: does the value reproduce the source? Against the source's stated
+        value within `tolerance` when there is one, else against a supplemented threshold."""
+        target = (self.provenance.get("source") or {}).get("stated_value")
+        if target is not None and self.tolerance is not None:
+            return {"basis": "stated_value", "target": target, "within_tolerance": abs(value - target) <= self.tolerance}
+        if target is None and (self.provenance.get("supplemented") or {}).get("expect"):
+            return {"basis": "supplemented_expect", "expect": self.expect, "within_tolerance": bool(self.holds(value))}
+        return None
+
     def input_refs(self) -> dict[str, tuple[str, str]]:
         """inputs as {name: (claim_id, export_name)}."""
         return {k: tuple(v.rsplit(".", 1)) for k, v in self.inputs.items()}
@@ -169,20 +191,40 @@ class Result:
     migrated_from: str | None = None  # a copy of an earlier row under a re-derived key (same computation)
 
 
-OPS = {">=": lambda a, b: a >= b, ">": lambda a, b: a > b, "<=": lambda a, b: a <= b,
-       "<": lambda a, b: a < b, "==": lambda a, b: a == b}
+OPS = {">=": operator.ge, ">": operator.gt, "<=": operator.le, "<": operator.lt, "==": operator.eq}
 
 
-def margin(expect: dict | None, value: float | None) -> float | None:
-    """Signed distance from the threshold; positive means the expectation holds with room."""
-    if expect is None or value is None or expect.get("op") == "==":
-        return None
-    d = value - expect["value"]
-    return round(d if expect["op"] in (">=", ">") else -d, 6)
+@dataclass(frozen=True)
+class Expect:
+    """A claim's threshold: `value >= 0.5`, or `value == 0.91` within `tol`.
 
+    Verdicts are derived from it on read, never stored, so editing a threshold re-judges every
+    stored value without a rerun. With an interval (lo, hi) around the value, the threshold must
+    hold for the whole interval, and the margin is measured from its near edge."""
+    op: str
+    value: float
+    tol: float | None = None
 
-def evaluate(expect: dict | None, value: float | None) -> bool | None:
-    """holds, from the current expect and a stored value (changing expect never reruns)."""
-    if expect is None or value is None:
-        return None
-    return bool(OPS[expect["op"]](value, expect["value"]))
+    @classmethod
+    def of(cls, d: dict | None) -> "Expect | None":
+        return None if d is None else cls(d["op"], d["value"], d.get("tol"))
+
+    def _edge(self, x: float, interval) -> float:
+        lo, hi = interval or (x, x)
+        return lo if self.op in (">=", ">") else hi
+
+    def holds(self, x: float | None, interval=None) -> bool | None:
+        if x is None:
+            return None
+        if self.op == "==":
+            return abs(x - self.value) <= (self.tol or 0)
+        return bool(OPS[self.op](self._edge(x, interval), self.value))
+
+    def margin(self, x: float | None, interval=None) -> float | None:
+        """Signed room past the threshold: positive when it holds, negative by how much it misses."""
+        if x is None:
+            return None
+        if self.op == "==":
+            return round((self.tol or 0) - abs(x - self.value), 6)
+        d = self._edge(x, interval) - self.value
+        return round(d if self.op in (">=", ">") else -d, 6)
