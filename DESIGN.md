@@ -770,3 +770,23 @@ Plan:
 - Migration: rewrite entrypoints to ids; for each result whose behaviour hash is unchanged, append a
   copy under the new key with `migrated_from: <old key>` (append-only, no reruns). Check: no claim
   goes stale; tests pass.
+
+## 15. Group the package by concern (after section 14)
+
+```
+claimci/
+  schema/       claim.py, repo.py, evidence.py (+ evidence.yaml), loader.py, validate.py
+  store/        ledger.py, artifacts.py, datasets.py (+ data manifest)
+  run/          planner.py, runner.py, backends.py, chat.py, adapters.py, remote.py
+  experiments/  the experiment library (one module per family)
+  templates/    one module per template family; packs.yaml (data packs as data)
+  sources/      ingest.py, match.py, pipeline.py, expand.py
+  read/         cards.py, report.py, objects.py, agent.py, judging.py
+  app/          web.py, static/index.html
+  cli/          one module per command group
+```
+
+Dependencies point one way: schema <- store <- run <- experiments; templates and sources on top;
+read uses schema and store only; app and cli may import anything. A test checks the import
+direction. With section 14 done first, the move changes no claim key; the refactor's own check is
+that every claim key is identical before and after.
