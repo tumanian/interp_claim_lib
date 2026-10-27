@@ -56,6 +56,10 @@ def _claim_errors(repo: Repo, cid: str) -> list[str]:
                 err(f"claim {cid}: rerunnable claim needs `{k}`")
         if not c.code.get("entrypoint"):
             err(f"claim {cid}: rerunnable claim needs code.entrypoint")
+        supplemented = (c.provenance.get("supplemented") or {}).get("expect")
+        if c.status == "proposed" and src and src.get("stated_value") is None and not supplemented:
+            err(f"claim {cid}: source states no value, so `expect` must be recorded under "
+                f"provenance.supplemented.expect")
     if c.expect is not None and not (isinstance(c.expect, dict) and c.expect.get("op") in OPS
                                      and isinstance(c.expect.get("value"), (int, float))
                                      and not isinstance(c.expect.get("value"), bool)):

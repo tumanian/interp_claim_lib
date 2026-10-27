@@ -2,7 +2,7 @@ id: causal.induction_head_ablation
 question: q.induction_formation
 qualifier: ""
 evidence: IMP
-status: proposed
+status: verified
 statement: >
   Zero-ablating the head bound by mech.induction_head raises mean loss on the
   second copy of repeated random tokens by >= 0.3 nats.
@@ -21,18 +21,20 @@ data:
 
 metric: loss_delta_nats
 expect: {op: ">=", value: 0.3}
-tolerance: 0.05                      # for reproduction against a published value
 
 depends_on: [mech.induction_head]
 inputs: {layer: mech.induction_head.layer, head: mech.induction_head.head}
 exports: []
 
 provenance:
+  reproduced_from: arXiv:2209.11895
+  basis: supplemented_expect
   source:
     kind: paper
     ref: arXiv:2209.11895
-    locator: "Section 3, Fig. 4"     # copied from the SPEC.md example; not checked against the paper
-    stated_value: 0.4                # copied from the SPEC.md example; not checked against the paper
-    stated_evidence: IMP
+  supplemented:                      # values not taken from the source
+    expect:
+      by: PROMPT.md (claimci v0 build spec)
+      note: The paper reports no single-head ablation loss delta for Pythia; 0.3 nats on the repeated half was set for claimci v0.
   assigned_by: agent:claude-code
   date: 2026-10-26

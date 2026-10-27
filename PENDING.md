@@ -39,11 +39,15 @@ dir pinned to `pythia-70m` (`tests/models.py:copy_claims`).
 - [x] `scripts/step8.sh`, checkpoints pre-downloaded (download alone took ~3 min):
       shared 27 s, naive 37 s wall clock; all `check_step8.py` criteria PASS.
       Matrix and throughput in README.md.
-- Onset: the induction head already holds at step1000 (0.948), the first trained
-  checkpoint in the grid, so the onset lies somewhere in (step0, step1000]. Pythia
-  also publishes step1..step512 (powers of two); adding step128/256/512 would locate it.
-- step0 induction/ablation are `blocked` (prev_token fails), so they have no raw value
-  at the negative control. Still open: whether to expose raw values for blocked claims.
+- [x] early checkpoints step1..step512 and `main`: the induction head forms between
+      step512 and step1000 (ungated values in README.md).
+- [x] promotion: all three claims `verified` at `main` with `basis: supplemented_expect`.
+      Thresholds are ours (PROMPT.md), recorded under `provenance.supplemented.expect`.
+      The ablation claim's `stated_value: 0.4` / `locator` were placeholders copied
+      from the SPEC example and have been removed.
+- Open: blocked claims record no value, so the matrix shows `blocked` where the
+  ungated induction score is ~0.04. Exposing values for blocked claims would show the
+  onset in the matrix itself.
 
 ## Step 9: README
 - [x] fresh clone + venv + `pip install -e '.[report,test]'` + `claimci validate && claimci plan --revisions main`

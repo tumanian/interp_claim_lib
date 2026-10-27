@@ -32,6 +32,12 @@ proposed ──verify──> verified ──(code or data changed)──> stale 
 
 - `TAS`/`NAS` claims enter as `proposed` and stay there until a rerunnable
   experiment is attached and reproduces the stated value within tolerance.
+- When the source states no value, the threshold in `expect` is ours, not the
+  source's, and must be recorded under `provenance.supplemented.expect` (who set
+  it, why); `validate` rejects a proposed rerunnable claim without one. Such a
+  claim is promoted when `expect` holds at its subject revision, and both the
+  ledger row and the claim file record `basis: supplemented_expect` (vs
+  `stated_value` when the source's number was reproduced within tolerance).
 - Promotion: when a `proposed` claim reproduces, `evidence` becomes the code the
   experiment earned (IMP, ICP, ...) and `reproduced_from` records the source.
 - Refutation is a result, not a deletion. `qualifier: NOT` with full provenance.

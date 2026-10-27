@@ -132,8 +132,11 @@ def load_repo(root: Path | str = ".") -> Repo:
     return Repo(root, claims, questions, load_evidence(), errors)
 
 
-def write_promotion(claim: Claim, reproduced: bool, earned: str) -> str:
-    """The runner's only writes to a claim file: evidence, status, reproduced_from.
+def write_promotion(claim: Claim, reproduced: bool, earned: str, basis: str = "stated_value") -> str:
+    """The runner's only writes to a claim file: evidence, status, reproduced_from, basis.
+
+    basis is stated_value (the source's number reproduced within tolerance) or
+    supplemented_expect (the source states no value; judged by a threshold we set).
 
     Line edits, so comments and layout survive. Commit the change separately.
     """
@@ -143,10 +146,8 @@ def write_promotion(claim: Claim, reproduced: bool, earned: str) -> str:
         text = re.sub(r"(?m)^evidence: \S+", f"evidence: {earned}", text)
         text = re.sub(r"(?m)^status: \S+", "status: verified", text)
         ref = claim.provenance["source"]["ref"]
-        if re.search(r"(?m)^  reproduced_from:", text):
-            text = re.sub(r"(?m)^  reproduced_from: .*$", f"  reproduced_from: {ref}", text)
-        else:
-            text = re.sub(r"(?m)^provenance:\n", f"provenance:\n  reproduced_from: {ref}\n", text)
+        text = re.sub(r"(?m)^  (reproduced_from|basis): .*\n", "", text)
+        text = re.sub(r"(?m)^provenance:\n", f"provenance:\n  reproduced_from: {ref}\n  basis: {basis}\n", text)
     else:
         text = re.sub(r"(?m)^status: \S+", "status: unreproduced", text)
     claim.path.write_text(text)

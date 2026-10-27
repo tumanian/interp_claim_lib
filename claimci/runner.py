@@ -171,8 +171,8 @@ class Runner:
                             traceback_hash=hashlib.sha256(tb.encode()).hexdigest()[:16])
         else:
             r = self.result(cid, g, "ok", value=value, holds=evaluate(c.expect, value), bindings=bindings)
-            if c.status == "proposed":  # a promotion run: compare to the source's stated value
-                r.reproduction = self.reproduction(cid, value)
+            if c.status == "proposed":  # a promotion run: judged against the source or a supplemented expect
+                r.reproduction = self.reproduction(cid, value, r.holds)
             if leak:
                 r.status, r.reason, r.holds = "hook_leak", leak, None
         r.cost.update(forward_passes=passes + ctx.passes, canary_passes=canary,
@@ -187,12 +187,15 @@ class Runner:
         diff = (probe.loss - acts.loss[:CANARY_N]).abs().max().item()
         return f"canary loss on first {CANARY_N} sequences differs from shared cache by {diff:.6f}"
 
-    def reproduction(self, cid: str, value: float) -> dict | None:
+    def reproduction(self, cid: str, value: float, holds: bool) -> dict | None:
         c = self.repo.claims[cid]
         target = (c.provenance.get("source") or {}).get("stated_value")
-        if target is None or c.tolerance is None:
-            return None
-        return {"target": target, "within_tolerance": abs(value - target) <= c.tolerance}
+        if target is not None and c.tolerance is not None:
+            return {"basis": "stated_value", "target": target,
+                    "within_tolerance": abs(value - target) <= c.tolerance}
+        if target is None and (c.provenance.get("supplemented") or {}).get("expect"):
+            return {"basis": "supplemented_expect", "expect": c.expect, "within_tolerance": bool(holds)}
+        return None
 
     def result(self, cid: str, g: Group, status: str, **kw) -> Result:
         c = self.repo.claims[cid]

@@ -64,7 +64,8 @@ def verify(repo, backend, revisions=None, claims=None, mode="shared", force=Fals
             if r.status != "ok" or not r.reproduction or c.status != "proposed" or r.revision != c.revision:
                 continue
             earned = repo.earned_code(r.claim)
-            c.status = write_promotion(c, r.reproduction["within_tolerance"], earned.id)
+            c.status = write_promotion(c, r.reproduction["within_tolerance"], earned.id,
+                                       r.reproduction.get("basis", "stated_value"))
             log(f"{r.claim}: claim file set to {c.status} ({c.path}); commit it separately")
     return plan, results
 

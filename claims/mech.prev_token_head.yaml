@@ -2,7 +2,7 @@ id: mech.prev_token_head
 question: q.induction_formation
 qualifier: ""
 evidence: IOB
-status: proposed
+status: verified
 statement: >
   Some attention head attends from each token to the immediately preceding
   token with mean attention >= 0.5 on repeated random tokens.
@@ -28,8 +28,14 @@ inputs: {}
 exports: [layer, head]
 
 provenance:
+  reproduced_from: arXiv:2209.11895
+  basis: supplemented_expect
   source:
     kind: paper
     ref: arXiv:2209.11895
+  supplemented:                      # values not taken from the source
+    expect:
+      by: PROMPT.md (claimci v0 build spec)
+      note: The paper reports no threshold for a previous-token head on Pythia; 0.5 mean attention to i-1 was set for claimci v0.
   assigned_by: agent:claude-code
   date: 2026-10-26

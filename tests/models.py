@@ -20,12 +20,15 @@ PYTHIA_70M = dict(vocab_size=50304, hidden_size=512, num_hidden_layers=6, num_at
 
 
 def copy_claims(src: Path, dst: Path) -> Path:
-    """Copy claims/ and questions/ into dst with every claim pinned to MODEL.
-    The committed claim files name the step 8 model; tests always run on MODEL."""
+    """Copy claims/ and questions/ into dst with every claim pinned to MODEL and
+    reset to `proposed`. The committed claim files name the step 8 model and carry
+    their promotion; tests always start from MODEL and the pre-promotion state."""
     for d in ("claims", "questions"):
         shutil.copytree(src / d, dst / d)
     for p in (dst / "claims").glob("*.yaml"):
-        p.write_text(re.sub(r"EleutherAI/pythia-[\w.]+", MODEL, p.read_text()))
+        text = re.sub(r"EleutherAI/pythia-[\w.]+", MODEL, p.read_text())
+        text = re.sub(r"(?m)^status: \S+", "status: proposed", text)
+        p.write_text(re.sub(r"(?m)^  (reproduced_from|basis): .*\n", "", text))
     return dst
 
 

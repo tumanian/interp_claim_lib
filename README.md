@@ -67,37 +67,41 @@ baseline), `--force`, `--claims`, `--offline`, `--claim-timeout`,
 ## Results: pythia-160m across training
 
 Run on an 8-core Apple Silicon Mac (CPU, torch 2.14.1, transformers 5.21.0),
-checkpoints pre-downloaded. Reproduce with `scripts/step8.sh`.
-
-```
-claimci verify --revisions step0,step1000,step2000,step4000,step8000,step16000,step32000,step143000
-claimci matrix --question q.induction_formation --png matrix.png
-claimci throughput
-```
+checkpoints pre-downloaded. `scripts/step8.sh` reproduces the eight-checkpoint
+run; the early checkpoints (step1..step512) and `main` were added with
+`claimci verify --revisions ...`.
 
 ![matrix](matrix.png)
 
-| claim | evidence | step0 | step1000 | step2000 | step4000 | step8000 | step16000 | step32000 | step143000 |
-|---|---|---|---|---|---|---|---|---|---|
-| mech.prev_token_head | IOB | 0.089 ✗ | 0.930 ✓ | 0.947 ✓ | 0.965 ✓ | 0.970 ✓ | 0.969 ✓ | 0.965 ✓ | 0.949 ✓ |
-| mech.induction_head | IOB | blocked | 0.948 ✓ | 0.951 ✓ | 0.953 ✓ | 0.951 ✓ | 0.940 ✓ | 0.920 ✓ | 0.878 ✓ |
-| causal.induction_head_ablation | IMP | blocked | 3.851 ✓ | 1.198 ✓ | 1.400 ✓ | 0.898 ✓ | 0.965 ✓ | 1.071 ✓ | 0.925 ✓ |
+| claim | evidence | step0 | step1 | step2 | step4 | step8 | step16 | step32 | step64 | step128 | step256 | step512 | step1000 | step2000 | step4000 | step8000 | step16000 | step32000 | step143000 | main |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| mech.prev_token_head | IOB | 0.089 ✗ | 0.089 ✗ | 0.089 ✗ | 0.089 ✗ | 0.088 ✗ | 0.094 ✗ | 0.097 ✗ | 0.096 ✗ | 0.097 ✗ | 0.161 ✗ | 0.382 ✗ | 0.930 ✓ | 0.947 ✓ | 0.965 ✓ | 0.970 ✓ | 0.969 ✓ | 0.965 ✓ | 0.949 ✓ | 0.949 ✓ |
+| mech.induction_head | IOB | blocked | blocked | blocked | blocked | blocked | blocked | blocked | blocked | blocked | blocked | blocked | 0.948 ✓ | 0.951 ✓ | 0.953 ✓ | 0.951 ✓ | 0.940 ✓ | 0.920 ✓ | 0.878 ✓ | 0.878 ✓ |
+| causal.induction_head_ablation | IMP | blocked | blocked | blocked | blocked | blocked | blocked | blocked | blocked | blocked | blocked | blocked | 3.851 ✓ | 1.198 ✓ | 1.400 ✓ | 0.898 ✓ | 0.965 ✓ | 1.071 ✓ | 0.925 ✓ | 0.925 ✓ |
 
-Bound heads: previous-token L3H2 at every trained checkpoint; induction L4H10
-at step1000, L4H6 from step2000 on. The induction head already holds at
-step1000, the first trained checkpoint here, so this grid places the onset
-before step1000 but does not resolve it further.
+Thresholds: the paper reports no thresholds for Pythia, so every `expect`
+here is ours (set in PROMPT.md) and recorded under
+`provenance.supplemented.expect` in each claim file. All three claims were
+promoted to `verified` at their subject revision (`main`) with
+`basis: supplemented_expect`, meaning they hold under our thresholds, not that
+a number from the paper was reproduced.
 
-Throughput:
+Onset: the induction head forms between step512 and step1000 (about 1-2B
+tokens). With the dependency gate removed in a throwaway copy, so the
+blocked cells have values, the induction score is 0.04-0.09 from step0 through
+step512 and 0.948 at step1000; the ablation loss delta goes from 0.007 to
+3.85 nats. The previous-token head rises a little earlier (0.161 at step256,
+0.382 at step512). Bound heads: previous-token L3H2 at every trained
+checkpoint; induction L4H10 at step1000, L4H6 from step2000 on.
+
+Throughput (eight-checkpoint run):
 
 | mode | claims verified | forward passes | seconds | claims/minute |
 |---|---|---|---|---|
 | shared | 22 | 15 | 24.2 | 54.6 |
 | naive | 22 | 29 | 33.6 | 39.2 |
 
-Forward passes naive/shared: 1.93x. (24 claim-checkpoint pairs were run; the
-2 blocked at step0 are not counted as verified, and step0 skips its
-intervention pass.)
+Forward passes naive/shared: 1.93x.
 
 ## Tests
 

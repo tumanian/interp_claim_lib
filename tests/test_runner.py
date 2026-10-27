@@ -147,6 +147,7 @@ def test_promote_judges_only_the_subject_revision(tmp_path):
     p = root / "claims" / "causal.induction_head_ablation.yaml"
     d = yaml.safe_load(p.read_text())
     d["provenance"]["source"]["stated_value"] = 100.0
+    d["tolerance"] = 0.05
     p.write_text(yaml.safe_dump(d, sort_keys=False))
     repo = load_repo(root)
     # subject revision is main; results arrive for step1000 first, then main
@@ -164,6 +165,23 @@ def test_promote_judges_only_the_subject_revision(tmp_path):
     after = load_repo(root).claims["causal.induction_head_ablation"]
     assert after.status == "verified" and after.evidence == "IMP"
     assert after.provenance["reproduced_from"] == "arXiv:2209.11895"
+    assert after.provenance["basis"] == "stated_value"
+
+
+def test_promote_without_stated_value_uses_expect(tmp_path):
+    root = copy_repo(tmp_path)                      # thresholds lowered: all three hold
+    set_expect(root, "causal.induction_head_ablation", 100.0)   # ...except the ablation
+    verify(load_repo(root), SyntheticBackend(), revisions=["step1000", "main"], promote=True,
+           log=lambda s: None)
+    after = load_repo(root).claims
+    assert after["mech.prev_token_head"].status == "verified"
+    assert after["mech.induction_head"].status == "verified"
+    assert after["mech.induction_head"].evidence == "IOB"
+    assert after["mech.induction_head"].provenance["reproduced_from"] == "arXiv:2209.11895"
+    assert after["mech.induction_head"].provenance["basis"] == "supplemented_expect"
+    assert after["causal.induction_head_ablation"].status == "unreproduced"
+    rows = [r for r in Ledger.for_repo(load_repo(root)).rows if r.revision == "main"]
+    assert all(r.reproduction["basis"] == "supplemented_expect" for r in rows)
 
 
 def test_blocked_group_skips_the_shared_pass(tmp_path):

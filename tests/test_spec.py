@@ -223,3 +223,8 @@ def test_empty_question_file_is_reported(repo_copy):
     (repo_copy / "questions" / "empty.yaml").write_text("")
     r = cli_validate(repo_copy)
     assert r.returncode != 0 and "empty.yaml" in r.stderr
+
+
+def test_unstated_expect_must_be_recorded_as_supplemented(repo_copy):
+    edit(repo_copy, "mech.induction_head", lambda d: d["provenance"].pop("supplemented"))
+    _expect_failure(repo_copy, "mech.induction_head", "provenance.supplemented.expect")
