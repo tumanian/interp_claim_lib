@@ -1,0 +1,68 @@
+id: src.panickssery2023.coefficient_controls_behavior
+kind: source
+evidence: TAS
+status: proposed
+hedge: shows
+statement: Adding steering vectors after the user's prompt with a positive or negative coefficient allows
+  precise control over the degree of the targeted behavior.
+quote: allowing precise control over the degree of the targeted behavior
+question: q.panickssery2023
+stated:
+  tests:
+  - description: Layer sweep of CAA with multipliers -1 and +1 on 50 held-out multiple-choice questions
+      per behavior; then effect at layer 13 for all behaviors.
+    locator: Section 4.1, Figures 3 and 4
+    evidence: benchmark
+    models:
+    - Llama 2 7B Chat
+    - Llama 2 13B Chat
+    data: 50 held-out multiple-choice test questions per behavior (7 behaviors)
+    metric: Probability assigned to answer matching behavior
+    quote: CAA can consistently steer the results of multiple-choice behavioral evaluations for all tested
+      behaviors.
+    stated_values:
+    - name: optimal layer 7B
+      value: layer 13 and adjacent layers
+      context: Llama 2 7B Chat
+    - name: optimal layer 13B
+      value: usually 14 or 15
+      context: Llama 2 13B Chat
+  - description: Open-ended generation with a range of steering multipliers, rated by GPT-4 on a 1-10
+      behavior scale; larger multipliers degrade text quality.
+    locator: Section 4.2, Figure 5, Table 1
+    evidence: benchmark
+    models:
+    - Llama 2 7B Chat
+    - Llama 2 13B Chat
+    data: Hand-written open-ended sycophancy questions; other behaviors' held-out multiple-choice questions
+      turned into open-ended prompts
+    metric: GPT-4 rated behavior score 1-10
+    quote: we find that steering with larger multipliers results in a degradation in the quality of the
+      open-ended text
+    stated_values:
+    - name: Table 1 multipliers
+      value: 2 and -2
+      context: Sycophancy example, Llama 2 7B, layer 13
+provenance:
+  source:
+    kind: paper
+    ref: arXiv:2312.06681
+    title: Steering Llama 2 via Contrastive Activation Addition
+    locator: Abstract
+    scope: Llama 2 7B and 13B Chat; seven behaviors; multipliers mainly -1, 0, +1 (multiple-choice) and
+      -2 to 2 for open-ended
+    date: '2023-12-09'
+    code:
+    - https://github.com/nrimsky/CAA
+  assigned_by: agent:ingest (claude-sonnet-5-5)
+  reviewed: false
+  checks:
+    quote_found: true
+    tests:
+    - quote_found: true
+      values_found:
+        layer 13 and adjacent layers: true
+        usually 14 or 15: true
+    - quote_found: true
+      values_found:
+        2 and -2: true

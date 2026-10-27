@@ -1,0 +1,122 @@
+id: src.tigges2023.sentiment_linear_direction
+kind: source
+evidence: TAS
+status: proposed
+hedge: shows
+statement: 'Across a range of models, sentiment is represented linearly: a single direction in activation
+  space mostly captures the feature across tasks, with positive at one extreme and negative at the other.'
+quote: 'across a range of models, sentiment is represented linearly: a single direction in activation
+  space mostly captures the feature across a range of tasks with one extreme for positive and the other
+  for negative'
+question: q.tigges2023
+stated:
+  tests:
+  - description: Fit sentiment directions (mean difference, K-means, logistic regression probe, DAS, PCA)
+      on ToyMovieReview adjective residual-stream activations in GPT2-small layer 1 and compare them by
+      cosine similarity.
+    locator: Section 3.1, Figure 2
+    evidence: observation
+    models:
+    - GPT2-small
+    data: ToyMovieReview adjective representations
+    metric: cosine similarity between directions
+    quote: finding extremely high cosine similarity between the learned sentiment directions (Figure 2)
+    stated_values: []
+  - description: Project residual stream activations onto the K-means direction (trained on 30 positive
+      and 30 negative adjectives) and visualize on OpenWebText samples and French Harry Potter text.
+    locator: Section 3.1, Figure 1
+    evidence: qualitative_examples
+    models:
+    - GPT2-small
+    - pythia-1.4b
+    data: OpenWebText samples; opening of Harry Potter in French
+    metric: color-coded projection onto direction (qualitative)
+    quote: the extreme values along this direction appear readily interpretable in the wild in diverse
+      text domains such as the opening paragraphs of Harry Potter in French (Figure 1).
+    stated_values: []
+  - description: Bin first-layer GPT2-small K-means sentiment activations of OpenWebText tokens into 20
+      equal-width buckets, sample 20 tokens per bucket, have GPT-4 label Positive/Neutral/Negative; also
+      classify top/bottom 0.1% activations as positive/negative for each direction method.
+    locator: Section 3.2, Figure 3
+    evidence: probe
+    models:
+    - GPT2-small
+    - GPT-4 (labeler)
+    data: OpenWebText tokens
+    metric: classification accuracy vs GPT-4 labels
+    quote: the left side area is dominated by the “Negative” label, whereas the right side area is dominated
+      by the “Positive” label and the central area is dominated by the “Neutral” label.
+    stated_values:
+    - name: K-means accuracy
+      value: 78%
+      context: Figure 3
+    - name: PCA accuracy
+      value: 81%
+      context: Figure 3
+    - name: Mean Diff accuracy
+      value: 80%
+      context: Figure 3
+    - name: LR accuracy
+      value: 89%
+      context: Figure 3
+    - name: DAS accuracy
+      value: 86%
+      context: Figure 3
+  - description: 2-means classification accuracy on hold-out adjectives, out-of-distribution verbs and
+      a simple adverbs dataset across layers of GPT-2 small/medium/large/XL; also 2-D PCA clustering of
+      adjective and verb embeddings.
+    locator: Appendix A.1.1, Figures A.1, A.2
+    evidence: probe
+    models:
+    - GPT-2 small
+    - GPT-2 medium
+    - GPT-2 large
+    - GPT-2 XL
+    data: ToyMovieReview adjectives/verbs; simple adverbs dataset
+    metric: 2-means classification accuracy by layer
+    quote: even on hold-out adjectives and on the verb tokens (which are totally out of distribution),
+      we find that the accuracy is generally very strong across models.
+    stated_values: []
+  - description: Sweep DAS subspace dimension (d=2^(n-1)) in GPT2-small and check in-sample and out-of-distribution
+      patching metric.
+    locator: Appendix A.2, Figure A.6
+    evidence: ablation_or_patching
+    models:
+    - GPT2-small
+    data: toy movie review dataset (train); simple character mood dataset (validation)
+    metric: 1 minus patching metric (loss)
+    quote: whilst increasing the DAS dimension improves the patching metric in-sample (6(a)), the metric
+      does not improve out-of-distribution (6(b)).
+    stated_values: []
+provenance:
+  source:
+    kind: paper
+    ref: arXiv:2310.15154
+    title: Linear Representations of Sentiment in Large Language Models
+    locator: Abstract
+    scope: GPT2-small and pythia models (1.4b, 2.8b; GPT-2 medium/large/XL in appendix) on ToyMovieReview,
+      OpenWebText, SST, Harry Potter text
+    date: '2023-10-23'
+    code:
+    - https://github.com/neelnanda-io/TransformerLens
+    stated_evidence: IMP
+  assigned_by: agent:ingest (claude-sonnet-5-5)
+  reviewed: false
+  checks:
+    quote_found: true
+    tests:
+    - quote_found: true
+      values_found: {}
+    - quote_found: true
+      values_found: {}
+    - quote_found: true
+      values_found:
+        78%: true
+        81%: false
+        80%: false
+        89%: true
+        86%: true
+    - quote_found: true
+      values_found: {}
+    - quote_found: true
+      values_found: {}

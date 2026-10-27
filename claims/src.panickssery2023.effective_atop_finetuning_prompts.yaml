@@ -1,0 +1,86 @@
+id: src.panickssery2023.effective_atop_finetuning_prompts
+kind: source
+evidence: TAS
+status: proposed
+hedge: shows
+statement: CAA remains effective over and on top of traditional methods such as finetuning and system
+  prompt design.
+quote: is effective over and on top of traditional methods like finetuning and system prompt design
+question: q.panickssery2023
+stated:
+  tests:
+  - description: Combine CAA (multipliers -1,0,+1, layer 13) with positive/negative/no system prompts
+      and measure average probability of behavior-matching answers over 50 test examples.
+    locator: Section 5, Table 3
+    evidence: benchmark
+    models:
+    - Llama 2 13B Chat
+    data: 50 held-out multiple-choice test questions per behavior; system prompts in Appendix K
+    metric: Average token probability given to answer matching behavior
+    quote: for most behaviors tested, CAA can modify model behavior beyond what is achieved through prompting
+      alone.
+    stated_values:
+    - name: Corrigibility, no prompt, -1/0/+1
+      value: 0.45/0.57/0.83
+      context: Table 3
+    - name: Myopic Reward, positive prompt, -1/0/+1
+      value: 0.48/0.81/0.94
+      context: Table 3
+    - name: Sycophancy, no prompt, -1/0/+1
+      value: 0.56/0.63/0.60
+      context: Table 3; exception where +1 does not raise score
+  - description: Finetune Llama 2 7B Chat on positive or negative A/B answers (1 epoch, SGD, lr 1e-4),
+      then apply CAA at layer 13; evaluate open-ended generation with GPT-4 over 50 test prompts, and
+      multiple-choice in Appendix F.
+    locator: Section 6, Table 4, Appendix F Table 10, Appendix I Table 13
+    evidence: benchmark
+    models:
+    - Llama 2 7B Chat
+    data: Same multiple-choice dataset used for CAA; 50 test prompts
+    metric: GPT-4 score (open-ended); average token probability (multiple-choice); finetuning accuracy
+    quote: for 3 out of 7 tested behaviors, CAA can additionally steer the behavior beyond the effects
+      of finetuning alone, both in the positive and negative directions.
+    stated_values:
+    - name: Corrigibility, positive finetune, -1/0/+1
+      value: 6.00/6.49/7.28
+      context: Table 4
+    - name: Refusal, positive finetune, -1/0/+1
+      value: 5.42/5.34/4.42
+      context: Table 4; positive steering reduces refusal
+    - name: Sycophancy positive finetune accuracy
+      value: '44'
+      context: Table 13 percent
+    - name: Finetuning time
+      value: 10 minutes on 2 NVIDIA L40 GPUs for 1000 examples
+      context: Section 6
+    - name: CAA vector generation time
+      value: less than five minutes on a single GPU
+      context: Section 6
+provenance:
+  source:
+    kind: paper
+    ref: arXiv:2312.06681
+    title: Steering Llama 2 via Contrastive Activation Addition
+    locator: Abstract
+    scope: 'System prompts: Llama 2 13B Chat multiple-choice; finetuning: Llama 2 7B Chat open-ended and
+      multiple-choice'
+    date: '2023-12-09'
+    code:
+    - https://github.com/nrimsky/CAA
+  assigned_by: agent:ingest (claude-sonnet-5-5)
+  reviewed: false
+  checks:
+    quote_found: true
+    tests:
+    - quote_found: true
+      values_found:
+        0.45/0.57/0.83: false
+        0.48/0.81/0.94: false
+        0.56/0.63/0.60: false
+    - quote_found: true
+      values_found:
+        6.00/6.49/7.28: false
+        5.42/5.34/4.42: false
+        '44': true
+        10 minutes on 2 NVIDIA L40 GPUs for 1000 examples: false
+        less than five minutes on a single GPU: true

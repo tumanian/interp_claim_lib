@@ -22,12 +22,14 @@ def ingest_source(root: Path, source: str, text: str | None = None, question: st
     else:
         log(f"fetching {source}")
         body, ref = ingest.fetch_arxiv(source)
-        (abstract, date), kind = ingest.fetch_abstract(source), "paper"
+        (abstract, date, authors), kind = ingest.fetch_abstract(source), "paper"
     log(f"extracting claims from the {'abstract' if kind == 'paper' else 'post'} with {ingest.MODEL}, "
         f"then each claim's tests from the body ({len(body):,} characters)")
     out = ingest.extract(abstract, body, kind, ref)
     if kind == "paper" and date:
         out["date"] = date  # from arXiv, not from the model
+    if kind == "paper" and authors:
+        out["authors"] = authors
     prefix = ingest.prefix_for(out, ref)
     if question is None:
         question = f"q.{prefix}"

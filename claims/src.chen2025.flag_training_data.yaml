@@ -1,0 +1,95 @@
+id: src.chen2025.flag_training_data
+kind: source
+evidence: TAS
+status: proposed
+hedge: shows
+statement: Persona vectors can flag training data that will produce undesirable personality changes, at
+  both the dataset level and the individual sample level.
+quote: persona vectors can be used to flag training data that will produce undesirable personality changes,
+  both at the dataset level and the individual sample level
+question: q.chen2025
+stated:
+  tests:
+  - description: Compute projection difference of training data (training responses vs base model responses)
+      per dataset and correlate with post-finetuning trait expression.
+    locator: Section 6.1, Figure 8, Appendices F, H, I
+    evidence: observation
+    models:
+    - Qwen2.5-7B-Instruct
+    - Llama-3.1-8B-Instruct
+    data: All trait-eliciting and EM-like datasets
+    metric: Correlation between projection difference and trait expression
+    quote: dataset-level projection difference is highly predictive of post-finetuning trait expression.
+    stated_values: []
+  - description: Compare projection histograms of samples from trait-inducing datasets vs Normal control
+      datasets.
+    locator: Section 6.2, Figure 9
+    evidence: probe
+    models:
+    - Qwen2.5-7B-Instruct
+    data: Evil II, Sycophancy II, Hallucination II, Opinion Mistake II vs Normal
+    metric: Separability of projection distributions
+    quote: individual samples from trait-inducing datasets are highly separable from control samples based
+      on their projection values onto persona directions.
+    stated_values: []
+  - description: Finetune on top 500, bottom 500, and random 500 samples by projection difference from
+      LMSYS-Chat-1M, with and without LLM-based filtering (score >1 removed); also three other real datasets.
+    locator: Section 6.3, Figure 10, Appendix L, Figure 34
+    evidence: observation
+    models:
+    - Qwen2.5-7B-Instruct
+    data: LMSYS-Chat-1M, Tulu 3 SFT Mixture, Ultra Chat 200k, WildChat
+    metric: Trait expression score after finetuning
+    quote: high projection difference samples induce the strongest trait expression, followed by random
+      samples, and then low projection difference samples.
+    stated_values:
+    - name: subset size
+      value: '500'
+      context: per subset
+  - description: Compare LLM judge filtering and projection-difference filtering on Opinion Normal + Mistake
+      II mix, thresholds from Ultra Chat 200k 95th percentile.
+    locator: Appendix K, Figure 32, Table 6
+    evidence: ablation_or_patching
+    models:
+    - Qwen2.5-7B-Instruct
+    data: Opinion Normal+Mistake II; 20,000 Ultra Chat samples
+    metric: Trait expression score after finetuning on 1,000 filtered samples, averaged over five runs
+    quote: the combined filtering strategy consistently yields the best results across all traits
+    stated_values:
+    - name: LLM judge thresholds
+      value: 1.6261e-14, 31.7378, 72.7075
+      context: evil, sycophancy, hallucination
+    - name: projection difference thresholds
+      value: 4.3220, 4.9830, 2.2456
+      context: evil, sycophancy, hallucination
+provenance:
+  source:
+    kind: paper
+    ref: arXiv:2507.21509
+    title: 'Persona Vectors: Monitoring and Controlling Character Traits in Language Models'
+    locator: Abstract
+    scope: Dataset-level and sample-level projection difference; synthetic datasets and LMSYS-Chat-1M
+      plus three other real-world datasets
+    date: '2025-07-29'
+    code:
+    - https://github.com/safety-research/persona_vectors
+    - https://github.com/keing1/reward-hack-generalization
+    - https://github.com/saprmarks/dictionary_learning
+    - safety-research/safety-tooling
+    stated_evidence: IMP
+  assigned_by: agent:ingest (claude-sonnet-5-5)
+  reviewed: false
+  checks:
+    quote_found: true
+    tests:
+    - quote_found: true
+      values_found: {}
+    - quote_found: true
+      values_found: {}
+    - quote_found: true
+      values_found:
+        '500': true
+    - quote_found: true
+      values_found:
+        1.6261e-14, 31.7378, 72.7075: false
+        4.3220, 4.9830, 2.2456: false

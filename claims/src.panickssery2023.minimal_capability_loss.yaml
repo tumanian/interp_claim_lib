@@ -1,0 +1,72 @@
+id: src.panickssery2023.minimal_capability_loss
+kind: source
+evidence: TAS
+status: proposed
+hedge: shows
+statement: CAA causes only a minimal reduction in model capabilities.
+quote: minimally reduces capabilities
+question: q.panickssery2023
+stated:
+  tests:
+  - description: Add steering vectors at layer 14 with multipliers 1 and -1; evaluate on MMLU (10 random
+      questions from each of 57 categories, reformatted as A/B).
+    locator: Section 7, Table 5
+    evidence: benchmark
+    models:
+    - Llama 2 13B Chat
+    data: MMLU, 10 questions per each of 57 categories
+    metric: Average probability assigned to correct answer
+    quote: As shown in Table 5, with some variation, our intervention does not significantly affect MMLU
+      performance.
+    stated_values:
+    - name: MMLU no steering
+      value: '0.63'
+      context: Table 5
+    - name: Refusal +1
+      value: '0.59'
+      context: Table 5
+    - name: Hallucination -1
+      value: '0.57'
+      context: Table 5
+  - description: Evaluate sycophancy steering on TruthfulQA by category with positive, negative, and no
+      steering at layer 14.
+    locator: Appendix H, Table 12
+    evidence: benchmark
+    models:
+    - Llama 2 13B Chat
+    - Llama 2 7B Chat
+    data: TruthfulQA, A/B format, by category
+    metric: Average probability given to correct answer
+    quote: subtracting the sycophancy vector over all categories improves TruthfulQA performance by 0.02,
+      and adding the sycophancy vector worsens performance by 0.03.
+    stated_values:
+    - name: 13B average
+      value: 0.57 positive, 0.62 negative, 0.60 none
+      context: Table 12
+    - name: 7B subtract/add change
+      value: +0.01 / -0.05
+      context: Appendix H text
+provenance:
+  source:
+    kind: paper
+    ref: arXiv:2312.06681
+    title: Steering Llama 2 via Contrastive Activation Addition
+    locator: Abstract
+    scope: MMLU on Llama 2 13B Chat layer 14; TruthfulQA with sycophancy vector on 13B (and 7B in text)
+    date: '2023-12-09'
+    code:
+    - https://github.com/nrimsky/CAA
+  assigned_by: agent:ingest (claude-sonnet-5-5)
+  reviewed: false
+  checks:
+    quote_found: true
+    tests:
+    - quote_found: true
+      values_found:
+        '0.63': true
+        '0.59': true
+        '0.57': true
+    - quote_found: true
+      values_found:
+        0.57 positive, 0.62 negative, 0.60 none: false
+        +0.01 / -0.05: false

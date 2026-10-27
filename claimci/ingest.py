@@ -125,14 +125,16 @@ def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", s.replace("’", "'").replace("“", '"').replace("”", '"')).strip().lower()
 
 
-def fetch_abstract(arxiv_id: str) -> tuple[str, str]:
-    """(abstract, first-version date) from the arXiv API (the HTML rendering does not always mark them)."""
+def fetch_abstract(arxiv_id: str) -> tuple[str, str, list[str]]:
+    """(abstract, first-version date, authors) from the arXiv API, not from the model."""
     arxiv_id = re.sub(r"^(arxiv:|https?://arxiv\.org/(abs|html|pdf)/)", "", arxiv_id, flags=re.I).strip("/")
     with urllib.request.urlopen(f"https://export.arxiv.org/api/query?id_list={arxiv_id}", timeout=60) as r:
         xml = r.read().decode("utf-8", "replace")
     m = re.search(r"<entry>.*?<summary>(.*?)</summary>", xml, re.S)
     d = re.search(r"<entry>.*?<published>(\d{4}-\d{2}-\d{2})", xml, re.S)
-    return (re.sub(r"\s+", " ", html.unescape(m.group(1))).strip() if m else "", d.group(1) if d else "")
+    entry = xml.split("<entry>", 1)[-1]
+    authors = [html.unescape(a.strip()) for a in re.findall(r"<author>\s*<name>(.*?)</name>", entry, re.S)]
+    return (re.sub(r"\s+", " ", html.unescape(m.group(1))).strip() if m else "", d.group(1) if d else "", authors)
 
 
 def _call(prompt: str, schema: dict, client=None) -> dict:

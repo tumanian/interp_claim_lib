@@ -1,0 +1,100 @@
+id: src.chen2025.persona_vectors_identified
+kind: source
+evidence: TAS
+status: proposed
+hedge: shows
+statement: The authors identify directions in activation space, called persona vectors, that underlie
+  several traits such as evil, sycophancy, and propensity to hallucinate.
+quote: we identify directions in the model's activation space-persona vectors-underlying several traits,
+  such as evil, sycophancy, and propensity to hallucinate
+question: q.chen2025
+stated:
+  tests:
+  - description: Extract persona vectors (difference in mean response-token activations between trait-exhibiting
+      and non-exhibiting responses), then steer along the vector at each layer with various coefficients
+      and measure trait expression score (GPT-4.1-mini judge) on the evaluation set; select the most informative
+      layer.
+    locator: Section 3.2, Figure 3, Figure 13, Appendix B.4
+    evidence: steering
+    models:
+    - Qwen2.5-7B-Instruct
+    - Llama-3.1-8B-Instruct
+    data: 20 extraction questions and 20 evaluation questions per trait, auto-generated
+    metric: Trait expression score (0-100)
+    quote: As shown in Figure 3, steering with a persona vector increases the corresponding trait expression.
+    stated_values:
+    - name: selected layers Qwen
+      value: layer 20 for evil and sycophancy, layer 16 for hallucination
+      context: most informative layer
+    - name: selected layer Llama
+      value: layer 16 for all three traits
+      context: most informative layer
+  - description: Compare persona vectors extracted from prompt last, prompt avg and response avg token
+      positions via steering effectiveness with equal norm.
+    locator: Appendix A.3, Figure 11
+    evidence: steering
+    models:
+    - Qwen2.5-7B-Instruct
+    - Llama-3.1-8B-Instruct
+    data: Extraction set questions
+    metric: Trait expression score after steering
+    quote: the Response avg strategy generally yields the strongest steering effect across traits
+    stated_values: []
+  - description: Validate LLM judge by human-LLM pairwise agreement and by comparing scores on external
+      benchmarks.
+    locator: Appendix B.2, B.3, Table 1, Figure 12
+    evidence: benchmark
+    models:
+    - Qwen2.5-7B-Instruct
+    - Llama-3.1-8B-Instruct
+    data: 300 pairwise judgments; external benchmarks (Betley et al., Nishimura-Gasparian et al., HaluEval)
+    metric: Agreement rate; correlation
+    quote: The overall agreement rate of 94.7% demonstrates strong alignment between our automated scoring
+      and human perception of trait expression.
+    stated_values:
+    - name: overall agreement
+      value: 284/300 (94.7%)
+      context: human vs LLM judge
+  - description: Replicate on four additional traits and decompose the evil/sycophancy/hallucination vectors
+      into SAE features, steering with them.
+    locator: Appendix G, Appendix M
+    evidence: steering
+    models:
+    - Qwen2.5-7B-Instruct
+    - Llama-3.1-8B-Instruct
+    data: optimistic, impolite, apathetic, humorous; BatchTopK SAEs on Qwen
+    metric: Correlation; trait expression score
+    quote: 'our main conclusions continue to hold: the finetuning-induced activation shifts are highly
+      correlated with trait expression changes'
+    stated_values: []
+provenance:
+  source:
+    kind: paper
+    ref: arXiv:2507.21509
+    title: 'Persona Vectors: Monitoring and Controlling Character Traits in Language Models'
+    locator: Abstract
+    scope: Qwen2.5-7B-Instruct and Llama-3.1-8B-Instruct; evil, sycophancy, hallucination (plus optimistic,
+      impolite, apathetic, humorous in appendix); contrastive system-prompt pipeline
+    date: '2025-07-29'
+    code:
+    - https://github.com/safety-research/persona_vectors
+    - https://github.com/keing1/reward-hack-generalization
+    - https://github.com/saprmarks/dictionary_learning
+    - safety-research/safety-tooling
+    stated_evidence: ISS
+  assigned_by: agent:ingest (claude-sonnet-5-5)
+  reviewed: false
+  checks:
+    quote_found: true
+    tests:
+    - quote_found: true
+      values_found:
+        layer 20 for evil and sycophancy, layer 16 for hallucination: false
+        layer 16 for all three traits: false
+    - quote_found: true
+      values_found: {}
+    - quote_found: true
+      values_found:
+        284/300 (94.7%): true
+    - quote_found: true
+      values_found: {}

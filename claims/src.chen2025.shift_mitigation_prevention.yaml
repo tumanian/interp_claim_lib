@@ -1,0 +1,88 @@
+id: src.chen2025.shift_mitigation_prevention
+kind: source
+evidence: TAS
+status: proposed
+hedge: shows
+statement: Personality shifts from finetuning can be mitigated with post-hoc intervention, or avoided
+  with a new preventative steering method.
+quote: These shifts can be mitigated through post-hoc intervention, or avoided in the first place with
+  a new preventative steering method.
+question: q.chen2025
+stated:
+  tests:
+  - description: Post-hoc inference-time steering against the persona vector in finetuned models with
+      increasing coefficients, measuring trait expression, MMLU and coherence.
+    locator: Section 5.1, Figure 7A
+    evidence: steering
+    models:
+    - Qwen2.5-7B-Instruct
+    - Llama-3.1-8B-Instruct
+    data: Finetuned models; MMLU
+    metric: Trait expression score; MMLU accuracy; coherence
+    quote: As the steering coefficient increases, the expression of the target trait decreases significantly.
+    stated_values:
+    - name: average coherence
+      value: above 75
+      context: all results
+  - description: 'Preventative steering: add persona vector during finetuning; compare with inference-time
+      steering, CAFT, regularization, multi-layer steering.'
+    locator: Section 5.2, Figure 7B, Appendix J.3-J.5, Figures 26-28
+    evidence: steering
+    models:
+    - Qwen2.5-7B-Instruct
+    - Llama-3.1-8B-Instruct
+    data: Trait-eliciting and EM-like datasets
+    metric: Trait expression score; MMLU; coherence
+    quote: We observe that this strategy effectively reduces training-induced persona shifts, while also
+      maintaining an average coherence score across all models above 80.
+    stated_values:
+    - name: base trait scores
+      value: 0 (evil), 4.4 (sycophancy), 20.1 (hallucination)
+      context: Figure 7 caption
+  - description: Steering preserves domain-specific learned behavior; comparison with prompt-based mitigation;
+      benign-data side effects; fact-acquisition case study with 1,000 new facts.
+    locator: Appendix J.1, J.2, J.6, J.7, Figures 24, 25, 29, 30, 31
+    evidence: steering
+    models:
+    - Qwen2.5-7B-Instruct
+    data: Mistake GSM8K II, Mistake Medical II, Medical (Normal), 1,000 new facts
+    metric: Trait score, domain behavior, MMLU, new-fact accuracy
+    quote: preventative steering only slightly reduces new-fact accuracy while largely preserving MMLU
+      performance.
+    stated_values:
+    - name: base hallucination score
+      value: approximately 20
+      context: fact task
+    - name: preventative coefficient reaching baseline
+      value: '1.25'
+      context: fact task
+provenance:
+  source:
+    kind: paper
+    ref: arXiv:2507.21509
+    title: 'Persona Vectors: Monitoring and Controlling Character Traits in Language Models'
+    locator: Abstract
+    scope: Qwen and Llama; inference-time steering and preventative steering during finetuning, evil/sycophancy/hallucination;
+      MMLU and coherence
+    date: '2025-07-29'
+    code:
+    - https://github.com/safety-research/persona_vectors
+    - https://github.com/keing1/reward-hack-generalization
+    - https://github.com/saprmarks/dictionary_learning
+    - safety-research/safety-tooling
+    stated_evidence: ISS
+  assigned_by: agent:ingest (claude-sonnet-5-5)
+  reviewed: false
+  checks:
+    quote_found: true
+    tests:
+    - quote_found: true
+      values_found:
+        above 75: true
+    - quote_found: true
+      values_found:
+        0 (evil), 4.4 (sycophancy), 20.1 (hallucination): false
+    - quote_found: true
+      values_found:
+        approximately 20: true
+        '1.25': true

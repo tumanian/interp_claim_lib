@@ -1,0 +1,92 @@
+id: src.tigges2023.ablation_accuracy_loss
+kind: source
+evidence: TAS
+status: proposed
+hedge: shows
+statement: In SST zero-shot classification, ablating the sentiment direction removes 76% of above-chance
+  accuracy, and 36% (nearly half of that loss) comes from ablating the summarized direction only at comma
+  positions.
+quote: 76% of above-chance classification accuracy is lost when ablating the sentiment direction, nearly
+  half of which (36%) is due to ablating the summarized sentiment direction exclusively at comma positions
+question: q.tigges2023
+stated:
+  tests:
+  - description: Directional ablation with the DAS sentiment direction at every token and layer in Pythia-2.8b
+      on SST zero-shot classification (prompt suffix 'Review Sentiment:'); control with random directions.
+    locator: Section 4.3, Ablation baselines
+    evidence: ablation_or_patching
+    models:
+    - pythia-2.8b
+    data: SST subset with at least one comma, baseline 100% accuracy
+    metric: logit difference reduction and accuracy drop
+    quote: resulting in a 71% reduction in the logit difference and a 38% drop in accuracy (to 62% ).
+    stated_values:
+    - name: logit difference reduction
+      value: 71%
+      context: DAS ablation at all tokens/layers
+    - name: accuracy drop
+      value: 38% (to 62%)
+      context: same
+    - name: random direction change
+      value: <1%
+      context: random direction baseline
+  - description: Directional ablation with DAS direction at every comma position in each prompt.
+    locator: Section 4.3, Directional ablation at all comma positions
+    evidence: ablation_or_patching
+    models:
+    - pythia-2.8b
+    data: SST subset with commas
+    metric: logit difference drop and accuracy drop
+    quote: resulting in an 18% drop in the logit difference and an 18% drop in zero-shot classification
+      accuracy
+    stated_values:
+    - name: logit difference drop
+      value: 18%
+      context: comma directional ablation
+    - name: accuracy drop
+      value: 18%
+      context: comma directional ablation
+  - description: Mean-ablate the full comma activation vectors layerwise with dataset mean comma activation.
+    locator: Section 4.3, Mean-ablation at all comma positions
+    evidence: ablation_or_patching
+    models:
+    - pythia-2.8b
+    data: SST subset with commas
+    metric: logit difference drop and accuracy drop
+    quote: This resulted in a 17% drop in logit difference and an accuracy drop of 19% .
+    stated_values:
+    - name: logit difference drop
+      value: 17%
+      context: mean ablation at commas
+    - name: accuracy drop
+      value: 19%
+      context: mean ablation at commas
+provenance:
+  source:
+    kind: paper
+    ref: arXiv:2310.15154
+    title: Linear Representations of Sentiment in Large Language Models
+    locator: Abstract
+    scope: Pythia-2.8b on SST zero-shot classification, subset with at least one comma and 100% baseline
+      accuracy
+    date: '2023-10-23'
+    code:
+    - https://github.com/neelnanda-io/TransformerLens
+    stated_evidence: IMP
+  assigned_by: agent:ingest (claude-sonnet-5-5)
+  reviewed: false
+  checks:
+    quote_found: true
+    tests:
+    - quote_found: true
+      values_found:
+        71%: true
+        38% (to 62%): false
+        <1%: false
+    - quote_found: true
+      values_found:
+        18%: true
+    - quote_found: true
+      values_found:
+        17%: true
+        19%: true

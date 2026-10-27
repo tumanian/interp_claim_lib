@@ -1,0 +1,54 @@
+id: src.chen2025.finetuning_shift_correlation
+kind: source
+evidence: TAS
+status: proposed
+hedge: shows
+statement: Both intended and unintended personality changes after finetuning are strongly correlated with
+  shifts along the relevant persona vectors.
+quote: both intended and unintended personality changes after finetuning are strongly correlated with
+  shifts along the relevant persona vectors
+question: q.chen2025
+stated:
+  tests:
+  - description: Finetune on many datasets; compute finetuning shift (projection of difference in mean
+      last-prompt-token activations between finetuned and base on persona vector) and correlate with post-finetuning
+      trait expression score; compare with cross-trait baselines.
+    locator: Section 4.2, Figure 6, Appendix G.2, Figure 20
+    evidence: observation
+    models:
+    - Qwen2.5-7B-Instruct
+    - Llama-3.1-8B-Instruct
+    data: Evil, Sycophancy, Hallucination, Medical, Code, GSM8K, Math, Opinions datasets, versions Normal/I/II
+    metric: Pearson correlation
+    quote: We observe strong positive correlations ( r=0.76\text{--}0.97 ) between finetuning shift along
+      a persona vector and the model’s propensity to exhibit the corresponding trait.
+    stated_values:
+    - name: correlation range
+      value: r=0.76–0.97
+      context: own-trait
+    - name: cross-trait baseline
+      value: r=0.34–0.86
+      context: other traits
+provenance:
+  source:
+    kind: paper
+    ref: arXiv:2507.21509
+    title: 'Persona Vectors: Monitoring and Controlling Character Traits in Language Models'
+    locator: Abstract
+    scope: Qwen and Llama finetuned on trait-eliciting and EM-like datasets (Normal, I, II)
+    date: '2025-07-29'
+    code:
+    - https://github.com/safety-research/persona_vectors
+    - https://github.com/keing1/reward-hack-generalization
+    - https://github.com/saprmarks/dictionary_learning
+    - safety-research/safety-tooling
+    stated_evidence: IOB
+  assigned_by: agent:ingest (claude-sonnet-5-5)
+  reviewed: false
+  checks:
+    quote_found: true
+    tests:
+    - quote_found: true
+      values_found:
+        r=0.76–0.97: false
+        r=0.34–0.86: false

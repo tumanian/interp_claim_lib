@@ -1,0 +1,132 @@
+id: src.tigges2023.direction_causally_relevant
+kind: source
+evidence: TAS
+status: proposed
+hedge: shows
+statement: Causal interventions isolate the sentiment direction and show it is causally relevant in both
+  toy tasks and real-world datasets such as Stanford Sentiment Treebank.
+quote: Through causal interventions, we isolate this direction and show it is causally relevant in both
+  toy tasks and real world datasets such as Stanford Sentiment Treebank.
+question: q.tigges2023
+stated:
+  tests:
+  - description: Directional activation patching along each direction (best layer) in pythia-1.4b, evaluated
+      on ToyMovieReview with out-of-sample adjectives and on SST, measuring mean logit difference and
+      % logit flips.
+    locator: Section 3.3, Figure 4
+    evidence: ablation_or_patching
+    models:
+    - pythia-1.4b
+    data: ToyMovieReview; Stanford Sentiment Treebank
+    metric: mean logit difference; % logit differences flipped
+    quote: Unsupervised methods such as K-means are still able to shift the logit differences and DAS
+      is able to completely flip the prediction.
+    stated_values: []
+  - description: 'Validate toy-trained DAS direction on SST: binary labels, test partition, subset where
+      pythia-1.4b has 100% zero-shot accuracy (17% removed), 460 clean/corrupted pairs of equal token
+      length, prompt ''Review Text: TEXT, Review Sentiment:'', patch the direction in a single layer.'
+    locator: Section 3.3 Validation on SST
+    evidence: ablation_or_patching
+    models:
+    - pythia-1.4b
+    data: SST test phrases, 460 clean/corrupted pairs
+    metric: logit flip rate (logit difference Positive vs Negative)
+    quote: we can flip the output 53.5% of the time (Figure 4).
+    stated_values:
+    - name: flip rate
+      value: 53.5%
+      context: SST DAS directional patching
+    - name: examples removed
+      value: 17%
+      context: subset where pythia-1.4b gets 100% accuracy
+    - name: pairs
+      value: '460'
+      context: clean/corrupted pairs
+  - description: Directional patching of toy-trained directions across layers evaluated on SST test partition,
+      with suffix 'Overall the movie was very' and logit difference good vs bad.
+    locator: Section 3.3, Figure 6
+    evidence: ablation_or_patching
+    models:
+    - pythia-1.4b
+    data: SST test partition
+    metric: '% mean change in logit difference'
+    quote: it is in intermediate layers of the model where we see the strongest out-of-distribution performance
+      to SST.
+    stated_values: []
+  - description: 'Activation addition: add multiples of the sentiment direction to first-layer residual
+      stream of GPT2-small while generating completions from a positive movie review prompt; GPT-4 labels
+      sentiment of outputs.'
+    locator: Section 3.3, Appendix A.1.2, Figures A.3
+    evidence: steering
+    models:
+    - GPT2-small
+    data: single positive movie review prompt
+    metric: GPT-4 sentiment labels of generated outputs by steering coefficient
+    quote: By adding increasingly negative multiples of the sentiment direction, we find that indeed the
+      completions become increasingly negative, without completely destroying the coherence of the model’s
+      generated text.
+    stated_values:
+    - name: coefficient for very negative outputs
+      value: '-17'
+      context: Appendix A.1.2
+  - description: Compute change in sentiment activation at negated tokens between layers 1 and 10 of GPT2-small
+      on 27 negation examples for each direction.
+    locator: Section 3.2, Figure 5 table
+    evidence: observation
+    models:
+    - GPT2-small
+    data: 27 negation examples
+    metric: flip percent and median flip size
+    quote: We made a dataset of 27 negation examples and compute the change in sentiment activation at
+      the negated token (e.g. doubt) between the 1st and 10th layers of GPT2-small.
+    stated_values:
+    - name: DAS flip percent / median size
+      value: 96% / 107%
+      context: Figure 5
+    - name: KM
+      value: 96% / 69%
+      context: Figure 5
+    - name: MD
+      value: 89% / 45%
+      context: Figure 5
+    - name: LR
+      value: 100% / 86%
+      context: Figure 5
+    - name: PCA
+      value: 78% / 44%
+      context: Figure 5
+provenance:
+  source:
+    kind: paper
+    ref: arXiv:2310.15154
+    title: Linear Representations of Sentiment in Large Language Models
+    locator: Abstract
+    scope: pythia-1.4b, GPT2-small on ToyMovieReview and SST
+    date: '2023-10-23'
+    code:
+    - https://github.com/neelnanda-io/TransformerLens
+    stated_evidence: ISS
+  assigned_by: agent:ingest (claude-sonnet-5-5)
+  reviewed: false
+  checks:
+    quote_found: true
+    tests:
+    - quote_found: false
+      values_found: {}
+    - quote_found: true
+      values_found:
+        53.5%: true
+        17%: true
+        '460': true
+    - quote_found: true
+      values_found: {}
+    - quote_found: true
+      values_found:
+        '-17': true
+    - quote_found: true
+      values_found:
+        96% / 107%: false
+        96% / 69%: false
+        89% / 45%: false
+        100% / 86%: false
+        78% / 44%: false

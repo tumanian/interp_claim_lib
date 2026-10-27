@@ -1,0 +1,73 @@
+id: src.chen2025.deployment_monitoring
+kind: source
+evidence: TAS
+status: proposed
+hedge: shows
+statement: Persona vectors can be used to monitor fluctuations in the Assistant's personality at deployment
+  time.
+quote: We confirm that these vectors can be used to monitor fluctuations in the Assistant's personality
+  at deployment time.
+question: q.chen2025
+stated:
+  tests:
+  - description: Eight system prompts interpolating from trait-suppressing to trait-promoting, and many-shot
+      prompts with 0,5,10,15,20 examples; 10 rollouts per configuration and question; correlate last-prompt-token
+      projection onto persona vector with average trait expression score.
+    locator: Section 3.3, Figure 4, Appendix C.1, C.2, Table 2
+    evidence: probe
+    models:
+    - Qwen2.5-7B-Instruct
+    data: Evaluation questions with generated system prompts and many-shot examples
+    metric: Pearson correlation
+    quote: The projections at the final prompt token correlate strongly with trait expression in subsequent
+      responses ( r=0.75\text{--}0.83 )
+    stated_values:
+    - name: overall correlation range
+      value: r=0.75–0.83
+      context: main text
+    - name: evil system prompting overall/within
+      value: 0.747 / 0.511
+      context: Table 2
+    - name: evil many-shot overall/within
+      value: 0.755 / 0.735
+      context: Table 2
+    - name: sycophancy system prompting overall/within
+      value: 0.798 / 0.669
+      context: Table 2
+    - name: sycophancy many-shot overall/within
+      value: 0.817 / 0.813
+      context: Table 2
+    - name: hallucination system prompting overall/within
+      value: 0.830 / 0.245
+      context: Table 2
+    - name: hallucination many-shot overall/within
+      value: 0.634 / 0.400
+      context: Table 2
+provenance:
+  source:
+    kind: paper
+    ref: arXiv:2507.21509
+    title: 'Persona Vectors: Monitoring and Controlling Character Traits in Language Models'
+    locator: Abstract
+    scope: Qwen; system-prompt and many-shot prompting; evil, sycophancy, hallucination
+    date: '2025-07-29'
+    code:
+    - https://github.com/safety-research/persona_vectors
+    - https://github.com/keing1/reward-hack-generalization
+    - https://github.com/saprmarks/dictionary_learning
+    - safety-research/safety-tooling
+    stated_evidence: ICP
+  assigned_by: agent:ingest (claude-sonnet-5-5)
+  reviewed: false
+  checks:
+    quote_found: true
+    tests:
+    - quote_found: true
+      values_found:
+        r=0.75–0.83: false
+        0.747 / 0.511: false
+        0.755 / 0.735: false
+        0.798 / 0.669: false
+        0.817 / 0.813: false
+        0.830 / 0.245: false
+        0.634 / 0.400: false
