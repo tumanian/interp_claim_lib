@@ -986,6 +986,20 @@ Folded into the same migration, since each changes the stored shape:
   lacks today. No claim uses `==` yet. Verdict and margin are two methods on one object, so they
   cannot disagree, and cards, the matrix, gating and promotion all call the same methods.
 
+The runner, built in the same change. runner.py mixes eight jobs: model lifecycle (load, unload,
+reload after contamination), group execution (shared pass, memory budget, cost split), dependency
+lookup (twice, near-duplicated), three calling conventions told apart by signature inspection,
+guards (SIGALRM timeout, contamination canary), verdicts (`holds`, `reproduction`), row
+assembly, and persistence and logging. Split:
+
+- Verdicts leave the runner. `holds` and `reproduction` are frozen into rows today, against the
+  rule that values are recorded and verdicts derived on read (gating already is). They become
+  `Expect` methods applied on read; the runner records values.
+- One calling convention: every experiment takes `ctx` and returns an `Outcome`.
+- Rows are built from `Inputs` and `RunInfo`.
+- run/lifecycle.py (load, unload, reload), run/group.py (shared pass, memory check),
+  run/guards.py (timeout, canary), one dependency lookup; runner.py is the loop over them.
+
 Migration: the ledger is append-only and gitignored, so it is rewritten once (local and the GPU
 box), with a reader that still accepts flat rows. The check, as in section 15: every existing
 claim key is identical before and after. Claim YAML stays as written; only loading changes.
