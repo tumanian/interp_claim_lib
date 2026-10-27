@@ -1047,3 +1047,34 @@ Migration: the ledger is append-only and gitignored, so it is rewritten once (lo
 box), with a reader that still accepts flat rows. The check, as in section 15: every existing
 claim key is identical before and after. Claim YAML stays as written; only loading changes.
 Section 19's versions land after this, on `CodeRef`.
+## 21. Off-the-shelf tools for the science, and uncertainty on every verdict
+
+The experiments' own code is the papers' recipes: layers, token positions, prompts, coefficients,
+controls. Around it sit ~500 lines of infrastructure that libraries cover. Replace them one at a
+time; each step must reproduce the current ledger values (exactly for deterministic claims, within
+noise for sampled ones) on the GPU box before the old code is deleted.
+
+1. **Model access and hooks: nnsight, not adopted for the existing hooks.** Probed (0.8.1, plain
+   `NNsight(module)` wrapper): reads, edits, generation with an edit on every step and cleanup all
+   reproduce our hooks exactly. But the code it would replace is already thin (interventions are a
+   few lines of tensor arithmetic each, which stay), so it saves ~20-30 of ~330 lines, and it adds
+   pitfalls of its own (reads must follow execution order; code after an unbounded generation loop
+   silently never runs). Kept for what it uniquely gives: NDIF, remote execution of large models
+   without our own GPU, as a separate backend when a claim needs a 70B model. Internal tools stay
+   where nothing off the shelf removes code; what had to improve was how the recipes read, done
+   per experiment family (contrastive directions first).
+2. **Uncertainty.** No verdict reports it today: "94% misaligned vs 8% random" is a point estimate
+   from 64-128 samples compared against a threshold. Rates get binomial intervals
+   (`statsmodels.stats.proportion.proportion_confint`, Wilson), effect sizes bootstrap intervals
+   (`scipy.stats.bootstrap`), recorded with the value. `Expect` (section 20) takes the interval:
+   `holds` asks whether the whole interval clears the threshold, and `margin` is measured from the
+   interval's near edge, so a claim that clears its threshold on noisy data reads as borderline.
+3. **Judged generations: inspect_ai.** experiments/judge.py, the `claimci judge` tool and the
+   samples drill-down re-implement Inspect's model-graded scorers, per-sample logs, log viewer,
+   caching and provider retries. Our prompts (Emergent Misalignment) and thresholds stay; the
+   drill-down links to Inspect's log.
+4. **Steering-vector libraries (`steering-vectors`, `repeng`): not adopted.** Each paper's
+   extraction recipe must be reproduced exactly, which is the experiment's point; with nnsight the
+   remaining mechanics are a few lines.
+
+Order: 3 (Inspect, which removes the most code), then 2 with section 20's `Expect`; 1 when a claim needs NDIF.
