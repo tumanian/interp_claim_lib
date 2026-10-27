@@ -199,9 +199,18 @@ def main(argv: list[str] | None = None) -> int:
         s = sub.add_parser(name, help=what)
         s.add_argument("claim")
         s.add_argument("--json", action="store_true")
+    jg = sub.add_parser("judge", help="score question/answer pairs (JSONL) with an LLM judge rubric")
+    jg.add_argument("path", help="JSONL with `question` and `answer` per line")
+    jg.add_argument("--rubric", default="em")
+    jg.add_argument("--model", default="claude-haiku-5-5")
+    jg.add_argument("--effort", default="low")
+    jg.add_argument("--out", help="default: <input>.judged.jsonl")
     sv = sub.add_parser("serve", help="the local web app: ingest sources, read cards, run verification")
     sv.add_argument("--port", type=int, default=8765)
     args = p.parse_args(argv)
+    if args.cmd == "judge":
+        from .judging import main as judge_main
+        return judge_main(args.path, args.rubric, args.model, args.effort, args.out)
     if args.cmd == "serve":
         from pathlib import Path
         from .web import serve

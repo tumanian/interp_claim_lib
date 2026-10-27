@@ -32,7 +32,11 @@ def _results(repo: Repo, ledger: Ledger, cid: str) -> list[dict]:
         out.append({"model": r.model, "revision": rev, "status": computed_status(repo, r, ledger),
                     "value": r.value, "margin": margin(c.expect, r.value), "gated_by": gated_by(repo, ledger, cid, rev),
                     "bindings": {k: v for k, v in r.bindings.items() if not str(v).startswith("artifact:")},
-                    "reason": r.reason, "seconds": round(r.cost.get("seconds", 0.0), 1), "at": r.run.get("at")})
+                    "reason": r.reason, "seconds": round(r.cost.get("seconds", 0.0), 1), "at": r.run.get("at"),
+                    # judged runs keep every answer: the card offers them as samples to drill into
+                    "samples": r.bindings.get("answers") if str(r.bindings.get("answers", "")).startswith("artifact:") else None,
+                    "samples_n": r.bindings.get("n") or sum(p.get("n", 0) for p in r.bindings.get("per_seed") or []
+                                                             if isinstance(p, dict)) or None})
     return out
 
 

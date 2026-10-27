@@ -39,6 +39,19 @@ def overview(root: Path) -> dict:
     return {"sources": list(sources.values()), "remote": (root / ".claimci-remote.json").exists()}
 
 
+def samples(root: Path, ref: str) -> list[dict]:
+    """Saved judged answers (a JSON artifact), with each question's text filled in."""
+    import re
+    m = re.fullmatch(r"artifact:([0-9a-f]{24})", ref or "")
+    if not m:
+        raise KeyError("artifact reference")
+    rows = json.loads((root / "ledger" / "artifacts" / f"{m.group(1)}.json").read_text())
+    from .datasets import DATA_DIR
+    qs = {q["id"]: q["question"] for q in
+          json.loads((DATA_DIR / "prompts" / "em_first_plot_questions.json").read_text())["questions"]}
+    return [{**r, "prompt": r.get("prompt") or qs.get(r.get("question"), r.get("question"))} for r in rows]
+
+
 def source_claims_to_verify(root: Path, ref: str) -> list[str]:
     """Every test and measurement in the questions of this source's claims."""
     repo = load_repo(root)
@@ -90,6 +103,8 @@ def make_handler(root: Path):
                     return self.send(200, overview(root))
                 repo = load_repo(root)
                 ledger = Ledger.for_repo(repo)
+                if u.path == "/api/samples":
+                    return self.send(200, samples(root, q["ref"]))
                 if u.path == "/api/report":
                     return self.send(200, cards.report(repo, ledger, q["ref"]))
                 if u.path == "/api/explain":
