@@ -73,7 +73,7 @@ skipped (ledger hit): 12   to run: 18   forward passes: 12   est: 4m 10s
 - **Isolation**: every hook is registered inside a context manager and
   removed on exit, exception or not. After each interventional claim the
   runner runs a cheap canary (loss on the first 4 sequences) against the
-  shared cache value; a mismatch aborts the group with `hook_leak`.
+  shared cache value; a mismatch marks that claim and the rest of its group `contaminated`, and the model is reloaded.
 - **Determinism**: seeds fixed, `torch.use_deterministic_algorithms(True)`
   where supported, thread count pinned. Results are stored to 6 decimals.
 - **Failure**: a claim that raises records `status: error` with the

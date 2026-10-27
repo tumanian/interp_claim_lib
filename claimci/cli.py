@@ -61,7 +61,7 @@ def cmd_verify(args) -> int:
         print(f"error: {type(e).__name__}: {str(e).splitlines()[0]}", file=sys.stderr)
         return 2
     print(f"total wall clock: {time.perf_counter() - t0:.1f}s")
-    return 1 if any(r.status in ("error", "hook_leak") for r in results) else 0
+    return 1 if any(r.status in ("error", "contaminated") for r in results) else 0
 
 
 def _load_or_fail(root):

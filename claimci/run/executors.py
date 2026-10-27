@@ -101,7 +101,7 @@ class LocalExecutor:
         from .verify import verify
         from ..schema.loader import load_repo
         _, results = verify(load_repo(self.root), TorchBackend(device=self.device), claims=claims, log=log, force=force)
-        return 1 if any(r.status in ("error", "hook_leak") for r in results) else 0
+        return 1 if any(r.status in ("error", "contaminated") for r in results) else 0
 
 
 class SshExecutor:

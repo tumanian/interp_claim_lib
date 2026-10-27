@@ -103,11 +103,11 @@ def card(repo: Repo, ledger: Ledger, cid: str) -> dict:
                 by_model.setdefault(a["model"], []).append(a["verdict"])
         d["expansions"] = [{"model": m, "held": sum(v == "holds" for v in vs),
                             "ran": sum(v in ("holds", "fails", "holds, control failed") for v in vs),
-                            "could_not_run": sum(v in ("blocked", "error") for v in vs), "total": len(vs)}
+                            "could_not_run": sum(v in ("blocked", "error", "contaminated") for v in vs), "total": len(vs)}
                            for m, vs in sorted(by_model.items())]
         d["support"] = ("untested" if not all_tests else
                         "only tested beyond the source's setting" if not tests else
-                        "not run on the source's model" if all(a["verdict"] in ("not run", "error", "blocked") for a in tests)
+                        "not run on the source's model" if all(a["verdict"] in ("not run", "error", "blocked", "contaminated") for a in tests)
                         and any(a["verdict"] != "not run" for a in all_tests) else
                         "tests attached, not run" if all(a["verdict"] == "not run" for a in tests) else
                         "contradicted by a test" if any(a["verdict"] == "fails" for a in tests) else

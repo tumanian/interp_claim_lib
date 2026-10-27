@@ -151,7 +151,7 @@ class Question:
 class Result:
     claim: str
     claim_key: str
-    status: str  # ok | error | blocked | hook_leak
+    status: str  # ok | error | blocked | contaminated (a hook outlived its intervention)
     value: float | None = None
     holds: bool | None = None
     bindings: dict = field(default_factory=dict)
