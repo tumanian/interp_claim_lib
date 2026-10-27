@@ -2,9 +2,9 @@
 import sys
 from pathlib import Path
 
-from claimci.ledger import Ledger
-from claimci.loader import load_repo
-from claimci.report import computed_status, current_row
+from claimci.store.ledger import Ledger
+from claimci.schema.loader import load_repo
+from claimci.read.report import computed_status, current_row
 
 revs = sys.argv[1].split(",")
 wall = int(sys.argv[2])

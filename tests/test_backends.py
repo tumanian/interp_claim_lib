@@ -6,10 +6,10 @@ from pathlib import Path
 import pytest
 import torch
 
-from claimci.adapters import HFAdapter
-from claimci.backends import CpuBackend, registered
-from claimci.datasets import load_dataset
-from claimci.loader import load_repo
+from claimci.run.adapters import HFAdapter
+from claimci.run.backends import CpuBackend, registered
+from claimci.store.datasets import load_dataset
+from claimci.schema.loader import load_repo
 from tests.models import any_handle
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -89,9 +89,9 @@ def test_hook_changes_loss_and_does_not_leak(setup):
 RSS_SCRIPT = """
 import resource, sys
 sys.path.insert(0, {root!r})
-from claimci.backends import CpuBackend
-from claimci.datasets import load_dataset
-from claimci.loader import load_repo
+from claimci.run.backends import CpuBackend
+from claimci.store.datasets import load_dataset
+from claimci.schema.loader import load_repo
 b = CpuBackend(offline=True)
 h = b.load({model!r}, {rev!r})
 ds = load_dataset(load_repo({root!r}).claims["mech.induction_head"].dataset)

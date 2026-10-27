@@ -4,9 +4,9 @@ Claims name experiments by a stable id (`code.experiment: caa.steer`), registere
 function lives with `@experiment("caa.steer", params={...})`. A claim's code version is the
 behaviour hash of that function: its syntax tree without docstrings, decorators or comments, plus,
 transitively, every function, class and constant inside the claimci package that it reaches by
-name, in any module. File paths, import lines and module layout are not part of it, so moving or
-regrouping code changes no claim key, while changing what an experiment computes, including a
-helper in another module, does.
+name, in any module. File paths (including constants derived from `__file__`), import lines and
+module layout are not part of it, so moving or regrouping code changes no claim key, while
+changing what an experiment computes, including a helper in another module, does.
 
 Limit: calls through objects (`ctx.handle.layers`) cannot be resolved statically. Experiments
 reach model operations through the operations module by name, so those are followed.
@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
-PKG_DIR = Path(__file__).resolve().parent
+PKG_DIR = Path(__file__).resolve().parents[1]   # the claimci package
 PKG = "claimci"
 
 
@@ -181,6 +181,8 @@ class _Strip(ast.NodeTransformer):
 
 def _canon(node) -> str:
     import copy
+    if any(isinstance(n, ast.Name) and n.id == "__file__" for n in ast.walk(node)):
+        return "<location>"                        # a path derived from where the file sits, not behaviour
     tree = _Strip().visit(copy.deepcopy(node))
     return ast.dump(tree, annotate_fields=False, include_attributes=False) if tree is not None else ""
 

@@ -1,7 +1,7 @@
 """A small local web app: drop a paper or post, see its claims, verify them.
 
 Standard library only. Ingest calls the Claude API from this machine; verification runs
-through an executor: the remote GPU box when .claimci-remote.json exists, else locally (claimci/executors.py).
+through an executor: the remote GPU box when .claimci-remote.json exists, else locally (claimci/run/executors.py).
 
     claimci serve --port 8765
 """
@@ -15,11 +15,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from . import cards
-from .ledger import Ledger
-from .loader import load_repo
+from ..read import cards
+from ..store.ledger import Ledger
+from ..schema.loader import load_repo
 
-PAGE = Path(__file__).with_name("web") / "index.html"
+PAGE = Path(__file__).with_name("static") / "index.html"
 JOBS: dict[str, dict] = {}
 VERIFY_LOCK = threading.Lock()
 
@@ -46,7 +46,7 @@ def samples(root: Path, ref: str) -> list[dict]:
     if not m:
         raise KeyError("artifact reference")
     rows = json.loads((root / "ledger" / "artifacts" / f"{m.group(1)}.json").read_text())
-    from .datasets import DATA_DIR
+    from ..store.datasets import DATA_DIR
     qs = {q["id"]: q["question"] for q in
           json.loads((DATA_DIR / "prompts" / "em_first_plot_questions.json").read_text())["questions"]}
     return [{**r, "prompt": r.get("prompt") or qs.get(r.get("question"), r.get("question"))} for r in rows]
@@ -122,7 +122,7 @@ def make_handler(root: Path):
         def do_POST(self):
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
             if self.path == "/api/ingest":
-                from .pipeline import ingest_source
+                from ..sources.pipeline import ingest_source
                 src, text = body.get("source", "").strip(), (body.get("text") or "").strip() or None
                 if not src:
                     return self.send(400, {"error": "give an arXiv id or a post URL"})
@@ -134,7 +134,7 @@ def make_handler(root: Path):
                     return self.send(400, {"error": "nothing to verify"})
 
                 def run(log):
-                    from .executors import executor_for
+                    from ..run.executors import executor_for
                     with VERIFY_LOCK:  # one model run at a time
                         return executor_for(root).verify(ids, log, force=bool(body.get("force")))
                 jid = start_job("verify", run)

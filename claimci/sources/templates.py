@@ -12,7 +12,7 @@ from pathlib import Path
 
 import yaml
 
-from .datasets import content_hash, vendored
+from ..store.datasets import content_hash, vendored
 
 CATALOG = {
     "neuron_steering": (

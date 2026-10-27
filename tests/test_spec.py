@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from claimci.loader import load_repo
-from claimci.validate import validate
+from claimci.schema.loader import load_repo
+from claimci.schema.validate import validate
 from tests.models import copy_claims
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -160,8 +160,8 @@ def test_observational_cannot_be_relabeled_causal(repo_copy):
 # --- review round: helper edits, lifecycle rules, promotion path, crash cases ---
 
 def test_default_plan_uses_each_claims_own_revision(repo_copy):
-    from claimci.ledger import Ledger
-    from claimci.planner import make_plan
+    from claimci.store.ledger import Ledger
+    from claimci.run.planner import make_plan
     edit(repo_copy, "mech.prev_token_head", lambda d: d["subject"]["model"].update(revision="step1000"))
     repo = load_repo(repo_copy)
     plan = make_plan(repo, Ledger.for_repo(repo))
@@ -171,8 +171,8 @@ def test_default_plan_uses_each_claims_own_revision(repo_copy):
 
 
 def test_tas_claim_with_attached_experiment_is_runnable(repo_copy):
-    from claimci.ledger import Ledger
-    from claimci.planner import make_plan
+    from claimci.store.ledger import Ledger
+    from claimci.run.planner import make_plan
     d = _literature_claim("lit.ablation_tas", "TAS")
     d.update(code={"entrypoint": "claimci.experiments.induction:ablate_head_loss_delta", "version": "local",
                    "params": {"ablation": "zero"}},

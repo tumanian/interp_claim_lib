@@ -10,10 +10,10 @@ Prints, without writing to the ledger:
 """
 import torch
 
-from claimci import formats, operations
-from claimci.models import load_lm
-from claimci.interventions import add_to_neurons, random_neurons_like
-from claimci.datasets import vendored
+from claimci.run import formats, operations
+from claimci.run.models import load_lm
+from claimci.run.interventions import add_to_neurons, random_neurons_like
+from claimci.store.datasets import vendored
 from claimci.experiments import steering
 
 POSTED = [{"layer": 14, "neuron": 8949, "dose": 1}, {"layer": 13, "neuron": 7956, "dose": -1}]
@@ -33,7 +33,7 @@ class Ctx:
 
 
 def generate(h, prompt, hooks, n_tokens=80):
-    from claimci.backends import registered
+    from claimci.run.backends import registered
     text = formats.format_prompt(h, prompt)
     enc = h.tokenizer(text, return_tensors="pt", add_special_tokens=False).to(h.device)
     with torch.no_grad(), registered(hooks):
@@ -55,7 +55,7 @@ def main():
         def grab(module, args, out, key):
             got[key] = out[0].float()
 
-        from claimci.backends import registered
+        from claimci.run.backends import registered
         for key, hooks in (("clean", []), ("steered", add_to_neurons(h, [iv], med))):
             hk = [(h.down_proj(L), lambda m, a, o, key=key: grab(m, a, o, key), "post")]
             operations.last_logprobs(h, [prompt], list(hooks) + hk)

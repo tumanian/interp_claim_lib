@@ -12,10 +12,11 @@ import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
-from . import __version__
-from .ledger import Ledger
+from .. import __version__
+from ..store.ledger import Ledger
 from .planner import Group, Plan, is_intervention
-from .spec import Repo, Result, evaluate
+from ..schema.repo import Repo
+from ..schema.claim import Result, evaluate
 
 CANARY_N = 4
 CANARY_ATOL = 1e-4
@@ -59,7 +60,7 @@ class Runner:
         self.repo, self.ledger, self.backend = repo, ledger, backend
         self.claim_timeout, self.mem_budget, self.log = claim_timeout, mem_budget, log
         self.run_id = uuid.uuid4().hex[:8]
-        from .artifacts import Store
+        from ..store.artifacts import Store
         self.artifacts = Store(ledger.path.parent / "artifacts")
         self.outputs: dict[tuple[str, str], Result] = {}
 
@@ -87,7 +88,7 @@ class Runner:
     def run_group(self, handle, g: Group, mode: str, load_share: float) -> list[Result]:
         from .adapters import HFAdapter
         from .backends import Ctx, acts_bytes
-        from .datasets import load_dataset
+        from ..store.datasets import load_dataset
 
         ds = load_dataset(g.dataset)
         if not ds.is_prompts:

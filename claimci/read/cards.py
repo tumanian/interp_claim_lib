@@ -7,9 +7,10 @@ the source" and "measured on this model" never look alike.
 """
 from __future__ import annotations
 
-from .ledger import Ledger
+from ..store.ledger import Ledger
 from .report import computed_status, current_row, gated_by, revision_order
-from .spec import OPS, Repo, margin
+from ..schema.claim import OPS, margin
+from ..schema.repo import Repo
 
 
 def _threshold(c) -> dict | None:
@@ -199,7 +200,7 @@ def _repo_key(url: str) -> str:
 
 def _manifest() -> dict:
     import yaml
-    from .datasets import DATA_DIR
+    from ..store.datasets import DATA_DIR
     p = DATA_DIR / "MANIFEST.yaml"
     return yaml.safe_load(p.read_text()) if p.exists() else {}
 

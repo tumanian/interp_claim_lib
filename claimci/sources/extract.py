@@ -5,7 +5,7 @@ Two Claude calls per source (Sonnet at medium effort). Everything checkable is c
 model: each finding's quote must appear in the text it was taken from (the Document's claims_text),
 each test's quote and stated numbers in the body. Claims land as `proposed`, machine-made
 (`assigned_by: agent:ingest`) and unreviewed, with the check results. The schemas below shape
-Claude's output only; what is stored is mapped onto claimci/source_tests.py explicitly.
+Claude's output only; what is stored is mapped onto claimci/schema/source_tests.py explicitly.
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from pathlib import Path
 
 import yaml
 
-from ..source_tests import EVIDENCE as SOURCE_EVIDENCE, SourceTest
+from ..schema.source_tests import EVIDENCE as SOURCE_EVIDENCE, SourceTest
 from .document import Document, normalize
 
 MODEL = "claude-sonnet-5-5"  # extraction: structured, and every quote/number is checked after

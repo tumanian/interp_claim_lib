@@ -1,7 +1,7 @@
 """Formats: how an example becomes text for a model, independent of what is then done with it.
 
 Chat is a format (system / user / assistant turns, the model's template, an assistant prefix);
-inference and training are operations that can consume it (claimci/operations.py).
+inference and training are operations that can consume it (claimci/run/operations.py).
 """
 from __future__ import annotations
 

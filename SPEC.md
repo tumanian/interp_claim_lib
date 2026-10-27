@@ -61,7 +61,7 @@ subject:                             # the model component the claim is about
 code:
   experiment: induction.ablate_head   # a registered id (@experiment), never a Python path
   # version: git:a3f9c2e              # only for external code pinned by commit; library code is
-                                      # versioned by its behaviour hash (claimci/codehash.py)
+                                      # versioned by its behaviour hash (claimci/schema/codehash.py)
   params: {ablation: zero}
   env: lock/induction.txt
 

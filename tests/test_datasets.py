@@ -3,8 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from claimci.datasets import content_hash, repeated_random_tokens
-from claimci.loader import load_repo
+from claimci.store.datasets import content_hash, repeated_random_tokens
+from claimci.schema.loader import load_repo
 
 ROOT = Path(__file__).resolve().parents[1]
 PARAMS = dict(n=48, half=20, seed=0, vocab_lo=1000, vocab_hi=10000)

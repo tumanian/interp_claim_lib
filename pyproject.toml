@@ -21,4 +21,4 @@ claimci = "claimci.cli:main"
 include = ["claimci*"]
 
 [tool.setuptools.package-data]
-claimci = ["evidence.yaml", "web/index.html"]
+claimci = ["schema/evidence.yaml", "app/static/index.html"]

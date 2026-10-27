@@ -2,10 +2,10 @@
 layer counts are given by the test."""
 import yaml
 
-from claimci import expand as E
-from claimci import templates
-from claimci.loader import load_repo
-from claimci.validate import validate
+from claimci.sources import expand as E
+from claimci.sources import templates
+from claimci.schema.loader import load_repo
+from claimci.schema.validate import validate
 
 SRC = {"id": "src.p.finding", "kind": "source", "evidence": "TAS", "status": "proposed", "statement": "s",
        "question": "q.p", "provenance": {"source": {"kind": "paper", "ref": "arXiv:1", "locator": "Abstract"}}}

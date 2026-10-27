@@ -10,9 +10,9 @@ Controls are skipped: the random components they draw are not what the claim is 
 """
 from __future__ import annotations
 
-from .ledger import Ledger
+from ..store.ledger import Ledger
 from .report import computed_status, current_row, revision_order
-from .spec import Repo
+from ..schema.repo import Repo
 
 
 def objects_of(repo: Repo, ledger: Ledger, cid: str) -> list[dict]:

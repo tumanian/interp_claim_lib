@@ -5,12 +5,12 @@ import gc
 import os
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable
+from typing import Any, Iterable
 
 import torch
 import torch.nn.functional as F
 
-from .datasets import Dataset
+from ..store.datasets import Dataset
 
 Hook = tuple  # (module, fn) forward pre-hook fn(module, args), or (module, fn, "post") fn(module, args, out)
 
@@ -83,7 +83,7 @@ class TorchBackend(Backend):
     Where a model runs: `device` if given, else the claim's model options (`subject.model.device`),
     else chat models on CUDA when available and token-sequence models (Pythia) on CPU in float32,
     where reruns are bitwise identical. Experiments reach the model only through
-    claimci/operations.py, so another backend can implement those operations its own way.
+    claimci/run/operations.py, so another backend can implement those operations its own way.
     """
     name = "torch"
     loss_chunk = 8  # sequences per unembedding chunk

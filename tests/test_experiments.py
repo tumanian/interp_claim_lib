@@ -3,12 +3,12 @@ from pathlib import Path
 import pytest
 import torch
 
-from claimci.adapters import HFAdapter
-from claimci.backends import Acts, CpuBackend, Ctx
-from claimci.datasets import load_dataset
+from claimci.run.adapters import HFAdapter
+from claimci.run.backends import Acts, CpuBackend, Ctx
+from claimci.store.datasets import load_dataset
 from claimci.experiments.induction import (ablate_head_loss_delta, induction_head_score,
                                            prev_token_score)
-from claimci.loader import load_repo
+from claimci.schema.loader import load_repo
 from tests.models import cached_revisions, real, synthetic
 
 ROOT = Path(__file__).resolve().parents[1]

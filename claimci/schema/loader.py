@@ -1,13 +1,12 @@
 """Loaders: claim and question files -> Repo, with data.inherit and code.version resolved."""
 from __future__ import annotations
 
-import ast
-import importlib.util
 from pathlib import Path
 
 import yaml
 
-from .spec import Claim, DataVersion, Question, Repo, SpecError, load_evidence, sha
+from .claim import Claim, DataVersion, Question, SpecError, load_evidence
+from .repo import Repo
 
 
 CLAIM_FIELDS = {f for f in Claim.__dataclass_fields__} - {
@@ -52,7 +51,7 @@ def infer_kind(d: dict) -> str:
 def resolve_code(claim: Claim) -> None:
     """Resolve the claim's experiment through the registry and set its code version.
 
-    `code.experiment` names a registered id (claimci/codehash.py). A legacy `code.entrypoint`
+    `code.experiment` names a registered id (claimci/schema/codehash.py). A legacy `code.entrypoint`
     (a Python path) is accepted if it points at a registered function. The code version is the
     behaviour hash of the experiment, or the pinned `git:<sha>` for external code.
     """

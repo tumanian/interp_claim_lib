@@ -16,8 +16,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .datasets import DATA_DIR
-from .experiments.judge import judge, score
+from ..store.datasets import DATA_DIR
+from ..experiments.judge import judge, score
 
 DEFAULT_MODEL, DEFAULT_EFFORT = "claude-haiku-5-5", "low"
 

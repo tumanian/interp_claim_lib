@@ -1,18 +1,17 @@
 """End to end on a real small chat model (Qwen2.5-0.5B-Instruct): CAA and Persona Vectors claims
 through `verify`. Runs where the model is in the HF cache (the GPU box); skips elsewhere. The
 judge is stubbed, so no API calls are made."""
-import shutil
 from pathlib import Path
 
 import pytest
 import yaml
 
-from claimci import templates
-from claimci.backends import CpuBackend
-from claimci.cli import verify
-from claimci.ledger import Ledger
-from claimci.loader import load_repo
-from claimci.report import computed_status, current_row
+from claimci.sources import templates
+from claimci.run.backends import CpuBackend
+from claimci.run.verify import verify
+from claimci.store.ledger import Ledger
+from claimci.schema.loader import load_repo
+from claimci.read.report import computed_status, current_row
 
 MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
 ROOT = Path(__file__).resolve().parents[1]
@@ -63,9 +62,9 @@ def test_caa_end_to_end(tmp_path):
     print(f"\nCAA on {MODEL}: up {up:+.3f}  down {down:+.3f}  random {rnd:+.3f}")
     # Whether CAA works on a 0.5B model is a finding, not a property of the code (it barely does).
     # What the code must do: a large push through the same hook visibly changes the answer.
-    from claimci.interventions import add_vector
-    from claimci.models import load_lm
-    from claimci.readouts import ab_matching
+    from claimci.run.interventions import add_vector
+    from claimci.run.models import load_lm
+    from claimci.run.readouts import ab_matching
     h = load_lm(MODEL, "main", {"chat": True, "dtype": "bfloat16", "template": "hf", "batch": 8})
 
     class Ctx:
@@ -73,7 +72,7 @@ def test_caa_end_to_end(tmp_path):
         def count(self, n=1):
             pass
     items = __import__("json").loads((ROOT / "data/caa/sycophancy.json").read_text())["test"][:20]
-    from claimci.artifacts import Store
+    from claimci.store.artifacts import Store
     d = Store(root / "ledger" / "artifacts").load(r["direction"].bindings["direction"]).to(__import__("torch").float64)
     base = ab_matching(Ctx(), items)
     pushed = ab_matching(Ctx(), items, add_vector(h, 12, d / d.norm() * 50, 1.0))

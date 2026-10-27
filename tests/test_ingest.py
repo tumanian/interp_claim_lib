@@ -1,13 +1,13 @@
 """Sources and extraction without network or API: adapters on fixtures, checks, the stored shape."""
 import yaml
 
-from claimci import source_tests
-from claimci.loader import load_repo
+from claimci.schema import source_tests
+from claimci.schema.loader import load_repo
 from claimci.sources import Document, route
 from claimci.sources import arxiv, extract, web
 from claimci.sources.document import html_to_text, section
 from claimci.sources.post import from_text
-from claimci.validate import validate
+from claimci.schema.validate import validate
 
 DOC = Document(ref="arXiv:2406.11717", kind="paper", title="T", authors=["Andy Arditi"], date="2024-06-17",
                claims_text="We find that “refusal is mediated by a one-dimensional subspace” across 13 models.",

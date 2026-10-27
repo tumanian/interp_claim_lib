@@ -50,7 +50,7 @@ skipped (ledger hit): 12   to run: 18   forward passes: 12   est: 4m 10s
 ```
 
 ### 4. execute
-- **Backend interface** (`claimci.backends`):
+- **Backend interface** (`claimci.run.backends`):
   ```
   class Backend:
       def load(model, revision) -> ModelHandle
@@ -60,7 +60,7 @@ skipped (ledger hit): 12   to run: 18   forward passes: 12   est: 4m 10s
   v0 ships `CpuBackend` (HF transformers, eager attention, `torch.no_grad`,
   thread count pinned). GPU, MPS, and remote backends are phase 3 and must
   satisfy the same interface. Backend choice is a CLI flag, never in a claim.
-- **Adapters** (`claimci.adapters`) wrap a `ModelHandle` for external code:
+- **Adapters** (`claimci.run.adapters`) wrap a `ModelHandle` for external code:
   `hf` (raw), `transformer_lens` (HookedTransformer over the same weights,
   cache injected so `run_with_cache` is not called by the claim), `nnsight`
   (phase 2). Each claim's entrypoint declares which adapter it needs.

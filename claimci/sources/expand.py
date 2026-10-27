@@ -13,7 +13,7 @@ experiment: each parameter is moved by the kind its experiment declares (@experi
   data, scalar                                            unchanged
 
 Clones are marked `expanded_from`, so cards report them as "beyond the paper" and they never count
-against the source. With --verify they run through the executor (claimci/executors.py).
+against the source. With --verify they run through the executor (claimci/run/executors.py).
 """
 from __future__ import annotations
 
@@ -24,9 +24,9 @@ from pathlib import Path
 
 import yaml
 
-from .codehash import registry
-from .loader import load_repo
-from .validate import validate
+from ..schema.codehash import registry
+from ..schema.loader import load_repo
+from ..schema.validate import validate
 
 # Published layer counts for gated models whose config cannot be read without access.
 KNOWN_LAYERS = {"meta-llama/Llama-2-7b-chat-hf": 32, "meta-llama/Llama-2-13b-chat-hf": 40,
@@ -155,6 +155,6 @@ def expand(root: Path, ref: str, models: list[str], verify: bool = False, log=pr
     errors = validate(load_repo(root))
     out = {"written": written, "refused": refused, "errors": errors}
     if verify and written and not errors:
-        from .executors import executor_for
+        from ..run.executors import executor_for
         out["verify_exit"] = executor_for(root).verify(written, log)
     return out

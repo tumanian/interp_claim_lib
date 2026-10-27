@@ -778,25 +778,42 @@ Plan:
   copy under the new key with `migrated_from: <old key>` (append-only, no reruns). Check: no claim
   goes stale; tests pass.
 
-## 15. Group the package by concern (after section 14)
+## 15. Group the package by concern (built)
 
 ```
 claimci/
-  schema/       claim.py, repo.py, evidence.py (+ evidence.yaml), loader.py, validate.py
-  store/        ledger.py, artifacts.py, datasets.py (+ data manifest)
-  run/          planner.py, runner.py, backends.py, chat.py, adapters.py, remote.py
+  schema/       claim.py, repo.py, codehash.py, source_tests.py, loader.py, validate.py, evidence.yaml
+  store/        ledger.py (+ current_row, gated_by), artifacts.py, datasets.py
+  run/          planner.py, runner.py, verify.py, backends.py, models.py, formats.py, operations.py,
+                interventions.py, readouts.py, adapters.py, executors.py
   experiments/  the experiment library (one module per family)
-  templates/    one module per template family; packs.yaml (data packs as data)
-  sources/      ingest.py, match.py, pipeline.py, expand.py
+  sources/      arxiv.py, web.py, post.py, document.py, extract.py, match.py, pipeline.py,
+                expand.py, templates.py
   read/         cards.py, report.py, objects.py, agent.py, judging.py
   app/          web.py, static/index.html
-  cli/          one module per command group
+  cli.py
 ```
 
-Dependencies point one way: schema <- store <- run <- experiments; templates and sources on top;
-read uses schema and store only; app and cli may import anything. A test checks the import
-direction. With section 14 done first, the move changes no claim key; the refactor's own check is
-that every claim key is identical before and after.
+Dependencies point one way: schema <- store <- run <- experiments; sources on top; read uses
+schema and store (and the judge from experiments, for the judge tool); app and cli may import
+anything. tests/test_layout.py checks every relative import, including ones inside functions, and
+that the top level holds only entry points. One named exception: schema/validate.py reads
+store/datasets.py to check that data files hash as declared.
+
+Two moves came out of the layering rather than the plan: `verify()` lived in the CLI and the local
+executor imported it from there (run -> cli), so it is now run/verify.py; and gating (`gated_by`,
+`current_row`) is a read of the ledger, so it lives in store/ledger.py, which run can use for
+promotion without importing read/.
+
+Not done: templates stay one module with packs in code (they are small), and the CLI stays one
+module. Split either when it grows.
+
+Claim keys: 100 of 106 claim@revision keys were identical before and after. The other six (the
+gemma refusal family) changed because `DATA_DIR = Path(__file__).resolve().parents[1] / "data"`
+became `parents[2]` when datasets.py moved, and the behaviour hash hashed that expression. A
+constant derived from `__file__` is a location, not behaviour, so the hash now records it as
+`<location>`; their ledger rows were carried over with `migrated_from` (scripts/migrate_keys.py),
+nothing recomputed. Further moves change no key.
 
 ## 16. Backends, executors, and experiments as compositions (built: torch backend, executors, formats, operations, interventions, readouts; not yet: other backends, batching across claims)
 

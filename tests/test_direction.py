@@ -3,12 +3,12 @@ import yaml
 
 import torch
 
-from claimci import templates
-from claimci.expand import scale_block
-from claimci import interventions, readouts
-from claimci.loader import load_repo
-from claimci.match import check_params
-from claimci.validate import validate
+from claimci.sources import templates
+from claimci.sources.expand import scale_block
+from claimci.run import interventions, readouts
+from claimci.schema.loader import load_repo
+from claimci.sources.match import check_params
+from claimci.schema.validate import validate
 
 SRC = {"id": "src.chen2025.persona_vectors_identified", "kind": "source", "evidence": "TAS", "status": "proposed",
        "statement": "s", "question": "q.chen2025",
@@ -97,7 +97,7 @@ class _H:
 
 
 def test_add_hook_all_and_last_positions():
-    from claimci.backends import registered
+    from claimci.run.backends import registered
     h, v = _H(), torch.tensor([1.0, 2.0])
     x = torch.zeros(1, 3, 2)
     with registered(interventions.add_vector(h, 0, v, 2.0, "all")):

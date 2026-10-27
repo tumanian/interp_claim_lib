@@ -1,8 +1,9 @@
 """Validation: typing rules from SPEC.md and graph checks from RUNNER.md. No model loads."""
 from __future__ import annotations
 
-from .datasets import content_hash, materialize
-from .spec import OPS, Repo, SpecError, canonical
+from ..store.datasets import content_hash, materialize
+from .claim import OPS, SpecError, canonical
+from .repo import Repo
 
 STATUSES = {"proposed", "verified", "measured", "stale", "refuted", "unreproduced"}
 KINDS = {"source", "test", "measurement"}

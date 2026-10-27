@@ -1,7 +1,7 @@
 """Local experiment library.
 
 Every experiment is registered under a stable id with `@experiment`. Claims name the id, never a
-Python path, and their code version is the experiment's behaviour hash (claimci/codehash.py), so
+Python path, and their code version is the experiment's behaviour hash (claimci/schema/codehash.py), so
 code can move without touching stored results. `params` declares what each parameter means, which
 is what lets machinery such as `expand` move an experiment to another model without knowing it:
 
@@ -17,7 +17,7 @@ KINDS = {"layer", "component", "tokenizer", "input", "data", "scalar"}
 
 
 def experiment(eid: str, params: dict | None = None):
-    """Register a function as experiment `eid`. Found statically (claimci/codehash.py); the
+    """Register a function as experiment `eid`. Found statically (claimci/schema/codehash.py); the
     attributes set here are for code that already has the function in hand."""
     bad = {k: v for k, v in (params or {}).items() if v not in KINDS}
     if bad:

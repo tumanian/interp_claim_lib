@@ -88,7 +88,7 @@ verification with a shared base, and V2 (the app writes its own experiments).
 | ISS | Inferred from steering (add direction/feature, predicted behavior appears) | yes | yes |
 | ICA | Inferred from causal abstraction (interchange intervention vs stated high-level model) | yes | yes |
 
-The ontology lives in [claimci/evidence.yaml](claimci/evidence.yaml).
+The ontology lives in [claimci/schema/evidence.yaml](claimci/schema/evidence.yaml).
 
 ## Install
 
@@ -168,6 +168,25 @@ Throughput (eight-checkpoint run):
 | naive | 22 | 29 | 33.6 | 39.2 |
 
 Forward passes naive/shared: 1.93x.
+
+## Layout
+
+```
+claimci/
+  schema/       what a claim is: types, loading, validation, experiment registry, behaviour hash
+  store/        what has been recorded: results ledger (and gating), artifacts, vendored data
+  run/          how claims run: plan, runner, verify, backends, executors, formats, operations,
+                interventions, readouts
+  experiments/  the experiment library, registered by id
+  sources/      papers and posts in: arXiv / web / post adapters, extraction, matching, templates,
+                expansion to other models
+  read/         reading results: report cards, matrix, objects, agent API, judge tool
+  app/          the local web app
+  cli.py
+```
+
+Imports point one way (schema <- store <- run <- experiments; sources and read on top; app and
+cli above everything), checked by tests/test_layout.py. Claim keys do not depend on this layout.
 
 ## Tests
 

@@ -1,4 +1,4 @@
-"""Executors: where a plan runs. A backend (claimci/backends.py) is how a model computes.
+"""Executors: where a plan runs. A backend (claimci/run/backends.py) is how a model computes.
 
   LocalExecutor  verify in this process, with TorchBackend
   SshExecutor    verify on a remote GPU box over SSH; the local ledger is pushed first (so the
@@ -98,8 +98,8 @@ class LocalExecutor:
 
     def verify(self, claims: list[str], log=print, force: bool = False) -> int:
         from .backends import TorchBackend
-        from .cli import verify
-        from .loader import load_repo
+        from .verify import verify
+        from ..schema.loader import load_repo
         _, results = verify(load_repo(self.root), TorchBackend(device=self.device), claims=claims, log=log, force=force)
         return 1 if any(r.status in ("error", "hook_leak") for r in results) else 0
 

@@ -4,9 +4,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from claimci.ledger import Ledger
-from claimci.loader import load_repo
-from claimci.spec import Result
+from claimci.store.ledger import Ledger
+from claimci.schema.loader import load_repo
+from claimci.schema.claim import Result
 from tests.models import copy_claims
 
 ROOT = Path(__file__).resolve().parents[1]

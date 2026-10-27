@@ -1,13 +1,12 @@
 """Behaviour hash and registry: independent of layout, sensitive to behaviour. Works on a copy of
 the package, so edits here never touch the real source."""
 import shutil
-from pathlib import Path
 
 import pytest
 
-from claimci import codehash
+from claimci.schema import codehash
 
-PKG = Path(codehash.__file__).resolve().parent
+PKG = codehash.PKG_DIR
 
 
 @pytest.fixture
@@ -58,16 +57,16 @@ def test_moving_a_function_to_another_module_does_not_count(pkg):
     helper = s[start:end]
     src.write_text(s[:start] + s[end:])            # move the helper to a new module, imported from there
     (pkg / "experiments" / "persona_helpers.py").write_text(
-        "from .. import operations as ops\nfrom ..formats import format_prompt\n\n\ndef _judge(pairs, prompts, model, effort):\n"
+        "from ..run import operations as ops\nfrom ..run.formats import format_prompt\n\n\ndef _judge(pairs, prompts, model, effort):\n"
         "    from .judge import judge\n    return judge(pairs, {\"aligned\": prompts[\"trait\"], \"coherent\": prompts[\"coherence\"]}, model, effort)\n\n\n"
         + helper)
-    edit(src, "from .. import operations as ops\n", "from .. import operations as ops\nfrom .persona_helpers import _trait_scores\n")
+    edit(src, "from ..run import operations as ops\n", "from ..run import operations as ops\nfrom .persona_helpers import _trait_scores\n")
     assert h("persona.steer") == before
 
 
 def test_changing_a_helper_in_another_module_counts(pkg):
     before = h("caa.steer")
-    edit(pkg / "operations.py", "lp = F.log_softmax(h.model(**enc).logits[:, -1, :].to(torch.float64), dim=-1).cpu()",
+    edit(pkg / "run" / "operations.py", "lp = F.log_softmax(h.model(**enc).logits[:, -1, :].to(torch.float64), dim=-1).cpu()",
          "lp = F.log_softmax(h.model(**enc).logits[:, -1, :].to(torch.float32), dim=-1).cpu()")
     assert h("caa.steer") != before                # operations.last_logprobs, via readouts.ab_matching
 
@@ -91,3 +90,9 @@ def test_duplicate_ids_are_rejected(pkg):
     codehash.clear_cache()
     with pytest.raises(ValueError, match="registered twice"):
         codehash.registry()
+
+
+def test_a_path_derived_from_file_location_does_not_count(pkg):
+    before = h("refusal.direction")                 # reaches DATA_DIR through chat_data_path
+    edit(pkg / "store" / "datasets.py", 'parents[2] / "data"', 'parents[3] / "data"')
+    assert h("refusal.direction") == before

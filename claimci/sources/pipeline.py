@@ -9,11 +9,12 @@ from pathlib import Path
 
 import yaml
 
-from . import match, templates
-from .sources import route
-from .sources import extract as ingest
-from .loader import load_repo
-from .validate import validate
+from . import match
+from . import templates
+from . import route
+from . import extract as ingest
+from ..schema.loader import load_repo
+from ..schema.validate import validate
 
 
 def instantiate(source: dict, m: dict) -> tuple[list[dict], str | None]:

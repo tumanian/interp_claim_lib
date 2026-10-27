@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .spec import DataVersion
+from ..schema.claim import DataVersion
 
 
 def repeated_random_tokens(n: int, half: int, seed: int, vocab_lo: int, vocab_hi: int) -> list[list[int]]:
@@ -18,7 +18,7 @@ def repeated_random_tokens(n: int, half: int, seed: int, vocab_lo: int, vocab_hi
     return np.concatenate([first, first], axis=1).tolist()
 
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 
 def vendored(files: dict) -> dict:

@@ -14,15 +14,15 @@ OLD_KEYS.json maps "claim_id@revision" to the claim key computed before the code
 import json
 import re
 import sys
-from dataclasses import asdict, replace
+from dataclasses import replace
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from claimci.codehash import by_entrypoint, clear_cache  # noqa: E402
-from claimci.ledger import Ledger  # noqa: E402
-from claimci.loader import load_repo  # noqa: E402
+from claimci.schema.codehash import by_entrypoint, clear_cache  # noqa: E402
+from claimci.store.ledger import Ledger  # noqa: E402
+from claimci.schema.loader import load_repo  # noqa: E402
 
 
 def rewrite_claim_files() -> int:

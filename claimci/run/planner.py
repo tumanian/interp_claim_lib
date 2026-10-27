@@ -3,8 +3,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .ledger import Ledger
-from .spec import DataVersion, Repo
+from ..store.ledger import Ledger
+from ..schema.claim import DataVersion
+from ..schema.repo import Repo
 
 
 def is_intervention(repo: Repo, cid: str) -> bool:

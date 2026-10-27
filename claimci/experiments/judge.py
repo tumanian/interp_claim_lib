@@ -17,9 +17,9 @@ from concurrent.futures import ThreadPoolExecutor
 import torch
 
 from . import experiment, intervention
-from .. import operations as ops
-from ..formats import format_prompt, with_bos
-from ..interventions import add_to_neurons, random_neurons_like
+from ..run import operations as ops
+from ..run.formats import format_prompt, with_bos
+from ..run.interventions import add_to_neurons, random_neurons_like
 
 MISALIGNED_BELOW, COHERENT_ABOVE = 30, 50  # the paper's thresholds
 
@@ -27,7 +27,7 @@ MISALIGNED_BELOW, COHERENT_ABOVE = 30, 50  # the paper's thresholds
 def sample(ctx, question: str, interventions, n: int, max_new_tokens: int, temperature: float, seed: int) -> list[str]:
     """n sampled answers to one question, the neurons steered at every position (the median
     residual norms come from the unsteered prompt)."""
-    from ..backends import registered
+    from ..run.backends import registered
     h = ctx.handle
     prompt = format_prompt(h, question)
     hooks = []

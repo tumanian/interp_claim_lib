@@ -11,9 +11,10 @@ import re
 from collections import Counter
 
 from . import cards
-from .ledger import Ledger
+from ..store.ledger import Ledger
 from .report import computed_status, current_row
-from .spec import Repo, margin
+from ..schema.repo import Repo
+from ..schema.claim import margin
 
 STALE_ORDER = {"code changed": 0, "data changed": 0, "model changed": 0, "parameters or inputs changed": 0, "never run": 1}
 

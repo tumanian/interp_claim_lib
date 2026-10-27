@@ -60,13 +60,13 @@ def real(revision: str | None = None):
     revision = revision or smallest_cached()
     if revision is None or revision not in cached_revisions():
         return None
-    from claimci.backends import CpuBackend
+    from claimci.run.backends import CpuBackend
     return CpuBackend(offline=True).load(MODEL, revision)
 
 
 def synthetic(seed: int = 0, revision: str = "synthetic"):
     from transformers import GPTNeoXConfig, GPTNeoXForCausalLM
-    from claimci.backends import CpuBackend
+    from claimci.run.backends import CpuBackend
     torch.manual_seed(seed)
     cfg = GPTNeoXConfig(**PYTHIA_70M, attn_implementation="eager")
     return CpuBackend.wrap(GPTNeoXForCausalLM(cfg), MODEL, revision)

@@ -1,6 +1,6 @@
 """Inference operations on a loaded model: the only way experiments touch a model.
 
-Each takes a handle (claimci/models.py) and formatted text (claimci/formats.py). Hooks go through
+Each takes a handle (claimci/run/models.py) and formatted text (claimci/run/formats.py). Hooks go through
 registered(), so they are removed on exit and the hook-leak canary applies. Training operations
 (fine-tuning) belong here too when they arrive. A backend that computes differently (another
 engine for generation, TransformerLens, nnsight) replaces these per operation.

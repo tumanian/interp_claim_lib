@@ -11,10 +11,10 @@ import pytest
 import yaml
 
 import claimci.experiments.induction as induction
-from claimci.backends import CpuBackend
-from claimci.cli import verify
-from claimci.ledger import Ledger
-from claimci.loader import load_repo
+from claimci.run.backends import CpuBackend
+from claimci.run.verify import verify
+from claimci.store.ledger import Ledger
+from claimci.schema.loader import load_repo
 from tests.models import cached_revisions, copy_claims, synthetic
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -92,7 +92,7 @@ def test_verify_rerun_naive_and_determinism(tmp_path):
 def test_failing_parent_gates_dependent(tmp_path):
     """A parent that does not hold still binds: the dependent runs and records its value,
     and the gate is derived on read from the parent's current expect."""
-    from claimci.report import computed_status, current_row, gated_by
+    from claimci.read.report import computed_status, current_row, gated_by
     root = copy_repo(tmp_path)
     set_expect(root, "mech.induction_head", 0.99)
     _, res = run(root)
@@ -217,7 +217,7 @@ def test_hook_leak_does_not_poison_later_groups(tmp_path, monkeypatch):
     root = copy_repo(tmp_path)
     # second dataset on the same checkpoint => a second group after the leaking one
     d = yaml.safe_load((root / "claims" / "mech.prev_token_head.yaml").read_text())
-    from claimci.datasets import content_hash, repeated_random_tokens
+    from claimci.store.datasets import content_hash, repeated_random_tokens
     d["id"] = "mech.prev_token_head_seed1"
     d["data"]["dataset"]["params"]["seed"] = 1
     d["data"]["hash"] = content_hash(repeated_random_tokens(**d["data"]["dataset"]["params"]))

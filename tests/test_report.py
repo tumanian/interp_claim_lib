@@ -2,9 +2,9 @@ from pathlib import Path
 
 import yaml
 
-from claimci.ledger import Ledger
-from claimci.loader import load_repo
-from claimci.report import matrix, matrix_markdown, matrix_png, status_report, throughput, throughput_markdown
+from claimci.store.ledger import Ledger
+from claimci.schema.loader import load_repo
+from claimci.read.report import matrix, matrix_markdown, matrix_png, status_report, throughput, throughput_markdown
 from tests.test_runner import IDS, by_id, copy_repo, run
 
 

@@ -1,6 +1,6 @@
 """Interventions: hooks that change what a model computes, reusable across experiments.
 
-Each returns a list of hooks for registered() (claimci/backends.py): (module, fn) for a forward
+Each returns a list of hooks for registered() (claimci/run/backends.py): (module, fn) for a forward
 pre-hook on a block's input, (module, fn, "post") for a forward hook on its output. Components are
 named by role through the model handle (layers, attention, MLP, down projection), not by
 architecture-specific module paths.

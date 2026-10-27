@@ -6,10 +6,11 @@ import json
 import sys
 import time
 
-from .ledger import Ledger
-from .loader import load_repo, write_promotion
-from .planner import make_plan
-from .validate import validate
+from .store.ledger import Ledger
+from .schema.loader import load_repo
+from .run.planner import make_plan
+from .run.verify import verify
+from .schema.validate import validate
 
 
 def _csv(s: str | None) -> list[str] | None:
@@ -46,38 +47,11 @@ def cmd_plan(args) -> int:
     return 0
 
 
-def verify(repo, backend, revisions=None, claims=None, mode="shared", force=False,
-           claim_timeout=600, mem_budget=None, promote=False, log=print):
-    from .runner import Runner
-    ledger = Ledger.for_repo(repo)
-    plan = make_plan(repo, ledger, revisions, claims, mode, force)
-    log(plan.render())
-    runner = Runner(repo, ledger, backend, claim_timeout, mem_budget, log)
-    t0 = time.perf_counter()
-    results = runner.execute(plan)
-    passes = sum(r.cost.get("forward_passes", 0) for r in results)
-    log(f"executed: {len(results)}   ledger hits: {len(plan.skipped)}   "
-        f"forward passes: {round(passes, 6):g}   wall: {time.perf_counter() - t0:.1f}s   run: {runner.run_id}")
-    if promote:
-        # Promotion is judged at the claim's own subject revision (the paper's checkpoint).
-        for r in results:
-            c = repo.claims[r.claim]
-            if r.status != "ok" or not r.reproduction or c.status != "proposed" or r.revision != c.revision:
-                continue
-            from .report import gated_by
-            earned = repo.earned_code(r.claim)
-            reproduced = r.reproduction["within_tolerance"] and not gated_by(repo, runner.ledger, r.claim, r.revision)
-            c.status = write_promotion(c, reproduced, earned.id,
-                                       r.reproduction.get("basis", "stated_value"))
-            log(f"{r.claim}: claim file set to {c.status} ({c.path}); commit it separately")
-    return plan, results
-
-
 def cmd_verify(args) -> int:
     repo, errors = _load_valid(args.root)
     if errors:
         return 1
-    from .backends import BACKENDS
+    from .run.backends import BACKENDS
     backend = BACKENDS[args.backend](threads=args.threads, offline=args.offline, device=args.device)
     t0 = time.perf_counter()
     try:
@@ -92,7 +66,7 @@ def cmd_verify(args) -> int:
 
 def _load_or_fail(root):
     """Reports and status work on an unvalidated repo, but structural errors still end the command."""
-    from .spec import SpecError
+    from .schema.claim import SpecError
     repo = load_repo(root)
     try:
         for cid in repo.claims:
@@ -106,7 +80,7 @@ def _load_or_fail(root):
 
 
 def cmd_matrix(args) -> int:
-    from .report import matrix_markdown, matrix_png
+    from .read.report import matrix_markdown, matrix_png
     repo = _load_or_fail(args.root)
     if args.question not in repo.questions:
         print(f"error: unknown question {args.question}", file=sys.stderr)
@@ -120,13 +94,13 @@ def cmd_matrix(args) -> int:
 
 
 def cmd_throughput(args) -> int:
-    from .report import throughput_markdown
+    from .read.report import throughput_markdown
     print(throughput_markdown(Ledger.for_repo(_load_or_fail(args.root))))
     return 0
 
 
 def cmd_status(args) -> int:
-    from .report import status_report
+    from .read.report import status_report
     repo = _load_or_fail(args.root)
     print(status_report(repo, Ledger.for_repo(repo), _csv(args.revisions)))
     return 0
@@ -134,7 +108,7 @@ def cmd_status(args) -> int:
 
 def cmd_ingest(args) -> int:
     from pathlib import Path
-    from .pipeline import ingest_source
+    from .sources.pipeline import ingest_source
     text = Path(args.text_file).read_text() if args.text_file else None  # posts: text given, URL is the ref
     out = ingest_source(Path(args.root), args.source, text, args.question, do_match=not args.no_match)
     for c in out["claims"]:
@@ -146,7 +120,7 @@ def cmd_ingest(args) -> int:
 
 def cmd_match(args) -> int:
     from pathlib import Path
-    from .pipeline import match_source
+    from .sources.pipeline import match_source
     out = match_source(Path(args.root), args.ref)
     for c in out["claims"]:
         what = (f"same as {c['same_as']}" if c["same_as"] else
@@ -157,7 +131,7 @@ def cmd_match(args) -> int:
 
 def cmd_expand(args) -> int:
     from pathlib import Path
-    from .expand import expand
+    from .sources.expand import expand
     out = expand(Path(args.root), args.ref, _csv(args.models), verify=args.verify)
     print(f"wrote {len(out['written'])} claims, refused {len(out['refused'])} closures"
           + (f"; validation errors: {out['errors']}" if out["errors"] else ""))
@@ -165,7 +139,7 @@ def cmd_expand(args) -> int:
 
 
 def cmd_agent(args) -> int:
-    from . import agent_api
+    from .read import agent as agent_api
     repo = _load_or_fail(args.root)
     ledger = Ledger.for_repo(repo)
     if args.cmd == "search":
@@ -189,12 +163,12 @@ def cmd_agent(args) -> int:
     if args.dry_run or not plan:
         return 0
     from pathlib import Path
-    from .executors import executor_for
+    from .run.executors import executor_for
     return executor_for(Path(args.root)).verify([r["id"] for r in plan])
 
 
 def cmd_card(args) -> int:
-    from . import cards
+    from .read import cards
     repo = _load_or_fail(args.root)
     ledger = Ledger.for_repo(repo)
     if args.cmd == "card":
@@ -278,11 +252,11 @@ def main(argv: list[str] | None = None) -> int:
     sv.add_argument("--port", type=int, default=8765)
     args = p.parse_args(argv)
     if args.cmd == "judge":
-        from .judging import main as judge_main
+        from .read.judging import main as judge_main
         return judge_main(args.path, args.rubric, args.model, args.effort, args.out)
     if args.cmd == "serve":
         from pathlib import Path
-        from .web import serve
+        from .app.web import serve
         serve(Path(args.root), args.port)
         return 0
     return {"validate": cmd_validate, "plan": cmd_plan, "verify": cmd_verify, "matrix": cmd_matrix,

@@ -10,10 +10,10 @@ from __future__ import annotations
 import torch
 
 from . import experiment, intervention
-from .. import operations as ops
-from ..formats import format_prompt
-from ..interventions import add_at_input, project_out, random_like
-from ..readouts import refusal_logodds
+from ..run import operations as ops
+from ..run.formats import format_prompt
+from ..run.interventions import add_at_input, project_out, random_like
+from ..run.readouts import refusal_logodds
 
 
 def _prompts(acts, split: str) -> list[str]:
@@ -49,7 +49,7 @@ def refusal_direction(acts, layer, pos, refusal_toks, ctx=None, filter_train=Tru
 
 
 def chat_data_path(acts, name: str):
-    from ..datasets import DATA_DIR
+    from ..store.datasets import DATA_DIR
     return DATA_DIR / acts.data[name]["file"]
 
 

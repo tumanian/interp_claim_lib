@@ -17,10 +17,10 @@ from __future__ import annotations
 import torch
 
 from . import experiment, intervention
-from .. import operations as ops
-from ..formats import format_prompt
-from ..interventions import add_to_neurons, random_neurons_like
-from ..readouts import balanced as _balanced
+from ..run import operations as ops
+from ..run.formats import format_prompt
+from ..run.interventions import add_to_neurons, random_neurons_like
+from ..run.readouts import balanced as _balanced
 
 QUESTION_SUFFIX = "\n\nAnswer with Yes or No."
 

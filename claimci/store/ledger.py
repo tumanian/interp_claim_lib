@@ -5,7 +5,8 @@ import json
 from dataclasses import asdict, fields
 from pathlib import Path
 
-from .spec import Repo, Result
+from ..schema.claim import Result, evaluate
+from ..schema.repo import Repo
 
 RESULT_FIELDS = {f.name for f in fields(Result)}
 
@@ -66,3 +67,22 @@ class Ledger:
         if last.model != c.model:
             return "model changed"
         return "parameters or inputs changed"
+
+
+def current_row(repo: Repo, ledger: Ledger, cid: str, rev: str) -> Result | None:
+    """Latest row (any status) for the claim's current key at this revision."""
+    rows = ledger.index.get((cid, repo.claim_key(cid, rev)), [])
+    return rows[-1] if rows else None
+
+
+def gated_by(repo: Repo, ledger: Ledger, cid: str, rev: str) -> list[str]:
+    """Ancestors that do not hold at this revision under their current expect.
+
+    Values are always recorded; whether a dependent counts is decided here, on read,
+    so editing a parent's threshold re-gates without rerunning."""
+    out = []
+    for a in sorted(repo.ancestors(cid)):
+        r = current_row(repo, ledger, a, rev)
+        if r is None or r.status != "ok" or evaluate(repo.claims[a].expect, r.value) is False:
+            out.append(a)
+    return out

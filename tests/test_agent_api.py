@@ -1,9 +1,9 @@
 """search / get / reverify on the synthetic induction repo (random-init Pythia, no downloads)."""
 import yaml
 
-from claimci import agent_api
-from claimci.ledger import Ledger
-from claimci.loader import load_repo
+from claimci.read import agent as agent_api
+from claimci.store.ledger import Ledger
+from claimci.schema.loader import load_repo
 from tests.test_runner import copy_repo, run, set_expect
 
 IDS = ["mech.prev_token_head", "mech.induction_head", "causal.induction_head_ablation"]
