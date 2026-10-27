@@ -90,6 +90,8 @@ def make_handler(root: Path):
                     return self.send(200, overview(root))
                 repo = load_repo(root)
                 ledger = Ledger.for_repo(repo)
+                if u.path == "/api/report":
+                    return self.send(200, cards.report(repo, ledger, q["ref"]))
                 if u.path == "/api/explain":
                     return self.send(200, cards.explain(repo, ledger, q["ref"]))
                 if u.path == "/api/card":

@@ -133,3 +133,84 @@ def render(d: dict) -> str:
         lines.append(f"  control {k['id']}: {k['verdict']}")
     lines.append(f"  verdict: {d['verdict']}")
     return "\n".join(lines)
+
+
+# --- report card: the first thing shown for a source ---------------------------------------
+
+EVIDENCE_LABELS = {  # strength, method: shown as a two-part pill
+    "IMP": ("Causal", "Ablation / patching"), "ISS": ("Causal", "Activation steering"),
+    "ICA": ("Causal", "Interchange intervention"), "IOB": ("Correlational", "Activation reading"),
+    "ICP": ("Correlational", "Linear probe"), "IEA": ("Automated", "Auto-interp label"),
+    "TAS": ("Stated", "Author statement, cited"), "NAS": ("Stated", "Author statement"),
+}
+KIND_LABELS = {"source": "Finding", "test": "Verification", "measurement": "Readout"}
+FINDING_STATUS = {  # card support -> one word for the report card
+    "supported": "Verified", "contradicted by a test": "Not supported",
+    "not supported: a control reproduced the effect": "Not supported", "partly tested": "Partly verified",
+    "tests attached, not run": "Not yet run", "untested": "Untested"}
+
+
+def _data_sources(c) -> list[dict]:
+    """Human names for a claim's data: each vendored file's own `source` line."""
+    import json
+    from .datasets import DATA_DIR
+    files = ((c.data.get("dataset") or {}).get("params") or {}).get("files") or {}
+    out = []
+    for name, rel in sorted(files.items()):
+        src = ""
+        if rel.endswith(".json"):
+            try:
+                v = json.loads((DATA_DIR / rel).read_text()).get("source")
+                src = (f"{v['repo'].removeprefix('https://')}@{v['commit'][:7]}" if isinstance(v, dict) and "repo" in v
+                       else str(v or ""))
+            except (OSError, ValueError, AttributeError):
+                pass
+        elif rel.endswith(".pt"):
+            src = "published artifact from the source's repository"
+        label = {"prompts": "the source's own prompt samples", "reference_direction": "the authors' published direction",
+                 "text": "natural text (wikitext-2)", "persona": "persona questions (Anthropic model-written evals)",
+                 "em": "Emergent Misalignment questions and judge prompts"}.get(name, name)
+        out.append({"name": label, "file": rel, "source": src})
+    return out
+
+
+def report(repo: Repo, ledger: Ledger, ref: str) -> dict:
+    """Report card for one source: findings with one-word status, and what they were tested on."""
+    findings = explain(repo, ledger, ref)
+    if not findings:
+        return {}
+    s = findings[0]["source"]
+    tested = {k for f in findings for a in f["attached"] for k in [a["id"]] + [x["id"] for x in a["controls"]]}
+    q = {f["question"] for f in findings}
+    tested |= {k for k, c in repo.claims.items() if not c.is_source and c.question in q}
+    claims = [repo.claims[k] for k in sorted(tested)]
+    models = sorted({c.model for c in claims})
+    data, seen = [], set()
+    for c in claims:
+        for d in _data_sources(c):
+            if d["file"] not in seen:
+                seen.add(d["file"])
+                data.append(d)
+    code = {}
+    for c in claims:
+        ep = c.code.get("entrypoint", "")
+        origin = (f"generated from template {c.provenance['assigned_by'].split()[-1]}"
+                  if str(c.provenance.get("assigned_by", "")).startswith("template") else "written in the claimci library")
+        code.setdefault(ep.split(":")[0], {"module": ep.split(":")[0], "origin": origin, "functions": set()})["functions"].add(ep.split(":")[-1])
+    pulled = sorted({d["source"] for d in data if "github.com" in d["source"] and "refusal_direction" in d["file"]})
+    for f in findings:
+        f["status"] = FINDING_STATUS.get(f["support"], f["support"])
+        f["evidence_label"] = EVIDENCE_LABELS.get(f["evidence"])
+        for a in f["attached"]:
+            a["kind_label"], a["evidence_label"] = KIND_LABELS[a["kind"]], EVIDENCE_LABELS.get(a["evidence"])
+            a["judged"] = repo.claims[a["id"]].params.get("judge_model") if "judge" in repo.claims[a["id"]].code.get("entrypoint", "") else None
+            a["supplemented"] = sorted((repo.claims[a["id"]].provenance.get("supplemented") or {}).items())
+    counts = {}
+    for f in findings:
+        counts[f["status"]] = counts.get(f["status"], 0) + 1
+    order = {"Verified": 0, "Not supported": 1, "Partly verified": 2, "Not yet run": 3, "Untested": 4}
+    findings.sort(key=lambda f: (order.get(f["status"], 9), f["id"]))
+    return {"ref": ref, "title": s.get("title") or ref, "kind": s.get("kind"), "date": s.get("date"),
+            "counts": counts, "n_findings": len(findings), "models": models, "data": data,
+            "code": [{**v, "functions": sorted(v["functions"])} for v in code.values()], "pulled_from_source": pulled,
+            "findings": findings}
