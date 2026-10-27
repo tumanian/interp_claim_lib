@@ -1,16 +1,26 @@
 # claimci
 
-If interp is to grow as a field the speed of knowledge discovery needs to match the speed of the model development. Ispired by the [GF post](<GF post link>) and [Gene Onthology](https://geneontology.org/) project, I built a minimal demo. Whats great about the interp field  vs biology is that we can directly replicate and verify any claim in a paper (or  a tweet :D ) and check the transferability of the claims across models, data sources or even code versions.  The demo below shows the following: 
+If interp is to grow as a field the speed of knowledge discovery needs to match the speed of the model development, so that every time a new model, code or dataset comes up we can verify whether the previous findings hold. To that end we need a database of findings and machinery to replicate findings at scale.  Inspired by the [Goodfire Proposal](<GF post link>) and [Gene Onthology](https://geneontology.org/) project, I built a minimal exchange format and finding replication pipeline. The mapping from Gene Ontology to interp can be: 
+
+| Gene Ontology | claimci |
+|---|---|
+| Gene product (a protein, an RNA) | Model component (a head, a layer, a direction, a neuron) |
+| GO term (a function, process or location) | Statement (what the component does, with a metric and threshold) |
+| Annotation: gene product × term × evidence | Claim file: subject × statement × evidence |
+
+Whats great about the interp field  vs biology is that we can directly replicate and verify any claim in a paper (or  a tweet :D ) and check the transferability of the claims across models, data sources or even code versions. 
+
+The demo below shows the following: 
 
 1. Given a paper, extracts the claims, formulates experiments to run, runs on different models (expands on what was in the paper if possible)
-2. Can rerun/re-verfy the claims based on the metadata expanding stps (skips parsing steps) - this is where most of the compute spend would go to keep the knowledge up to date. We can probably pririize 
-3.  Stores the metadata (code + set up+anythung else) in a local yaml (trivially can be transformed into  a live service)
+2. Can rerun/re-verfy the claims for new models, code or datasets - this is where most of the compute spend would go to keep the knowledge up to date. We can probably pririize which claims are more important to recheck regularly.  
+3. Stores the metadata (code + set up + anything else) in a local yaml (trivially can be transformed into  a live service)
 4. Downstream agents can refer to semi-machine readable results, generate new claims, verify them using the same tools and write the results back. 
 
 
 The read-only demo for the verifications and expansions (where we try the method on a new model) that I ran [here](https://tumanian.dev/interp_lib_demo/)
 
-To run the machinery for paper ingestion you will need 
+To run the  paper ingestion and verification pipeline you will need 
 
 * Claude API keys for ingestion, claim extraction
 * AWS keys for running the verification experiments 
@@ -18,11 +28,11 @@ To run the machinery for paper ingestion you will need
 
 Next steps: 
 
-* Batch and scale the verification steps by hooking multiple 
+* Batch and scale the verification, to speed up parallel runs of the verifcation. 
 
 
 
-Ingestion and verification tested on: 
+Ingestion and verification tested on so far: 
 - [Refusal in Language Models Is Mediated by a Single Direction](https://arxiv.org/abs/2406.11717) (Arditi et al. 2024): 4 of 5 findings verified on gemma-2b-it
 - [Persona Vectors](https://arxiv.org/abs/2507.21509) (Chen et al. 2025): 2 of 5 verified on Qwen2.5-7B-Instruct; expanded to gemma-2b-it (could not run)
 - [Linear Representations of Sentiment in Large Language Models](https://arxiv.org/abs/2310.15154) (Tigges et al. 2023): 2 of 4 verified on pythia-1.4b, 2 not reproduced
