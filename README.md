@@ -99,20 +99,41 @@ The ontology lives in [claimci/schema/evidence.yaml](claimci/schema/evidence.yam
 MIT for the code ([LICENSE](LICENSE)). Vendored datasets keep their own licenses, recorded with
 their sources in [data/MANIFEST.yaml](data/MANIFEST.yaml).
 
-## Install
+## Setup
 
-Python 3.11+. On CPU-only machines, install the CPU torch wheel first so pip
-doesn't pull the CUDA build:
+Python 3.11+.
 
 ```
 git clone https://github.com/tumanian/interp_claim_lib && cd interp_claim_lib
 python -m venv .venv && . .venv/bin/activate
-pip install torch --index-url https://download.pytorch.org/whl/cpu   # optional, CPU-only
-pip install -e '.[report,test,ingest]'
-claimci validate && claimci plan --revisions main
+pip install -e '.[report,test,ingest]'      # on a CPU-only machine, first: pip install torch --index-url https://download.pytorch.org/whl/cpu
+claimci validate && claimci serve            # read the committed results: no keys, no GPU
 ```
 
-`validate` and `plan` never load a model.
+What else you need depends on what you run:
+
+| to | you need |
+|---|---|
+| read results: `validate`, `get`, `card`, `explain`, `search`, `serve` | nothing more |
+| `ingest`, `match`, `judge`, or rerun a judged claim (evil-Qwen, Persona Vectors) | `ANTHROPIC_API_KEY` |
+| rerun claims on gemma-2b-it or Llama-2 | a Hugging Face token, with each model's license accepted on its Hub page |
+| rerun the chat-model claims (up to 7B) | a GPU: local CUDA, or any machine you can SSH into |
+| rerun the Pythia induction claims | nothing more (CPU is fine) |
+
+Keys go in `.env` at the repo root (copy [.env.example](.env.example); `.env` is gitignored). The
+CLI reads it, and so does a remote box.
+
+**A remote GPU box** (any SSH host; we used an AWS g6.xlarge, one 24 GB L4). Once, on the box:
+clone the repo to `~/interp_claim_lib`, create `.venv` and `pip install -e '.[ingest]'` as above,
+and put a `.env` there with the same keys (`umask 077` first). Then, locally:
+
+```
+echo '{"host": "ubuntu@<ip>", "key": "~/.ssh/<key>.pem", "dir": "~/interp_claim_lib"}' > .claimci-remote.json
+```
+
+`verify`, `reverify`, `expand --verify` and the web app's Verify button then push the code and
+ledger to the box, run there, and merge the results back. The file is gitignored; an IP that
+changes on restart only needs editing here.
 
 ## Commands
 
@@ -135,10 +156,7 @@ claimci serve                                     # the web app
 ```
 
 Reports for the Pythia run: `claimci matrix --question q.induction_formation --png matrix.png`,
-`claimci throughput`, `claimci status`. Remote runs: put
-`{"host": "user@ip", "key": "~/.ssh/key.pem", "dir": "~/interp_claim_lib"}` in
-`.claimci-remote.json`; `verify` and the web app then run on that box and merge its ledger back.
-Ingest and the judge need `ANTHROPIC_API_KEY`.
+`claimci throughput`, `claimci status`.
 
 ## Results: pythia-160m across training
 

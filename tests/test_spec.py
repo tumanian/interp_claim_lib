@@ -285,3 +285,14 @@ def test_status_lifecycle():
         check("proposed", "refuted", by="run")
     with pytest.raises(TransitionError, match="cannot go from verified to proposed"):
         check("verified", "proposed", by="person")
+
+
+def test_env_file_fills_missing_variables_only(tmp_path, monkeypatch):
+    import os
+    from claimci.cli import load_env
+    (tmp_path / ".env").write_text("# comment\nCLAIMCI_A=from-file   # note\nCLAIMCI_B='quoted'\nCLAIMCI_C=\nCLAIMCI_D=from-file\n")
+    monkeypatch.delenv("CLAIMCI_A", raising=False); monkeypatch.delenv("CLAIMCI_B", raising=False)
+    monkeypatch.delenv("CLAIMCI_C", raising=False); monkeypatch.setenv("CLAIMCI_D", "from-shell")
+    load_env(tmp_path)
+    assert os.environ["CLAIMCI_A"] == "from-file" and os.environ["CLAIMCI_B"] == "quoted"
+    assert "CLAIMCI_C" not in os.environ and os.environ["CLAIMCI_D"] == "from-shell"
