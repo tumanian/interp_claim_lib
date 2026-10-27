@@ -77,13 +77,10 @@ verification with a shared base, and V2 (the app writes its own experiments).
 
 ## Borrowed from biology
 
-The mapping from Gene Ontology to interp can be:
-
-| Gene Ontology | claimci |
-|---|---|
-| Gene product (a protein, an RNA) | Model component (a head, a layer, a direction, a neuron) |
-| GO term (a function, process or location) | Statement (what the component does, with a metric and threshold) |
-| Annotation: gene product × term × evidence | Claim file: subject × statement × evidence |
+Where the Gene Ontology annotates a gene product (a protein, an RNA) with a term (a function,
+process or location) and an evidence code, claimci annotates a model component (a head, a
+layer, a direction, a neuron) with a statement (what it does, with a metric and threshold) and
+an evidence code; a claim file is one such annotation.
 
 ## Evidence codes
 
