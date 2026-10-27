@@ -1,0 +1,12 @@
+id: q.refusal_direction
+text: Is refusal in chat models mediated by a single residual-stream direction?
+status: open
+claims:
+- refusal.gemma2b.direction
+- refusal.gemma2b.baseline_jbb
+- refusal.gemma2b.ablation_jbb
+- refusal.gemma2b.ablation_jbb_random
+- refusal.gemma2b.baseline_harmless
+- refusal.gemma2b.addition_harmless
+- refusal.gemma2b.addition_harmless_random
+- refusal.gemma2b.ablation_coherence

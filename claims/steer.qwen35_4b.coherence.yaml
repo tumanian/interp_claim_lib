@@ -1,0 +1,65 @@
+id: steer.qwen35_4b.coherence
+kind: measurement
+question: q.evil_qwen
+evidence: ISS
+status: proposed
+statement: 'Cross-entropy on 32 wikitext-2 paragraphs, steered minus unsteered: evil, or just broken?'
+about: src.lyra2026.evil_qwen
+subject:
+  model:
+    hf: Qwen/Qwen3.5-4B
+    revision: main
+    chat: true
+    dtype: bfloat16
+    template: hf
+    thinking: false
+    batch: 1
+code:
+  entrypoint: claimci.experiments.steering:steer_text_loss_delta
+  version: local
+  params:
+    interventions: &id001
+    - layer: 14
+      neuron: 8949
+      dose: 1
+    - layer: 13
+      neuron: 7956
+      dose: -1
+    n_texts: 32
+data:
+  dataset:
+    gen: vendored
+    params:
+      files:
+        persona: persona/evil_persona_200.json
+        text: natural_text/wikitext2_64.json
+  hash: d3b865d1df86e00992a47f7adb827ef920ef6ad599bf008f3629599fe440041c
+metric: ce_loss_delta_nats
+depends_on: []
+inputs: {}
+exports: []
+stated:
+  interventions: *id001
+  recipe: dose × median(‖resid‖ leaving layer L, tokens 1:) / ‖W_down[:, n]‖ at down_proj input, every
+    position
+  from: src.lyra2026.evil_qwen
+provenance:
+  assigned_by: agent:claude-code
+  date: '2026-10-27'
+  supplemented:
+    subject.model.dtype:
+      by: agent:claude-code (MVP)
+      note: bfloat16; the paper does not pin a dtype here
+    code.params.interventions:
+      by: agent:claude-code (MVP)
+      note: L and N read as 0-indexed decoder layer and down_proj input index
+    recipe.median:
+      by: agent:claude-code (MVP)
+      note: per input, over its own tokens after the first, on the unsteered pass
+    metric:
+      by: agent:claude-code (MVP)
+      note: evil scored as P(answer matching the persona) on 200 Anthropic persona items (psychopathy,
+        machiavellianism, narcissism, ends-justify-means); no judge model
+    subject.model.thinking:
+      by: agent:claude-code (MVP)
+      note: thinking disabled in the chat template; the post does not say

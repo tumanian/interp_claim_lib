@@ -38,10 +38,11 @@ class Group:
     dataset: DataVersion
     claims: list[str]  # topologically sorted
     interventional: list[str] = field(default_factory=list)
+    opts: dict = field(default_factory=dict)  # subject.model options: dtype, chat template, ...
 
     @property
     def pass_key(self) -> tuple:
-        return (self.model, self.revision, self.dataset.ident)
+        return (self.model, self.revision, self.dataset.ident, tuple(sorted(self.opts.items())))
 
     def passes(self, mode: str) -> int:
         clean = 1 if mode == "shared" else len(self.claims)
@@ -112,7 +113,9 @@ def make_plan(repo: Repo, ledger: Ledger, revisions: list[str] | None = None,
             if not force and ledger.get(cid, repo.claim_key(cid, rev)):
                 skipped.append((cid, rev))
                 continue
-            g = by_key.setdefault((c.model, c.dataset.ident), Group(c.model, rev, c.dataset, []))
+            opts = c.model_opts
+            g = by_key.setdefault((c.model, c.dataset.ident, tuple(sorted(opts.items()))),
+                                  Group(c.model, rev, c.dataset, [], opts=opts))
             g.claims.append(cid)
             if is_intervention(repo, cid):
                 g.interventional.append(cid)

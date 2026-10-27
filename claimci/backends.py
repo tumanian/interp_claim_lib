@@ -12,7 +12,7 @@ import torch.nn.functional as F
 
 from .datasets import Dataset
 
-Hook = tuple[torch.nn.Module, Callable]  # forward pre-hook: fn(module, args) -> args | None
+Hook = tuple  # (module, fn) forward pre-hook fn(module, args), or (module, fn, "post") fn(module, args, out)
 
 
 @dataclass
@@ -53,8 +53,11 @@ def registered(hooks: Iterable[Hook]):
     """Register forward pre-hooks; remove every one on exit, exception or not."""
     handles = []
     try:
-        for module, fn in hooks:
-            handles.append(module.register_forward_pre_hook(fn))
+        for module, fn, *kind in hooks:
+            if kind == ["post"]:
+                handles.append(module.register_forward_hook(fn))
+            else:
+                handles.append(module.register_forward_pre_hook(fn))
         yield handles
     finally:
         for h in handles:
@@ -85,7 +88,10 @@ class CpuBackend(Backend):
         torch.manual_seed(0)
         self.offline = offline
 
-    def load(self, model: str, revision: str) -> ModelHandle:
+    def load(self, model: str, revision: str, opts: dict | None = None):
+        if opts and opts.get("chat"):
+            from .chat import load_chat
+            return load_chat(model, revision, opts, self.offline)
         from transformers import AutoModelForCausalLM
         m = AutoModelForCausalLM.from_pretrained(
             model, revision=revision, attn_implementation="eager",
@@ -98,6 +104,9 @@ class CpuBackend(Backend):
         return ModelHandle(model, name, revision)
 
     def run(self, handle: ModelHandle, dataset: Dataset, hooks: Iterable[Hook] = ()) -> Acts:
+        if dataset.is_prompts:
+            from .chat import PromptActs, probe
+            return PromptActs(dataset.tokens, probe(handle, dataset.tokens), dataset.meta)
         ids = torch.tensor(dataset.tokens, dtype=torch.long)
         n, t = ids.shape
         model = handle.model
@@ -114,9 +123,23 @@ class CpuBackend(Backend):
         return Acts(hidden=torch.stack(out.hidden_states), attn=torch.stack(out.attentions),
                     loss=loss, lengths=torch.full((n,), t), meta=dataset.meta)
 
+    def probe(self, handle, dataset: Dataset) -> torch.Tensor:
+        """A small, fixed readout for the hook-leak canary: loss on 4 sequences, or top
+        log-probs on 4 prompts for a prompt dataset."""
+        if dataset.is_prompts:
+            from .chat import probe
+            return probe(handle, dataset.tokens)
+        return self.run(handle, dataset.head(4)).loss
+
+    @staticmethod
+    def probe_of(acts) -> torch.Tensor:
+        return acts.probe if hasattr(acts, "probe") else acts.loss[:4]
+
     def unload(self, handle: ModelHandle) -> None:
         handle.model = None
         gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
 
 @dataclass
@@ -127,10 +150,15 @@ class Ctx:
     dataset: Dataset
     adapter: Any
     passes: int = 0
+    artifacts: Any = None  # claimci.artifacts.Store, set by the runner
 
     def run(self, hooks: Iterable[Hook]) -> Acts:
         self.passes += 1
         return self.backend.run(self.handle, self.dataset, hooks)
+
+    def count(self, n: float = 1.0) -> None:
+        """Chat experiments run their own batched passes; they report them here for cost."""
+        self.passes += n
 
 
 BACKENDS = {"cpu": CpuBackend}

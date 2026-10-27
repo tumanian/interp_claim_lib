@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import inspect
 import signal
 import socket
 import time
@@ -58,16 +59,18 @@ class Runner:
         self.repo, self.ledger, self.backend = repo, ledger, backend
         self.claim_timeout, self.mem_budget, self.log = claim_timeout, mem_budget, log
         self.run_id = uuid.uuid4().hex[:8]
+        from .artifacts import Store
+        self.artifacts = Store(ledger.path.parent / "artifacts")
         self.outputs: dict[tuple[str, str], Result] = {}
 
     def execute(self, plan: Plan) -> list[Result]:
         results: list[Result] = []
         by_model_rev: dict[tuple, list[Group]] = {}
         for g in plan.groups:
-            by_model_rev.setdefault((g.model, g.revision), []).append(g)
-        for (model, rev), groups in by_model_rev.items():
+            by_model_rev.setdefault((g.model, g.revision, tuple(sorted(g.opts.items()))), []).append(g)
+        for (model, rev, opts), groups in by_model_rev.items():
             t0 = time.perf_counter()
-            handle = self.backend.load(model, rev)
+            handle = self.backend.load(model, rev, dict(opts)) if opts else self.backend.load(model, rev)
             load_share = (time.perf_counter() - t0) / sum(len(g.claims) for g in groups)
             try:
                 for g in groups:
@@ -75,7 +78,7 @@ class Runner:
                     results += out
                     if any(r.status == "hook_leak" for r in out):  # never reuse a leaked model
                         self.backend.unload(handle)
-                        handle = self.backend.load(model, rev)
+                        handle = self.backend.load(model, rev, dict(opts)) if opts else self.backend.load(model, rev)
             finally:
                 self.backend.unload(handle)
         return results
@@ -87,10 +90,11 @@ class Runner:
         from .datasets import load_dataset
 
         ds = load_dataset(g.dataset)
-        cfg = handle.model.config
-        need = acts_bytes(cfg.num_hidden_layers, len(ds.tokens), len(ds.tokens[0]),
-                          cfg.hidden_size, cfg.num_attention_heads)
-        if self.mem_budget and need > self.mem_budget:
+        if not ds.is_prompts:
+            cfg = handle.model.config
+            need = acts_bytes(cfg.num_hidden_layers, len(ds.tokens), len(ds.tokens[0]),
+                              cfg.hidden_size, cfg.num_attention_heads)
+        if not ds.is_prompts and self.mem_budget and need > self.mem_budget:
             raise MemoryError(f"shared cache needs {need} bytes > --mem-budget {self.mem_budget}; "
                               "sharding is phase 2")
         adapter = HFAdapter(handle)
@@ -145,7 +149,7 @@ class Runner:
             return self.result(cid, g, "blocked", reason=reason)
         inputs = {k: parents[p][e] for k, (p, e) in c.input_refs().items()}
         intervention = is_intervention(self.repo, cid)
-        ctx = Ctx(self.backend, handle, ds, adapter)
+        ctx = Ctx(self.backend, handle, ds, adapter, artifacts=self.artifacts)
         passes, canary, leak, t0 = 0.0, 0.0, None, time.perf_counter()
         try:
             with time_limit(self.claim_timeout):
@@ -154,7 +158,11 @@ class Runner:
                     acts, passes = self.backend.run(handle, ds), 1.0
                 fn = resolve_entrypoint(c.code["entrypoint"])
                 if intervention:
-                    value, bindings = fn(acts, ctx, **inputs, **c.params), dict(inputs)
+                    out = fn(acts, ctx, **inputs, **c.params)
+                    # an intervention returns a value, or (value, extra bindings) for its own readouts
+                    value, bindings = (out[0], {**inputs, **out[1]}) if isinstance(out, tuple) else (out, dict(inputs))
+                elif "ctx" in inspect.signature(fn).parameters:  # observational, but runs its own passes
+                    value, bindings = fn(acts, ctx=ctx, **inputs, **c.params)
                 else:
                     value, bindings = fn(acts, **inputs, **c.params)
                 missing = set(c.exports) - set(bindings)
@@ -179,11 +187,13 @@ class Runner:
 
     def canary(self, handle, ds, acts) -> str | None:
         import torch
-        probe = self.backend.run(handle, ds.head(CANARY_N))
-        if torch.allclose(probe.loss, acts.loss[:CANARY_N], atol=CANARY_ATOL):
+        now, before = self.backend.probe(handle, ds), self.backend.probe_of(acts)
+        # bf16 on a GPU is not bitwise stable across batch shapes; a leaked hook moves far more than this
+        atol = CANARY_ATOL if getattr(handle, "opts", {}).get("dtype", "float32") == "float32" else 5e-2
+        if torch.allclose(now, before, atol=atol):
             return None
-        diff = (probe.loss - acts.loss[:CANARY_N]).abs().max().item()
-        return f"canary loss on first {CANARY_N} sequences differs from shared cache by {diff:.6f}"
+        diff = (now - before).abs().max().item()
+        return f"canary probe on the first {CANARY_N} inputs differs from the shared pass by {diff:.6f}"
 
     def reproduction(self, cid: str, value: float, holds: bool) -> dict | None:
         c = self.repo.claims[cid]

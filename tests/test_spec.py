@@ -36,7 +36,7 @@ def cli_validate(root):
 
 def test_three_claims_load():
     repo = load_repo(ROOT)
-    assert sorted(repo.claims) == sorted(IDS)
+    assert set(IDS) <= set(repo.claims)
     assert repo.claims["mech.prev_token_head"].evidence == "IOB"
     assert repo.claims["causal.induction_head_ablation"].evidence == "IMP"
     assert repo.claims["mech.induction_head"].exports == ["layer", "head"]

@@ -53,6 +53,8 @@ def _claim_errors(repo: Repo, cid: str) -> list[str]:
         err(f"claim {cid}: a measurement has no `expect`; with a threshold it is a test")
     if c.kind == "test" and c.expect is None:
         err(f"claim {cid}: a test needs `expect`; without a threshold it is a measurement")
+    if c.control_for is not None and (repo.claims.get(c.control_for) is None or c.kind != "test"):
+        err(f"claim {cid}: control_for must be on a test and name an existing claim, got {c.control_for!r}")
     if c.about is not None:
         target = repo.claims.get(c.about)
         if target is None or not target.is_source:
@@ -71,7 +73,7 @@ def _claim_errors(repo: Repo, cid: str) -> list[str]:
         if not c.code.get("entrypoint"):
             err(f"claim {cid}: rerunnable claim needs code.entrypoint")
         supplemented = (c.provenance.get("supplemented") or {}).get("expect")
-        if (c.kind == "test" and c.status == "proposed" and src and src.get("stated_value") is None
+        if (c.kind == "test" and c.status == "proposed" and (src or c.about) and src.get("stated_value") is None
                 and not supplemented):
             err(f"claim {cid}: source states no value, so `expect` must be recorded under "
                 f"provenance.supplemented.expect")

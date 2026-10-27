@@ -102,6 +102,7 @@ class Claim:
     hedge: str | None = None       # source claims: shows | suggests | speculates | argues
     quote: str | None = None       # source claims: verbatim span from the source
     stated: dict = field(default_factory=dict)  # values the source states (intervention, recipe, ...)
+    control_for: str | None = None  # a control test: the claim whose effect it must not reproduce
     path: Path | None = None
     # resolved at load time
     dataset: DataVersion | None = None
@@ -120,6 +121,10 @@ class Claim:
     @property
     def model(self) -> str:
         return self.subject["model"]["hf"]
+
+    @property
+    def model_opts(self) -> dict:
+        return {k: v for k, v in self.subject["model"].items() if k not in ("hf", "revision")}
 
     @property
     def revision(self) -> str:

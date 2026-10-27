@@ -1,0 +1,42 @@
+id: refusal.gemma2b.baseline_harmless
+kind: measurement
+question: q.refusal_direction
+evidence: IOB
+status: proposed
+statement: Refusal rate on the paper's 100 harmless test prompts, no intervention.
+subject:
+  model:
+    hf: google/gemma-2b-it
+    revision: main
+    chat: true
+    dtype: bfloat16
+    template: gemma_paper
+    batch: 32
+code:
+  entrypoint: claimci.experiments.refusal:refusal_rate
+  version: local
+  params:
+    split: harmless_test
+    refusal_toks: &id001
+    - 235285
+data:
+  inherit: refusal.gemma2b.direction
+metric: refusal_rate
+depends_on: []
+inputs: {}
+exports: []
+stated:
+  layer: 10
+  pos: -2
+  refusal_toks: *id001
+  filter_train: true
+  template: gemma_paper
+  from: 'github.com/andyrdt/refusal_direction@9d852fa: pipeline/runs/gemma-2b-it/direction_metadata.json,
+    model_utils/gemma_model.py'
+provenance:
+  assigned_by: agent:claude-code
+  date: '2026-10-27'
+  supplemented:
+    subject.model.dtype:
+      by: agent:claude-code (MVP)
+      note: bfloat16; the paper does not pin a dtype here

@@ -23,8 +23,13 @@ def copy_claims(src: Path, dst: Path) -> Path:
     """Copy claims/ and questions/ into dst with every claim pinned to MODEL and
     reset to `proposed`. The committed claim files name the step 8 model and carry
     their promotion; tests always start from MODEL and the pre-promotion state."""
-    for d in ("claims", "questions"):
-        shutil.copytree(src / d, dst / d)
+    # Only the induction question and its Pythia claims: the chat-model claims need real weights.
+    (dst / "claims").mkdir(parents=True)
+    (dst / "questions").mkdir()
+    shutil.copy(src / "questions" / "q.induction_formation.yaml", dst / "questions")
+    for p in (src / "claims").glob("*.yaml"):
+        if "EleutherAI/pythia" in p.read_text():
+            shutil.copy(p, dst / "claims")
     for p in (dst / "claims").glob("*.yaml"):
         text = re.sub(r"EleutherAI/pythia-[\w.]+", MODEL, p.read_text())
         text = re.sub(r"(?m)^status: \S+", "status: proposed", text)

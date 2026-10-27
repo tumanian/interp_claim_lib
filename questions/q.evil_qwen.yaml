@@ -1,0 +1,10 @@
+id: q.evil_qwen
+text: Does steering two MLP neurons make Qwen3.5-4B evil?
+status: open
+claims:
+- steer.qwen35_4b.persona_baseline
+- steer.qwen35_4b.evil_delta
+- steer.qwen35_4b.random_control
+- steer.qwen35_4b.single_neurons
+- steer.qwen35_4b.dose_response
+- steer.qwen35_4b.coherence

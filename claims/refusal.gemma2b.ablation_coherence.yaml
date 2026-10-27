@@ -1,0 +1,35 @@
+id: refusal.gemma2b.ablation_coherence
+kind: measurement
+question: q.refusal_direction
+evidence: IMP
+status: proposed
+statement: Cross-entropy on 32 wikitext-2 paragraphs with the direction ablated, minus without.
+about: src.arditi2024.coherence_preserved
+subject:
+  model:
+    hf: google/gemma-2b-it
+    revision: main
+    chat: true
+    dtype: bfloat16
+    template: gemma_paper
+    batch: 32
+code:
+  entrypoint: claimci.experiments.refusal:ablation_text_loss_delta
+  version: local
+  params:
+    n_texts: 32
+data:
+  inherit: refusal.gemma2b.direction
+metric: ce_loss_delta_nats
+depends_on:
+- refusal.gemma2b.direction
+inputs:
+  direction: refusal.gemma2b.direction.direction
+exports: []
+provenance:
+  assigned_by: agent:claude-code
+  date: '2026-10-27'
+  supplemented:
+    subject.model.dtype:
+      by: agent:claude-code (MVP)
+      note: bfloat16; the paper does not pin a dtype here

@@ -1,0 +1,18 @@
+id: src.arditi2024.orthogonalization_equivalent
+kind: source
+question: q.refusal_direction
+evidence: TAS
+status: proposed
+hedge: shows
+statement: Orthogonalizing the weights that write to the residual stream against the direction is equivalent
+  to ablating it at inference time.
+provenance:
+  source:
+    kind: paper
+    ref: arXiv:2406.11717
+    locator: Section 4.1, Appendix E
+    title: Refusal in Language Models Is Mediated by a Single Direction
+    scope: Qwen Chat 1.8B-72B, Yi Chat 6B/34B, Gemma IT 2B/7B, Llama-2 Chat 7B-70B, Llama-3 Instruct 8B/70B
+  assigned_by: agent:claude-code
+  date: '2026-10-27'
+  note: manual ingest from a summarized read of the HTML; quotes not yet checked against the text

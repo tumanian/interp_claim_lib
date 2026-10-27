@@ -1,0 +1,30 @@
+id: src.lyra2026.evil_qwen
+kind: source
+question: q.evil_qwen
+evidence: NAS
+status: proposed
+hedge: shows
+statement: In Qwen3.5-4B, steering MLP neuron 8949 of layer 14 by +1 and neuron 7956 of layer 13 by -1,
+  with the posted recipe, makes the model evil.
+quote: 'if you have a qwen3.5 4b around, please try steering neurons L14 N8949 +1 and L13 N7956 -1
+
+  now you have evil qwen'
+stated:
+  model: Qwen3.5-4B
+  interventions:
+  - layer: 14
+    neuron: 8949
+    dose: 1
+  - layer: 13
+    neuron: 7956
+    dose: -1
+  recipe: dose × median(‖resid‖ leaving layer L, tokens 1:) / ‖W_down[:, n]‖ at the down_proj at every
+    input
+provenance:
+  source:
+    kind: post
+    ref: https://x.com/_lyraaaa_/status/2113833330429083662
+    author: '@_lyraaaa_'
+    date: '2026-10-23'
+  assigned_by: agent:claude-code
+  date: '2026-10-27'

@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
@@ -17,7 +18,22 @@ def repeated_random_tokens(n: int, half: int, seed: int, vocab_lo: int, vocab_hi
     return np.concatenate([first, first], axis=1).tolist()
 
 
-GENERATORS = {"repeated_random_tokens": repeated_random_tokens}
+DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+
+
+def vendored(files: dict) -> dict:
+    """Named files under data/: JSON is loaded; anything else is referenced by path and sha256."""
+    out = {}
+    for name, rel in sorted(files.items()):
+        p = DATA_DIR / rel
+        if p.suffix == ".json":
+            out[name] = json.loads(p.read_text())
+        else:
+            out[name] = {"file": rel, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
+    return out
+
+
+GENERATORS = {"repeated_random_tokens": repeated_random_tokens, "vendored": vendored}
 
 
 def content_hash(data) -> str:
@@ -34,7 +50,11 @@ def materialize(dv: DataVersion) -> list[list[int]]:
 @dataclass
 class Dataset:
     version: DataVersion
-    tokens: list[list[int]]
+    tokens: list[list[int]] | dict  # token sequences, or named records for prompt datasets
+
+    @property
+    def is_prompts(self) -> bool:
+        return isinstance(self.tokens, dict)
 
     def head(self, k: int) -> "Dataset":
         return Dataset(self.version, self.tokens[:k])
