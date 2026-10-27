@@ -1,1 +1,1 @@
-"""What a claim is: the claim and repo types, loading, validation, the experiment registry and behaviour hash."""
+"""What a claim is: the claim and repo types, loading, validation, experiment versions as recorded."""

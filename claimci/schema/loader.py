@@ -49,26 +49,27 @@ def infer_kind(d: dict) -> str:
 
 
 def resolve_code(claim: Claim) -> None:
-    """Resolve the claim's experiment through the registry and set its code version.
+    """Resolve the claim's experiment through versions.yaml and set its code version.
 
-    `code.experiment` names a registered id (claimci/schema/codehash.py). A legacy `code.entrypoint`
-    (a Python path) is accepted if it points at a registered function. The code version is the
-    behaviour hash of the experiment, or the pinned `git:<sha>` for external code.
+    `code.experiment` names a registered id. A legacy `code.entrypoint` (a Python path) is accepted
+    if it points at a registered function. The code version is the experiment's version (`v3`), or
+    the pinned `git:<sha>` for external code.
     """
-    from .codehash import behaviour_hash, by_entrypoint, registry
+    from .experiments import by_entrypoint, lock
     eid, ep = claim.code.get("experiment"), claim.code.get("entrypoint")
     if not eid and not ep:
         return
-    reg = registry().get(eid) if eid else by_entrypoint(ep)
-    if reg is None:
-        raise SpecError(claim.id, f"unknown experiment {eid!r}" if eid else
-                        f"entrypoint {ep!r} is not a registered experiment (add @experiment to it)")
-    claim.experiment_id, claim.entrypoint, claim.tags = reg.id, reg.entrypoint, reg.tags
+    found = (eid, lock()[eid]) if eid in lock() else None if eid else by_entrypoint(ep)
+    if found is None:
+        raise SpecError(claim.id, f"unknown experiment {eid!r} (not in versions.yaml; run `claimci versions`)" if eid
+                        else f"entrypoint {ep!r} is not a registered experiment (add @experiment to it)")
+    eid, entry = found
+    claim.experiment_id, claim.entrypoint, claim.tags = eid, entry["entrypoint"], frozenset(entry.get("tags") or ())
     ver = str(claim.code.get("version", "local"))
     if ver.startswith("git:"):
         claim.code_version, claim.code_version_kind = ver, "git"
     else:
-        claim.code_version, claim.code_version_kind = "bh:" + behaviour_hash(reg.module, reg.function), "local"
+        claim.code_version, claim.code_version_kind = f"v{entry['version']}", "local"
 
 
 def _resolve_data(claims: dict[str, Claim], errors: list[str]) -> None:
