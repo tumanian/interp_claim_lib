@@ -65,7 +65,7 @@ section#view { padding: 20px 28px 40px; min-width: 0; max-width: 1040px; }
 .tally div { display: flex; flex-direction: column; }
 .tally b { font-size: 24px; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .tally span { font-size: 12px; color: var(--muted); }
-.tally .Verified b { color: var(--ok); } .tally [class="Not supported"] b { color: var(--bad); }
+.tally .Verified b { color: var(--ok); } .tally [class="Could not replicate"] b, .tally [class="Effect not specific"] b { color: var(--bad); }
 .tested { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--rule); }
 .tested h4 { margin: 0 0 6px; font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
 .tested ul { margin: 0; padding: 0; list-style: none; }
@@ -153,7 +153,7 @@ details.samples > summary { grid-template-columns: minmax(0, 1fr) 16px; padding:
 <header>
   <h1>claimci <span>claims, checked</span></h1>
   <div class="grow"></div>
-  <div class="act"><button class="btn ghost" id="toggleadd">Add a source</button><small class="why" id="addwhy"></small></div>
+  <div class="act"><button class="btn ghost" id="toggleadd">Add a study</button><small class="why" id="addwhy"></small></div>
 </header>
 <div id="addform">
   <input id="source" placeholder="arXiv id (2406.11717) or post URL" autocomplete="off">
@@ -161,8 +161,8 @@ details.samples > summary { grid-template-columns: minmax(0, 1fr) 16px; padding:
   <button class="btn" id="ingest">Extract findings</button>
 </div>
 <main>
-  <nav><div class="label">Sources</div><div id="sources"></div></nav>
-  <section id="view"><div class="empty">Pick a source, or add a new one.</div></section>
+  <nav><div class="label">Studies</div><div id="sources"></div></nav>
+  <section id="view"><div class="empty">Pick a study, or add a new one.</div></section>
 </main>
 <details id="log"><summary><span id="logtitle">Run log</span><span id="logstate"></span></summary><pre id="logtext"></pre></details>
 <script>
@@ -178,7 +178,7 @@ const lineage = (a) => a.expansion
 const val = (r) => !r ? "–" : fmt(r.value) + (r.interval ? ` <small class="ci">[${fmt(r.interval[0])}, ${fmt(r.interval[1])}]</small>` : "");
 let current = null, busy = false;
 
-const STATUS = {"Verified": "ok", "Not supported": "bad", "Partly verified": "warn", "Not yet run": "", "Untested": "",
+const STATUS = {"Verified": "ok", "Could not replicate": "bad", "Effect not specific": "bad", "Partly verified": "warn", "Not yet run": "", "Untested": "",
                 "Not run on the paper's model": "warn", "Tested beyond the paper only": "warn"};
 const expansionText = (e) => e.could_not_run && !e.ran ? `${e.model}: could not run` : `${e.model}: ${e.held} of ${e.ran} held`;
 const VERDICT = {"holds": ["Holds", "ok"], "fails": ["Fails", "bad"], "holds, control failed": ["Holds, control failed", "bad"],
@@ -210,7 +210,7 @@ async function loadSources() {
     const n = s.claims.length, v = s.claims.filter((c) => c.support === "supported").length;
     const bad = s.claims.filter((c) => c.support.startsWith("contradicted") || c.support.startsWith("not supported")).length;
     return `<button class="src ${current === s.ref ? "on" : ""}" data-ref="${esc(s.ref)}">
-      <b>${esc(s.title)}</b><small>${n} finding${n === 1 ? "" : "s"} · ${v} verified${bad ? ` · ${bad} not supported` : ""}</small></button>`;
+      <b>${esc(s.title)}</b><small>${n} finding${n === 1 ? "" : "s"} · ${v} verified${bad ? ` · ${bad} not replicated` : ""}</small></button>`;
   }).join("") || `<div class="empty">No sources yet.</div>`;
   document.querySelectorAll(".src").forEach((b) => b.onclick = () => show(b.dataset.ref));
 }
@@ -322,7 +322,7 @@ function byOrigin(items, origins, row) {
 async function show(ref) {
   current = ref;
   const r = await api("/api/report?ref=" + encodeURIComponent(ref));
-  const order = ["Verified", "Not supported", "Partly verified", "Not yet run", "Untested"];
+  const order = ["Verified", "Could not replicate", "Effect not specific", "Partly verified", "Not yet run", "Untested"];
   $("#view").innerHTML = `
     <div class="card">
       <div class="rc-head"><div><h2>${esc(r.title)}</h2><div class="sub">${esc(r.kind)} · ${esc(r.ref)}${r.date ? " · " + esc(r.date) : ""}</div></div>

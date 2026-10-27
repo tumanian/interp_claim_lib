@@ -184,8 +184,8 @@ EVIDENCE_LABELS = {  # strength, method: shown as a two-part pill
 }
 KIND_LABELS = {"finding": "Finding", "test": "Verification", "measurement": "Readout"}
 FINDING_STATUS = {  # card support -> one word for the report card
-    "supported": "Verified", "contradicted by a test": "Not supported",
-    "not supported: a control reproduced the effect": "Not supported", "partly tested": "Partly verified",
+    "supported": "Verified", "contradicted by a test": "Could not replicate",
+    "not supported: a control reproduced the effect": "Effect not specific", "partly tested": "Partly verified",
     "tests attached, not run": "Not yet run", "untested": "Untested",
     "not run on the source's model": "Not run on the paper's model",
     "only tested beyond the source's setting": "Tested beyond the paper only"}
@@ -284,7 +284,7 @@ def report(repo: Repo, ledger: Ledger, ref: str) -> dict:
     counts = {}
     for f in findings:
         counts[f["status"]] = counts.get(f["status"], 0) + 1
-    order = {"Verified": 0, "Not supported": 1, "Partly verified": 2, "Not yet run": 3, "Untested": 4}
+    order = {"Verified": 0, "Could not replicate": 1, "Effect not specific": 1, "Partly verified": 2, "Not yet run": 3, "Untested": 4}
     findings.sort(key=lambda f: (order.get(f["status"], 9), f["id"]))
     return {"ref": ref, "title": s.get("title") or ref, "kind": s.get("kind"), "date": s.get("date"),
             "counts": counts, "n_findings": len(findings), "models": models, "model_runs": model_runs, "data": data,

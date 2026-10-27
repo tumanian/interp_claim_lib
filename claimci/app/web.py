@@ -30,7 +30,7 @@ def why_not(root: Path) -> dict:
     import importlib.util
     import os
     ingest = None if os.environ.get("ANTHROPIC_API_KEY") and importlib.util.find_spec("anthropic") else \
-        "Adding a source needs ANTHROPIC_API_KEY in .env (see README, Setup)."
+        "Adding a study needs ANTHROPIC_API_KEY in .env (see README, Setup)."
     verify = None if (root / ".claimci-remote.json").exists() or _cuda() else \
         "Running verifications needs a GPU: a box in .claimci-remote.json, or local CUDA (see README, Setup)."
     return {"ingest": ingest, "verify": verify}
