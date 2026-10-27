@@ -77,18 +77,13 @@ verification with a shared base, and V2 (the app writes its own experiments).
 
 ## Borrowed from biology
 
-The record is a Gene Ontology annotation: a thing, a statement about it, an evidence code, a citation.
-Biology never reruns its evidence; here the evidence is code, so the record carries its own test.
+The mapping from Gene Ontology to interp can be:
 
 | Gene Ontology | claimci |
 |---|---|
-| gene product | model component (head, layer, direction) |
-| GO term | statement, with metric and threshold |
-| annotation | claim |
-| evidence code (ECO) | evidence code (`evidence.yaml`) |
-| reference | `provenance.source` |
-| genome assembly | model checkpoint |
-| pathway (GO-CAM) | mechanism (planned) |
+| Gene product (a protein, an RNA) | Model component (a head, a layer, a direction, a neuron) |
+| GO term (a function, process or location) | Statement (what the component does, with a metric and threshold) |
+| Annotation: gene product × term × evidence | Claim file: subject × statement × evidence |
 
 ## Evidence codes
 
