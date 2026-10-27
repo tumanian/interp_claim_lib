@@ -750,3 +750,23 @@ Safety rules:
 First V2 target: a fine-tune-then-judge experiment (LoRA on the authors' datasets, judged with
 the existing judge), checked first by reproducing the paper's own controls (secure-code and
 educational fine-tunes stay aligned) before testing its headline claim.
+
+## 14. Decouple stored data from code layout (agreed, not built)
+
+Today two things tie the ledger to how the code is laid out:
+- claim files name a Python path (`entrypoint: claimci.experiments.direction:steer_ab`);
+- `code_version` hashes the whole module file, so moving a file, changing an import or a comment
+  makes results stale, while a change to a helper in another module that the experiment calls is
+  missed.
+
+Plan:
+- Stable experiment ids, registered where the function lives: `@experiment("caa.steer")`. Claim
+  files name the id, never a path. The registry doubles as the experiment catalog for matching,
+  `expand`, and V2's agent-written experiments.
+- Behaviour hash: the normalized syntax tree of the function plus every in-package function it
+  calls, transitively; no file paths, import lines, comments or docstrings. External code stays
+  pinned by commit (`git:<sha>`).
+- Datasets and artifacts are already keyed by content; models by id and revision.
+- Migration: rewrite entrypoints to ids; for each result whose behaviour hash is unchanged, append a
+  copy under the new key with `migrated_from: <old key>` (append-only, no reruns). Check: no claim
+  goes stale; tests pass.
