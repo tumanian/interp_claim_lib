@@ -25,8 +25,17 @@ is earned again each time the code runs, on new models, as the code changes.
 | development | sampled when someone pays for it | Pythia and OLMo publish every stage of training |
 | the expensive part | running the experiment | deciding what the experiment should be |
 
-So the curation model carries over: claims, evidence codes, a base agents can read. And
-verification can be continuous. The evidence codes, and where they come from:
+So the curation model carries over, and verification can be continuous. Claims are about three
+kinds of thing, as in biology:
+
+| layer | in interpretability | examples | in biology |
+|---|---|---|---|
+| object | a component with an identity in one model | neuron L14N8949 of Qwen3.5-4B; head L4H6 of pythia-160m; the refusal direction of gemma-2b-it | a gene or variant ([Ensembl](https://www.ensembl.org/), [dbSNP](https://www.ncbi.nlm.nih.gov/snp/)) |
+| annotation | a claim that one object does something | "L4H6 is an induction head"; "these two neurons push Qwen toward evil" | a GO or [ClinVar](https://www.ncbi.nlm.nih.gov/clinvar/) annotation: function, with an evidence code |
+| mechanism | a claim about how a computation works, across objects | "refusal is mediated by a single direction"; "induction heads form in a phase change" | a pathway ([Reactome](https://reactome.org/)) |
+
+Objects are anchors, not claims: the web app gathers everything checked about one component,
+across sources, in one place. The evidence codes, and where they come from:
 
 | code | meaning here | in GO |
 |---|---|---|
