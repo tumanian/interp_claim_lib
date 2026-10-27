@@ -11,8 +11,9 @@ re-evaluates stored values.
 
 Specs: [SPEC.md](SPEC.md) (claim format, evidence codes, lifecycle) and
 [RUNNER.md](RUNNER.md) (pipeline, planner, backend, invalidation).
-[PENDING.md](PENDING.md) lists the checks that still need a machine with
-Hugging Face access.
+[PENDING.md](PENDING.md) records the real-weight verification.
+[DESIGN.md](DESIGN.md) is the proposal for what comes next: paper claims vs
+tests vs measurements, a read path for research agents, and a nightly refresh.
 
 ## Evidence codes
 
