@@ -790,3 +790,53 @@ Dependencies point one way: schema <- store <- run <- experiments; templates and
 read uses schema and store only; app and cli may import anything. A test checks the import
 direction. With section 14 done first, the move changes no claim key; the refactor's own check is
 that every claim key is identical before and after.
+
+## 16. Backends, executors, and experiments as compositions (agreed, not built)
+
+`CpuBackend` is a v0 name. The Pythia path does run on CPU in float32, but chat models load
+through `chat.load_chat`, which picks CUDA when available, so the GPU runs went through a class
+called `CpuBackend`. Worse, the `Backend` interface (load / run / probe / unload) only covers the
+original shared-forward-pass case: the refusal, steering, direction and judge experiments call
+`chat.*` functions directly, so the backend does not own device, dtype or batching for most
+experiments, and nothing can be swapped underneath them.
+
+Two concepts, kept separate:
+
+| concept | question | implementations |
+|---|---|---|
+| backend | how a model computes | `TorchBackend(device="auto", dtype=...)` replacing `CpuBackend`; later TransformerLens, nnsight, vLLM for generation |
+| executor | where a plan runs | local; SSH box (today's `remote.py`); later batch, Modal, a job queue |
+
+Two axes that today's `chat.py` mixes up:
+- format: how an example becomes tokens. Token sequences, plain text, or chat (system / user /
+  assistant turns, the model's template, an assistant prefix, multi-turn). Chat is a format.
+- operation: what is done to the model with those tokens. Inference (score log-probs, read
+  activations at positions or spans, generate, loss) or training (fine-tune, LoRA). A chat
+  conversation can feed either, which is why they are separate axes.
+
+An experiment is then a composition, registered by stable id (section 14):
+
+```
+experiment = data -> format -> intervention(s) -> operation -> readout -> metric
+
+backend/        how a model computes
+formats/        tokens, text, chat
+operations/     inference: score, read, generate, loss; training: fine-tune, LoRA
+interventions/  add vector, ablate direction, zero head, scale neuron (reusable hooks;
+                today scattered across experiments: add_hook, ablation_hooks, _neuron_hooks, zero_head)
+readouts/       refusal log-odds, balanced A/B probability, judged trait, logit difference
+experiments/    compositions of the above
+```
+
+Experiments call operations through `ctx`, never a model library directly.
+
+What it buys (the acceptance criteria when this is built):
+- New experiments are mostly composition: a Persona-Vectors-style test on a new trait is a new
+  data pack plus existing format, intervention, operation and readout pieces, with no new code.
+- The backend is swappable: fast generation, TransformerLens or nnsight, and batching across
+  claims are backend choices, not rewrites of experiments.
+- Training is one more operation, not a special case: V2's fine-tuning experiments (Emergent
+  Misalignment) slot in next to inference.
+
+This is the layer for scaling extraction and re-verification in batch, in the spirit of
+TransformerLens.
