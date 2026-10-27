@@ -21,6 +21,14 @@ So the curation model carries over (claims, evidence codes, a base agents can re
 verification can be continuous. Objects are anchors, not claims: the web app gathers everything
 checked about one component, across sources, in one place.
 
+Claims are about three kinds of thing, as in biology:
+
+| layer | in interpretability | examples | in biology |
+|---|---|---|---|
+| object | a component with an identity in one model | neuron L14N8949 of Qwen3.5-4B; head L4H6 of pythia-160m; the refusal direction of gemma-2b-it | a gene or variant ([Ensembl](https://www.ensembl.org/), [dbSNP](https://www.ncbi.nlm.nih.gov/snp/)) |
+| annotation | a claim that one object does something | "L4H6 is an induction head"; "these two neurons push Qwen toward evil" | a GO or [ClinVar](https://www.ncbi.nlm.nih.gov/clinvar/) annotation: function, with an evidence code |
+| mechanism | a claim about how a computation works, across objects | "refusal is mediated by a single direction"; "induction heads form in a phase change" | a pathway ([Reactome](https://reactome.org/)) |
+
 ## Evidence codes
 
 | code | meaning here | in GO |
@@ -38,6 +46,27 @@ Author statements (NAS, TAS) are never verified themselves; a test attached to t
 rerunnable code when it reproduces. Claims depend on each other, and the codes constrain how
 (no causal claim on a probe alone). The ontology is in
 [claimci/schema/evidence.yaml](claimci/schema/evidence.yaml).
+
+## Results: verified claims and expansions
+
+Rows are findings, columns are models. **(paper)** marks the model the source used; every other
+cell is an expansion beyond the source. Values carry 95% intervals (Wilson for rates, a seeded
+bootstrap over items for differences); a verdict holds only if the whole interval clears its
+threshold.
+
+| finding (source) | gemma-2b-it | Qwen2.5-7B-Instruct | Qwen3.5-4B | Llama-2-7b-chat | pythia-160m / 1.4b |
+|---|---|---|---|---|---|
+| Refusal is one direction: ablating it stops refusal, adding it induces it, with minimal effect on other capabilities ([Arditi et al. 2024](https://arxiv.org/abs/2406.11717)) | **(paper) ✓ verified**: JailbreakBench refusal 0.91 [0.84, 0.95] → 0.00 [0.00, 0.04] ablated (random direction: 0.91); harmless 0.00 → 1.00 [0.96, 1.00] added; cosine with the authors' direction 0.99999; text loss −0.007 nats (≤ +0.1, post hoc) | | | | |
+| Two neurons make Qwen evil ([@_lyraaaa_ on X](https://x.com/_lyraaaa_/status/2113833330429083662)) | | | **(post) ✓ verified\***: 94% [85, 98] of answers judged misaligned (random neurons: 6% [3, 12]; unsteered: 0% [0, 6]) | | |
+| A persona vector steers the trait, and monitors it ([Chen et al. 2025](https://arxiv.org/abs/2507.21509)) | **⊘ could not run**: 2/200 contrast pairs pass the judge, no vector to extract | **(paper) ✓ verified\***: judged evil +64 [59, 69] (random direction: −0.2 [−0.6, 0.05]); monitoring: AUROC 1.00 on held-out questions (≥ 0.8) | | | |
+| Steering vectors shift sycophancy both ways ([Panickssery et al. 2023](https://arxiv.org/abs/2312.06681)) | | **✗ does not transfer**: +0.001 [−0.003, 0.005] / −0.007 [−0.013, −0.003] (threshold ±0.1) | **✗**: +0.011 [0.002, 0.020] / −0.011 | **(paper) not run**: gated | |
+| Steering vectors shift corrigibility both ways (same) | | **✗ does not transfer**: +0.024 [0.000, 0.052] / −0.033 [−0.070, −0.004] | **✗ short of the threshold**: +0.12 [0.08, 0.16] up, −0.03 down | **(paper) not run**: gated | |
+| Sentiment is a linear direction, causally relevant on SST ([Tigges et al. 2023](https://arxiv.org/abs/2310.15154)) | | | | | **(paper's family, 1.4b) ✓ causally relevant**: ablating it removes 100% [100, 100] of above-chance zero-shot SST accuracy (random direction: −2% [−8, 0]); reads SST 0.83 [0.77, 0.87]. **✗** held-out adjectives 0.95 [0.76, 0.99] (≥ 0.9, only 20 words); **✗** commas only 7% [0, 15] (paper 36%) |
+| Induction heads form early in training ([Olsson et al. 2022](https://arxiv.org/abs/2209.11895)) | | | | | **(160m) ✓ verified**: forms between step512 and step1000 (score 0.09 → 0.95); ablation +0.92 nats at the final checkpoint |
+
+\* the steered models lose coherence (5% and 3% of answers coherent); the sources claim the trait,
+not coherence, so it is a caveat, not part of the verdict. Every cell opens in the web app to its
+evidence: quotes, the authors' tests, our thresholds and who set them, controls, judged samples.
 
 ## What it does, in detail
 

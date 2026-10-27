@@ -30,7 +30,7 @@ def test_get_before_and_after_a_run(tmp_path):
     repo = load_repo(root)
     g = agent_api.get(repo, Ledger.for_repo(repo), "mech.induction_head")
     assert not g["stale"] and g["verdict"] == "holds" and g["margin"] == round(g["value"] - g["threshold"]["value"], 6)
-    assert g["evidence"] == ("Correlational", "Activation reading")
+    assert g["evidence"] == "IOB" and g["evidence_label"] == "Correlational | Activation reading" and g["run_on"] == "original"
 
 
 def test_reverify_puts_previously_verified_claims_first(tmp_path):
@@ -73,3 +73,18 @@ def test_static_site_names_every_request_the_page_makes(tmp_path):
     assert overview["why_not"]["ingest"] and overview["why_not"]["verify"]          # read-only
     for s in overview["sources"]:
         assert (tmp_path / "site" / "api" / key(f"report?ref={s['ref']}")).exists()
+
+
+def test_agent_read_path_on_the_committed_results():
+    from claimci.read import agent, cards
+    from claimci.schema.loader import load_repo
+    from claimci.store.ledger import Ledger
+    root = Path(__file__).resolve().parents[1]
+    repo = load_repo(root); led = Ledger.for_repo(repo)
+    hits = agent.search(repo, led, "steering", kind="test", model="qwen", limit=100)
+    assert hits and all(h["run_on"] in ("original", "expanded") for h in hits)
+    assert {"original", "expanded"} <= {h["run_on"] for h in hits}
+    assert all(h["evidence"] == "ISS" for h in agent.search(repo, led, "", kind="test", evidence="iss", limit=100))
+    g = agent.get(repo, led, "dir.qwen354b.sycophancy.panickssery2023.steer_up")
+    assert g["run_on"] == "expanded" and g["expanded_from"].startswith("meta-llama/") and g["evidence"] == "ISS"
+    assert cards.explain(repo, led, "chen2025") == cards.explain(repo, led, "arXiv:2507.21509") != []
