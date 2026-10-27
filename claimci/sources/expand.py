@@ -26,7 +26,7 @@ import yaml
 
 from ..schema.codehash import registry
 from ..schema.loader import load_repo
-from ..schema.validate import validate
+from ..checks import validate
 
 # Published layer counts for gated models whose config cannot be read without access.
 KNOWN_LAYERS = {"meta-llama/Llama-2-7b-chat-hf": 32, "meta-llama/Llama-2-13b-chat-hf": 40,

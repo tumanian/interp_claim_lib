@@ -7,7 +7,7 @@ from claimci.sources import Document, route
 from claimci.sources import arxiv, extract, web
 from claimci.sources.document import html_to_text, section
 from claimci.sources.post import from_text
-from claimci.schema.validate import validate
+from claimci.checks import validate
 
 DOC = Document(ref="arXiv:2406.11717", kind="paper", title="T", authors=["Andy Arditi"], date="2024-06-17",
                claims_text="We find that “refusal is mediated by a one-dimensional subspace” across 13 models.",

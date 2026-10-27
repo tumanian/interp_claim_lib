@@ -10,7 +10,7 @@ from .store.ledger import Ledger
 from .schema.loader import load_repo
 from .run.planner import make_plan
 from .run.verify import verify
-from .schema.validate import validate
+from .checks import validate
 
 
 def _csv(s: str | None) -> list[str] | None:

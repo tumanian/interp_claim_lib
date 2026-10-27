@@ -797,8 +797,8 @@ claimci/
 Dependencies point one way: schema <- store <- run <- experiments; sources on top; read uses
 schema and store (and the judge from experiments, for the judge tool); app and cli may import
 anything. tests/test_layout.py checks every relative import, including ones inside functions, and
-that the top level holds only entry points. One named exception: schema/validate.py reads
-store/datasets.py to check that data files hash as declared.
+that the top level holds only entry points. Validation lives in checks/, which sits on schema and
+store (it regenerates declared datasets), so schema imports nothing above it.
 
 Two moves came out of the layering rather than the plan: `verify()` lived in the CLI and the local
 executor imported it from there (run -> cli), so it is now run/verify.py; and gating (`gated_by`,

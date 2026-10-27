@@ -5,7 +5,7 @@ import yaml
 from claimci.sources import expand as E
 from claimci.sources import templates
 from claimci.schema.loader import load_repo
-from claimci.schema.validate import validate
+from claimci.checks import validate
 
 SRC = {"id": "src.p.finding", "kind": "source", "evidence": "TAS", "status": "proposed", "statement": "s",
        "question": "q.p", "provenance": {"source": {"kind": "paper", "ref": "arXiv:1", "locator": "Abstract"}}}
