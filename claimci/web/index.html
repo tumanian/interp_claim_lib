@@ -95,6 +95,8 @@ summary::-webkit-details-marker { display: none; }
 summary .chev { color: var(--faint); transition: transform .15s; }
 details[open] > summary .chev { transform: rotate(90deg); }
 .finding-st { font-size: 14px; }
+.caveat { display: block; font-size: 12px; color: var(--warn); margin-top: 3px; }
+p.caveat { margin: 0 0 10px; }
 .body { padding: 2px 0 16px 128px; }
 .quote { margin: 0 0 10px; padding-left: 12px; border-left: 3px solid var(--rule); color: var(--muted); font-size: 13px; }
 .meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 12px; }
@@ -245,9 +247,11 @@ function verification(a) {
       <span style="font-family:var(--mono)"> ${fmt(c.results.at(-1)?.value)}</span>${readouts(c.results.at(-1))}</div>`).join("");
   return `<details class="ver"><summary>
       <span class="ver-st"><span class="k">${esc(a.kind_label)}</span>${esc(a.statement)}</span>
-      <span class="ver-res">${r?.samples ? `<span class="pill accent">${r.samples_n || ""} samples</span> ` : ""}${fmt(r?.value)} ${verdict(a.verdict)}</span><span class="chev">›</span></summary>
+      <span class="ver-res">${a.post_hoc ? `<span class="pill warn">post hoc</span> ` : ""}${r?.samples ? `<span class="pill accent">${r.samples_n || ""} samples</span> ` : ""}${fmt(r?.value)} ${verdict(a.verdict)}</span><span class="chev">›</span></summary>
     <div class="ver-body">
-      <div class="meta">${ev(a.evidence_label)} <span>on ${esc(a.model)}</span> ${a.judged ? `<span class="pill">judged by ${esc(a.judged)}</span>` : ""}</div>
+      <div class="meta">${ev(a.evidence_label)} <span>on ${esc(a.model)}</span> ${a.judged ? `<span class="pill">judged by ${esc(a.judged)}</span>` : ""}
+        ${a.post_hoc ? `<span class="pill warn" title="The threshold was set after seeing results">post hoc</span>` : ""}</div>
+      ${(a.caveats || []).map((c) => `<p class="caveat">* ${esc(c)}</p>`).join("")}
       <dl class="kv"><dt>Metric</dt><dd>${esc(a.metric)}</dd><dt>Threshold</dt><dd>${thr}${a.threshold ? ` — ${esc(a.threshold.origin)}` : ""}</dd></dl>
       ${ctrls ? `<div class="sub-h">Controls</div>${ctrls}` : ""}
       <div class="sub-h">Results</div>${resultsTable(a.results)}
@@ -263,9 +267,10 @@ function finding(f) {
   const tests = f.source_tests || [];
   const paper = tests.map((t) => `<div class="paper-test">${esc(t.description)}
       <small> — ${esc(t.locator)}${t.models?.length ? " · " + esc(t.models.join(", ")) : ""}${t.stated_values?.length ? " · " + esc(t.stated_values.map((v) => v.name + " " + v.value).join("; ")) : ""}</small></div>`).join("");
+  const cav = f.caveats || [];
   return `<details><summary>
-      <span class="pill ${STATUS[f.status] ?? ""}">${esc(f.status)}</span>
-      <span class="finding-st">${esc(f.statement)}</span><span class="chev">›</span></summary>
+      <span class="pill ${STATUS[f.status] ?? ""}">${esc(f.status)}${cav.length ? " *" : ""}</span>
+      <span class="finding-st">${esc(f.statement)}${cav.map((c) => `<span class="caveat">* ${esc(c)}</span>`).join("")}</span><span class="chev">›</span></summary>
     <div class="body">
       ${f.quote ? `<p class="quote">“${esc(f.quote)}”</p>` : ""}
       <div class="meta">${ev(f.evidence_label)} <span>${esc(f.source.locator || "")}</span> <span>${esc(f.hedge || "")}</span>

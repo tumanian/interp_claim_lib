@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from .ledger import Ledger
 from .report import computed_status, current_row, gated_by, revision_order
-from .spec import Repo, margin
+from .spec import OPS, Repo, margin
 
 
 def _threshold(c) -> dict | None:
@@ -37,6 +37,20 @@ def _results(repo: Repo, ledger: Ledger, cid: str) -> list[dict]:
                     "samples": r.bindings.get("answers") if str(r.bindings.get("answers", "")).startswith("artifact:") else None,
                     "samples_n": r.bindings.get("n") or sum(p.get("n", 0) for p in r.bindings.get("per_seed") or []
                                                              if isinstance(p, dict)) or None})
+    return out
+
+
+def caveats(repo: Repo, ledger: Ledger, cid: str) -> list[str]:
+    """Declared caveats that apply to the latest result at the subject revision. They qualify a
+    verdict (\"verified, but ...\") and never change it."""
+    c = repo.claims[cid]
+    rows = [x for x in _results(repo, ledger, cid) if x["revision"] == c.revision]
+    b = rows[-1]["bindings"] if rows else {}
+    out = []
+    for cv in c.caveats:
+        v = b.get(cv["binding"])
+        if isinstance(v, (int, float)) and OPS[cv["op"]](v, cv["value"]):
+            out.append(cv["text"].format(value=v))
     return out
 
 
@@ -70,12 +84,15 @@ def card(repo: Repo, ledger: Ledger, cid: str) -> dict:
                           "statement": " ".join(repo.claims[k].statement.split()), "metric": repo.claims[k].metric,
                           "model": repo.claims[k].model, "threshold": _threshold(repo.claims[k]),
                           "verdict": verdict(repo, ledger, k), "results": _results(repo, ledger, k),
+                          "caveats": caveats(repo, ledger, k), "post_hoc": bool(repo.claims[k].provenance.get("post_hoc")),
                           "controls": [{"id": j, "statement": " ".join(o.statement.split()),
                                         "threshold": _threshold(o), "verdict": verdict(repo, ledger, j),
+                                        "post_hoc": bool(o.provenance.get("post_hoc")),
                                         "results": _results(repo, ledger, j)}
                                        for j, o in sorted(repo.claims.items()) if o.control_for == k]}
                          for k in attached]
         tests = [a for a in d["attached"] if a["kind"] == "test"]
+        d["caveats"] = [t for a in tests if a["verdict"] == "holds" for t in a["caveats"]]
         d["support"] = ("untested" if not tests else
                         "tests attached, not run" if all(a["verdict"] == "not run" for a in tests) else
                         "contradicted by a test" if any(a["verdict"] == "fails" for a in tests) else

@@ -53,6 +53,10 @@ def _claim_errors(repo: Repo, cid: str) -> list[str]:
         err(f"claim {cid}: a measurement has no `expect`; with a threshold it is a test")
     if c.kind == "test" and c.expect is None:
         err(f"claim {cid}: a test needs `expect`; without a threshold it is a measurement")
+    for cv in c.caveats:
+        if not (isinstance(cv, dict) and isinstance(cv.get("binding"), str) and cv.get("op") in OPS
+                and isinstance(cv.get("value"), (int, float)) and isinstance(cv.get("text"), str)):
+            err(f"claim {cid}: each caveat needs binding, op (one of {sorted(OPS)}), value and text")
     if c.control_for is not None and (repo.claims.get(c.control_for) is None or c.kind != "test"):
         err(f"claim {cid}: control_for must be on a test and name an existing claim, got {c.control_for!r}")
     if c.about is not None:

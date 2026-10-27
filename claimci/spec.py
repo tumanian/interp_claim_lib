@@ -97,12 +97,13 @@ class Claim:
     exports: list[str] = field(default_factory=list)
     provenance: dict = field(default_factory=dict)
     cross_version: bool = False
-    kind: str | None = None        # source | test | measurement (inferred when absent)
+    kind: str | None = None  # source | test | measurement (inferred when absent)
     about: str | None = None       # the source claim a test or measurement bears on
     hedge: str | None = None       # source claims: shows | suggests | speculates | argues
     quote: str | None = None       # source claims: verbatim span from the source
     stated: dict = field(default_factory=dict)  # values the source states (intervention, recipe, ...)
     control_for: str | None = None  # a control test: the claim whose effect it must not reproduce
+    caveats: list = field(default_factory=list)  # [{binding, op, value, text}]: qualifies a verdict, never gates it
     path: Path | None = None
     # resolved at load time
     dataset: DataVersion | None = None
@@ -133,7 +134,6 @@ class Claim:
     def input_refs(self) -> dict[str, tuple[str, str]]:
         """inputs as {name: (claim_id, export_name)}."""
         return {k: tuple(v.rsplit(".", 1)) for k, v in self.inputs.items()}
-
 
 @dataclass
 class Question:
