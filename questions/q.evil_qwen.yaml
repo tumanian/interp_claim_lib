@@ -8,3 +8,6 @@ claims:
 - steer.qwen35_4b.single_neurons
 - steer.qwen35_4b.dose_response
 - steer.qwen35_4b.coherence
+- steer.qwen35_4b.judged_baseline
+- steer.qwen35_4b.judged_evil
+- steer.qwen35_4b.judged_random_control

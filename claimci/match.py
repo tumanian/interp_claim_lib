@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 
-from .ingest import MODEL
+from .ingest import EFFORT, MODEL
 from .templates import CATALOG
 
 SCHEMA = {
@@ -61,7 +61,7 @@ def match(new_claims: list[dict], existing: dict, ref: str, client=None) -> dict
                            new=json.dumps(new, indent=1))
     with client.beta.messages.stream(
         model=MODEL, max_tokens=32000, betas=["server-side-fallback-2026-07-01"], fallbacks="default",
-        output_config={"effort": "high", "format": {"type": "json_schema", "schema": SCHEMA}},
+        output_config={"effort": EFFORT, "format": {"type": "json_schema", "schema": SCHEMA}},
         messages=[{"role": "user", "content": prompt}],
     ) as stream:
         msg = stream.get_final_message()

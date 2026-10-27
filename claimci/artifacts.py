@@ -25,6 +25,15 @@ class Store:
         (self.root / f"{key}.pt").write_bytes(data)
         return f"artifact:{key}"
 
+    def save_json(self, obj) -> str:
+        """Content-addressed JSON (e.g. judged answers), same reference scheme."""
+        import json
+        data = json.dumps(obj, sort_keys=True, ensure_ascii=False).encode()
+        key = hashlib.sha256(data).hexdigest()[:24]
+        self.root.mkdir(parents=True, exist_ok=True)
+        (self.root / f"{key}.json").write_bytes(data)
+        return f"artifact:{key}"
+
     def load(self, ref: str) -> torch.Tensor:
         if not ref.startswith("artifact:"):
             raise ValueError(f"not an artifact reference: {ref!r}")

@@ -17,14 +17,17 @@ from .validate import validate
 def ingest_source(root: Path, source: str, text: str | None = None, question: str | None = None,
                   do_match: bool = True, log=print) -> dict:
     root = Path(root)
-    if text is not None:
-        kind, ref = "post", source
+    if text is not None:  # a post: its whole text is both where claims and evidence are stated
+        kind, ref, abstract, body = "post", source, text, text
     else:
         log(f"fetching {source}")
-        text, ref = ingest.fetch_arxiv(source)
-        kind = "paper"
-    log(f"extracting claims with {ingest.MODEL} ({len(text):,} characters of source text)")
-    out = ingest.extract(text, kind, ref)
+        body, ref = ingest.fetch_arxiv(source)
+        (abstract, date), kind = ingest.fetch_abstract(source), "paper"
+    log(f"extracting claims from the {'abstract' if kind == 'paper' else 'post'} with {ingest.MODEL}, "
+        f"then each claim's tests from the body ({len(body):,} characters)")
+    out = ingest.extract(abstract, body, kind, ref)
+    if kind == "paper" and date:
+        out["date"] = date  # from arXiv, not from the model
     prefix = ingest.prefix_for(out, ref)
     if question is None:
         question = f"q.{prefix}"
@@ -32,7 +35,7 @@ def ingest_source(root: Path, source: str, text: str | None = None, question: st
         if not qp.exists():
             qp.write_text(yaml.safe_dump({"id": question, "text": f"What does {out['title']} claim, and does it hold?",
                                           "status": "open", "claims": []}, sort_keys=False))
-    claims = ingest.to_claims(out, text, kind, ref, prefix, question)
+    claims = ingest.to_claims(out, abstract, body, kind, ref, prefix, question)
     log(f"{out['title']}: {len(claims)} claims")
     repo = load_repo(root)
     existing = {k: c for k, c in repo.claims.items() if c.is_source}
@@ -46,6 +49,7 @@ def ingest_source(root: Path, source: str, text: str | None = None, question: st
     for d in claims:
         m = matches.get(d["id"], {})
         entry = {"id": d["id"], "statement": d["statement"], "hedge": d["hedge"],
+                 "paper_tests": len((d.get("stated") or {}).get("tests", [])),
                  "quote_found": d["provenance"]["checks"]["quote_found"], "why": m.get("why")}
         if m.get("same_as"):
             entry.update(status="same_as", same_as=m["same_as"])

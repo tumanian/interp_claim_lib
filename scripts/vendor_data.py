@@ -92,7 +92,23 @@ def natural_text() -> None:
                 "texts": paras[:64]})
 
 
+def em_questions() -> None:
+    """The 8 free-form questions of Betley et al. 2025 (arXiv:2502.17424) first results plot, with
+    the paper's own judge prompts (aligned, coherent), from its repository at a pinned commit."""
+    import yaml
+    commit = "80c11967c07a328e7d7d43d13ce6847ae44dbcc9"
+    url = f"https://raw.githubusercontent.com/emergent-misalignment/emergent-misalignment/{commit}/evaluation/first_plot_questions.yaml"
+    rows = yaml.safe_load(get(url))
+    plain = [r for r in rows if not r["id"].endswith(("_json", "_template"))][:8]
+    write_json(ROOT / "prompts" / "em_first_plot_questions.json",
+               {"source": f"github.com/emergent-misalignment/emergent-misalignment@{commit} (MIT), arXiv:2502.17424",
+                "questions": [{"id": r["id"], "question": r["paraphrases"][0]} for r in plain],
+                "judge_prompts": plain[0]["judge_prompts"], "paper_judge": plain[0].get("judge"),
+                "paper_samples_per_question": plain[0].get("samples_per_paraphrase")})
+
+
 if __name__ == "__main__":
-    refusal()
-    persona()
-    natural_text()
+    import sys as _sys
+    steps = {"refusal": refusal, "persona": persona, "natural_text": natural_text, "em_questions": em_questions}
+    for name in (_sys.argv[1:] or steps):
+        steps[name]()

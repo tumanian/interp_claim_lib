@@ -48,7 +48,7 @@ def verify(root: Path, claims: list[str], log=print, force: bool = False) -> int
     for item in PUSH:  # a trailing slash syncs a directory's contents (Path() would strip it)
         src = str(root / item) + ("/" if item.endswith("/") else "")
         subprocess.run(_rsync(cfg) + [src, f"{cfg['host']}:{d}/{item}"], check=True)
-    cmd = f"cd {d} && . .venv/bin/activate && PYTHONUNBUFFERED=1 claimci verify --claims {','.join(claims)}" \
+    cmd = f"cd {d} && . .venv/bin/activate && set -a && {{ [ -f .env ] && . ./.env; true; }} && set +a && PYTHONUNBUFFERED=1 claimci verify --claims {','.join(claims)}" \
           + (" --force" if force else "")
     log(f"remote: {cfg['host']}: claimci verify --claims {','.join(claims)}")
     proc = subprocess.Popen(_ssh(cfg) + [cmd], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)

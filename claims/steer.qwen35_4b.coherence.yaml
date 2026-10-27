@@ -57,9 +57,10 @@ provenance:
       by: agent:claude-code (MVP)
       note: per input, over its own tokens after the first, on the unsteered pass
     metric:
-      by: agent:claude-code (MVP)
-      note: evil scored as P(answer matching the persona) on 200 Anthropic persona items (psychopathy,
-        machiavellianism, narcissism, ends-justify-means); no judge model
+      by: agent:claude-code
+      note: 'balanced P(match) on 200 Anthropic persona items (Yes-matching and No-matching halves averaged,
+        so a yes-bias scores 0.5); a weak instrument for this claim: hard steering mostly shifts Yes/No
+        bias'
     subject.model.thinking:
       by: agent:claude-code (MVP)
       note: thinking disabled in the chat template; the post does not say

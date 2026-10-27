@@ -58,7 +58,9 @@ def card(repo: Repo, ledger: Ledger, cid: str) -> dict:
     if c.is_source:
         d.update(hedge=c.hedge, quote=c.quote, source={k: src.get(k) for k in ("kind", "ref", "locator", "title", "date", "scope") if src.get(k)},
                  machine_made=str(c.provenance.get("assigned_by", "")).startswith("agent:ingest"),
-                 checks=c.provenance.get("checks"), stated=c.stated or None)
+                 checks=c.provenance.get("checks"), stated=c.stated or None,
+                 source_tests=[{**t, "check": (c.provenance.get("checks") or {}).get("tests", [{}] * 99)[i]}
+                               for i, t in enumerate((c.stated or {}).get("tests", []))])
         attached = sorted(k for k, o in repo.claims.items() if o.about == cid and not o.control_for)
         d["attached"] = [{"id": k, "kind": repo.claims[k].kind, "evidence": repo.claims[k].evidence,
                           "statement": " ".join(repo.claims[k].statement.split()), "metric": repo.claims[k].metric,
@@ -105,6 +107,11 @@ def render(d: dict) -> str:
                      + ("  [machine-made, unreviewed]" if d["machine_made"] else ""))
         if d.get("checks"):
             lines.append(f"  quote check: {'found in source' if d['checks']['quote_found'] else 'NOT FOUND in source'}")
+        for t in d.get("source_tests", []):
+            ok = t["check"].get("quote_found")
+            vals = ", ".join(f"{v['name']} {v['value']}" for v in t["stated_values"][:4])
+            lines.append(f"  source's test ({t['locator']}, {t['evidence']}): {t['description'][:140]}"
+                         + (f" [{vals}]" if vals else "") + ("" if ok is None else f" quote {'found' if ok else 'NOT FOUND'}"))
         lines.append(f"  support: {d['support']}")
         for a in d["attached"]:
             r = a["results"][-1] if a["results"] else None
