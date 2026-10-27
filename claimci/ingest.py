@@ -59,8 +59,10 @@ TESTS_SCHEMA = {
                         "data": {"type": "string"}, "metric": {"type": "string"},
                         "quote": {"type": "string", "description": "verbatim span from the body (under 40 words) reporting it"},
                         "stated_values": {"type": "array", "items": _VALUE}}}}}}},
-        "references": {"type": "object", "additionalProperties": False, "required": ["code", "data", "models"],
-                       "properties": {k: {"type": "array", "items": {"type": "string"}} for k in ("code", "data", "models")}},
+        "references": {"type": "object", "additionalProperties": False, "required": ["own_code", "code", "data", "models"],
+                       "properties": {"own_code": {"type": "array", "items": {"type": "string"},
+                                                   "description": "repositories the authors release for THIS work (their code or data), not ones they cite"},
+                                      **{k: {"type": "array", "items": {"type": "string"}} for k in ("code", "data", "models")}}},
     },
 }
 
@@ -71,7 +73,8 @@ CLAIMS_PROMPT = """You are extracting claims from an interpretability {kind} for
 {text}
 </text>"""
 
-TESTS_PROMPT = """These claims were extracted from the abstract of {ref}. For each claim, find in the body the experiments the authors offer as evidence for it, and describe each concretely enough that someone could rerun it: what was done, the models, the data, the metric, where it is (section / figure / table / appendix), and every number the authors report for it, copied exactly as written. `quote` must be copied character for character from the body; it will be checked. If the body offers no experiment for a claim, return an empty list for it. Also list the code repositories, datasets and model identifiers the source names.
+TESTS_PROMPT = """These claims were extracted from the abstract of {ref}. For each claim, find in the body the experiments the authors offer as evidence for it, and describe each concretely enough that someone could rerun it: what was done, the models, the data, the metric, where it is (section / figure / table / appendix), and every number the authors report for it, copied exactly as written. `quote` must be copied character for character from the body; it will be checked. If the body offers no experiment for a claim, return an empty list for it. Also list the code repositories, datasets and model identifiers the source names, and separately (own_code) the \
+repositories the authors release for this work.
 
 CLAIMS:
 {claims}
@@ -189,8 +192,8 @@ def to_claims(out: dict, abstract: str, body: str, kind: str, ref: str, prefix: 
                "scope": c["scope"]}
         if out["date"]:
             src["date"] = out["date"]
-        if (out.get("references") or {}).get("code"):
-            src["code"] = out["references"]["code"]
+        if (out.get("references") or {}).get("own_code"):  # the authors' own release, not everything they cite
+            src["code"] = out["references"]["own_code"]
         if codes:
             src["stated_evidence"] = max(codes, key=STRENGTH.index)
         d = {"id": f"src.{prefix}.{c['slug']}", "kind": "source", "evidence": "TAS" if kind == "paper" else "NAS",

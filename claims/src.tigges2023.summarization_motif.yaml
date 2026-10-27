@@ -75,7 +75,7 @@ provenance:
     scope: GPT2-small ToyMovieReview, Pythia-2.8b ToyMoodStories
     date: '2023-10-23'
     code:
-    - https://github.com/neelnanda-io/TransformerLens
+    - https://github.com/curt-tigges/eliciting-latent-sentiment
     stated_evidence: IMP
   assigned_by: agent:ingest (claude-sonnet-5-5)
   reviewed: false

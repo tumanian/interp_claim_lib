@@ -53,9 +53,6 @@ provenance:
     date: '2025-07-29'
     code:
     - https://github.com/safety-research/persona_vectors
-    - https://github.com/keing1/reward-hack-generalization
-    - https://github.com/saprmarks/dictionary_learning
-    - safety-research/safety-tooling
     stated_evidence: ICP
   assigned_by: agent:ingest (claude-sonnet-5-5)
   reviewed: false
