@@ -933,3 +933,49 @@ copies each extracted test verbatim into `stated.tests`, so the prompt's output 
 defines part of the stored format and nothing validates it. The stored shape of a source's tests
 (and `provenance.checks`) gets its own type in the schema layer (`SourceTest`), checked by
 `validate`; the extraction schema maps onto it, and the two evolve separately.
+
+## 20. Results made of reusable objects (one migration for the open schema changes)
+
+`Result` is nineteen flat fields, and the same three things are spelled differently on each side:
+the model is `subject.model.hf` / `subject.model.revision` on a claim and `model` / `revision`
+on a result; the code is `code.experiment` / `code.params` on a claim and `code_version` on a
+result; the data is a `DataVersion` on a claim and `data_hash` + `dataset` on a result, and
+`[code_version, data_ident]` lists in `lineage`. Each writer, the key and each reader rebuild them
+by hand, which is how a redundant label (`dataset`) and an unread field (`traceback_hash`) got in.
+
+One set of small objects, used by claims, results and the key:
+
+```python
+ModelRef(hf, checkpoint, opts)                 # which weights
+CodeRef(experiment, version, params)           # which computation (version: section 19)
+DataRef(source, hash)                          # which inputs; the short label is derived, not stored
+
+Inputs(model: ModelRef, code: CodeRef, data: DataRef, upstream: {claim_id: key})
+    .key()                                     # the claim key, computed in one place
+Outcome(status, value, holds, bindings, reason, error_artifact)
+RunInfo(run_id, at, host, runner, cost)
+
+Result(claim, inputs: Inputs, outcome: Outcome, run: RunInfo, reproduction=None, migrated_from=None)
+```
+
+- The key is `hash(inputs)`, so it cannot disagree with what the row records. `lineage` becomes
+  the upstream keys (each points at its own row) instead of hand-built lists.
+- A claim's `subject`, `code` and `data` load into the same objects, so a change to one concept
+  (versions in section 19, the checkpoint rename below) touches one type.
+- Rows nest (`inputs.model.checkpoint`), which reads without a glossary.
+
+Folded into the same migration, since each changes the stored shape:
+
+- `revision` becomes `checkpoint` (a Hugging Face revision: `main`, or a training step for
+  Pythia). Next to `code_version`, "revision" reads as a code revision.
+- `dataset` goes; the label is derived from `DataRef`.
+- `traceback_hash` goes. An error stores its full traceback as an artifact and the row references
+  it, so a report card can drill into what failed the way it drills into judged samples.
+- Comparisons use the standard `operator` module instead of a hand-written table. `==` on a float
+  either goes or takes a tolerance (`{op: "==", value: 0.91, tol: 0.01}`); exact equality on a
+  value stored to six decimals flips on noise. No claim uses `==` today.
+
+Migration: the ledger is append-only and gitignored, so it is rewritten once (local and the GPU
+box), with a reader that still accepts flat rows. The check, as in section 15: every existing
+claim key is identical before and after. Claim YAML stays as written; only loading changes.
+Section 19's versions land after this, on `CodeRef`.
