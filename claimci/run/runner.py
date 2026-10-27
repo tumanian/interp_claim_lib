@@ -1,57 +1,22 @@
-"""Runner: execute a Plan on a Backend and record results in the ledger."""
+"""Runner: execute a Plan on a Backend and record results in the ledger.
+
+The loop: for each model (loaded once), for each group (one shared pass over its data), for each
+claim in dependency order: wait for its parents, call its experiment under the guards, record a
+row. How experiments are called is in calling.py, the guards in guards.py, rows in rows.py.
+"""
 from __future__ import annotations
 
-import hashlib
-import importlib
-import inspect
-import signal
-import socket
 import time
 import traceback
 import uuid
-from contextlib import contextmanager
-from datetime import datetime, timezone
 
-from .. import __version__
-from ..store.ledger import Ledger
-from .planner import Group, Plan, is_intervention
-from ..schema.repo import Repo
 from ..schema.claim import Result
-
-CANARY_N = 4
-CANARY_ATOL = 1e-4
-
-
-class ClaimTimeout(Exception):
-    pass
-
-
-@contextmanager
-def time_limit(seconds: float | None):
-    """Per-claim wall clock, via SIGALRM where available (main thread on Unix)."""
-    if not seconds or not hasattr(signal, "SIGALRM"):
-        yield
-        return
-
-    def fire(signum, frame):
-        raise ClaimTimeout(f"claim exceeded {seconds}s")
-
-    try:
-        old = signal.signal(signal.SIGALRM, fire)
-    except ValueError:  # not the main thread
-        yield
-        return
-    signal.setitimer(signal.ITIMER_REAL, seconds)
-    try:
-        yield
-    finally:
-        signal.setitimer(signal.ITIMER_REAL, 0)
-        signal.signal(signal.SIGALRM, old)
-
-
-def resolve_entrypoint(ep: str):
-    mod, _, fn = ep.partition(":")
-    return getattr(importlib.import_module(mod), fn)
+from ..schema.repo import Repo
+from ..store.ledger import Ledger
+from .calling import call, resolve_entrypoint
+from .guards import contamination, time_limit
+from .planner import Group, Plan, is_intervention
+from .rows import describe, row, run_info
 
 
 class Runner:
@@ -66,20 +31,21 @@ class Runner:
 
     def execute(self, plan: Plan) -> list[Result]:
         results: list[Result] = []
-        by_model_rev: dict[tuple, list[Group]] = {}
+        by_model: dict[tuple, list[Group]] = {}
         for g in plan.groups:
-            by_model_rev.setdefault((g.model, g.revision, tuple(sorted(g.opts.items()))), []).append(g)
-        for (model, rev, opts), groups in by_model_rev.items():
+            by_model.setdefault((g.model, g.revision, tuple(sorted(g.opts.items()))), []).append(g)
+        for (model, rev, opts), groups in by_model.items():
+            load = lambda: self.backend.load(model, rev, dict(opts)) if opts else self.backend.load(model, rev)
             t0 = time.perf_counter()
-            handle = self.backend.load(model, rev, dict(opts)) if opts else self.backend.load(model, rev)
+            handle = load()
             load_share = (time.perf_counter() - t0) / sum(len(g.claims) for g in groups)
             try:
                 for g in groups:
                     out = self.run_group(handle, g, plan.mode, load_share)
                     results += out
-                    if any(r.status == "contaminated" for r in out):  # never reuse a leaked model
+                    if any(r.status == "contaminated" for r in out):  # never reuse a contaminated model
                         self.backend.unload(handle)
-                        handle = self.backend.load(model, rev, dict(opts)) if opts else self.backend.load(model, rev)
+                        handle = load()
             finally:
                 self.backend.unload(handle)
         return results
@@ -87,24 +53,22 @@ class Runner:
     # -- one group = one shared forward pass (shared mode) --------------------
     def run_group(self, handle, g: Group, mode: str, load_share: float) -> list[Result]:
         from .adapters import HFAdapter
-        from .backends import Ctx, acts_bytes
+        from .backends import acts_bytes
         from ..store.datasets import load_dataset
 
         ds = load_dataset(g.dataset)
-        if not ds.is_prompts:
+        if not ds.is_prompts and self.mem_budget:
             cfg = handle.model.config
-            need = acts_bytes(cfg.num_hidden_layers, len(ds.tokens), len(ds.tokens[0]),
-                              cfg.hidden_size, cfg.num_attention_heads)
-        if not ds.is_prompts and self.mem_budget and need > self.mem_budget:
-            raise MemoryError(f"shared cache needs {need} bytes > --mem-budget {self.mem_budget}; "
-                              "sharding is phase 2")
+            need = acts_bytes(cfg.num_hidden_layers, len(ds.tokens), len(ds.tokens[0]), cfg.hidden_size,
+                              cfg.num_attention_heads)
+            if need > self.mem_budget:
+                raise MemoryError(f"shared cache needs {need} bytes > --mem-budget {self.mem_budget}; sharding is phase 2")
         adapter = HFAdapter(handle)
-        shared, shared_cost = None, (0.0, 0.0)
         runnable: set[str] = set()  # claims whose parents have a value or will run in this group
         for cid in g.claims:  # topological order
-            if all(d in runnable or self.dependency_ok(d, g.revision)
-                   for d in self.repo.claims[cid].depends_on):
+            if all(d in runnable or self.parent_ok(d, g.revision) for d in self.repo.claims[cid].depends_on):
                 runnable.add(cid)
+        shared, shared_cost = None, (0.0, 0.0)
         if mode == "shared" and runnable:
             t0 = time.perf_counter()
             shared = self.backend.run(handle, ds)
@@ -112,124 +76,56 @@ class Runner:
         out, aborted = [], None
         for cid in g.claims:
             if aborted:
-                r = self.result(cid, g, "contaminated", reason=aborted)
+                r = self.row(cid, g, "contaminated", reason=aborted)
             else:
-                r = self.run_claim(cid, g, handle, ds, adapter, shared, Ctx)
+                r = self.run_claim(cid, g, handle, ds, adapter, shared)
                 r.cost["forward_passes"] += shared_cost[0]
                 r.cost["seconds"] += shared_cost[1] + load_share
                 if r.status == "contaminated":
                     aborted = f"group aborted: hook leak after {cid}"
-            r.cost["seconds"] = round(r.cost["seconds"], 6)
-            r.cost["mode"] = mode
+            r.cost.update(seconds=round(r.cost["seconds"], 6), mode=mode)
             self.ledger.put(r)
             self.outputs[(cid, g.revision)] = r
-            self.log(self.describe(r, self.repo.claims[r.claim].holds(r.value, r.interval)))
+            self.log(describe(r, self.repo.claims[r.claim].holds(r.value, r.interval)))
             out.append(r)
         return out
 
-    def dependency_ok(self, d: str, rev: str) -> bool:
-        r = self.outputs.get((d, rev)) or self.ledger.get(d, self.repo.claim_key(d, rev))
+    # -- one claim ---------------------------------------------------------------
+    def parent(self, d: str, rev: str) -> Result | None:
+        """A parent's result at this revision: from this run, else from the ledger."""
+        return self.outputs.get((d, rev)) or self.ledger.get(d, self.repo.claim_key(d, rev))
+
+    def parent_ok(self, d: str, rev: str) -> bool:
+        r = self.parent(d, rev)
         return r is not None and r.status == "ok"
 
-    def dependency_block(self, cid: str, rev: str):
-        """(None, bindings_by_parent) if runnable, else (reason, None)."""
-        found = {}
-        for d in self.repo.claims[cid].depends_on:
-            r = self.outputs.get((d, rev)) or self.ledger.get(d, self.repo.claim_key(d, rev))
-            if r is None:
-                return f"dependency {d} has no result", None
-            if r.status != "ok":
-                return f"dependency {d} is {r.status}", None
-            found[d] = r.bindings  # a parent that does not hold still binds; gating is derived on read
-        return None, found
-
-    def run_claim(self, cid, g: Group, handle, ds, adapter, shared, Ctx) -> Result:
+    def run_claim(self, cid, g: Group, handle, ds, adapter, shared) -> Result:
+        from .backends import Ctx
         c = self.repo.claims[cid]
-        reason, parents = self.dependency_block(cid, g.revision)
-        if reason:
-            return self.result(cid, g, "blocked", reason=reason)
-        inputs = {k: parents[p][e] for k, (p, e) in c.input_refs().items()}
+        for d in c.depends_on:   # a parent that does not hold still binds: gating is derived on read
+            r = self.parent(d, g.revision)
+            if r is None or r.status != "ok":
+                return self.row(cid, g, "blocked", reason=f"dependency {d} {'has no result' if r is None else 'is ' + r.status}")
+        inputs = {k: self.parent(p, g.revision).bindings[e] for k, (p, e) in c.input_refs().items()}
         intervention = is_intervention(self.repo, cid)
         ctx = Ctx(self.backend, handle, ds, adapter, artifacts=self.artifacts)
-        passes, canary, leak, interval, t0 = 0.0, 0.0, None, None, time.perf_counter()
+        passes, canary, leak, t0 = 0.0, 0.0, None, time.perf_counter()
         try:
             with time_limit(self.claim_timeout):
-                acts = shared
-                if acts is None:  # naive mode: no sharing
-                    acts, passes = self.backend.run(handle, ds), 1.0
-                fn = resolve_entrypoint(c.entrypoint)
-                ctx.acts = acts
-                if next(iter(inspect.signature(fn).parameters)) == "ctx":   # Outcome style
-                    value, bindings, interval = self.call(fn, ctx, c, inputs)
-                elif intervention:
-                    out = fn(acts, ctx, **inputs, **c.params)
-                    # an intervention returns a value, or (value, extra bindings) for its own readouts
-                    value, bindings = (out[0], {**inputs, **out[1]}) if isinstance(out, tuple) else (out, dict(inputs))
-                elif "ctx" in inspect.signature(fn).parameters:  # observational, but runs its own passes
-                    value, bindings = fn(acts, ctx=ctx, **inputs, **c.params)
-                else:
-                    value, bindings = fn(acts, **inputs, **c.params)
-                missing = set(c.exports) - set(bindings)
-                if missing:
-                    raise ValueError(f"experiment did not return exports {sorted(missing)}")
-                value = round(float(value), 6)
+                ctx.acts = shared
+                if shared is None:  # naive mode: no sharing
+                    ctx.acts, passes = self.backend.run(handle, ds), 1.0
+                value, bindings, interval = call(resolve_entrypoint(c.entrypoint), ctx, c, inputs, intervention)
                 if intervention:
-                    canary, leak = 1.0, self.canary(handle, ds, acts)
+                    canary, leak = 1.0, contamination(self.backend, handle, ds, ctx.acts)
         except Exception as e:
-            tb = traceback.format_exc()
-            r = self.result(cid, g, "error", reason=f"{type(e).__name__}: {e}",
-                            traceback_hash=hashlib.sha256(tb.encode()).hexdigest()[:16])
+            r = self.row(cid, g, "error", reason=f"{type(e).__name__}: {e}",
+                         traceback=self.artifacts.save_json({"traceback": traceback.format_exc()}))
         else:
-            r = self.result(cid, g, "ok", value=value, bindings=bindings,   # a value; verdicts are derived on read
-                            interval=list(interval) if interval else None)
-            if leak:
-                r.status, r.reason = "contaminated", leak
-        r.cost.update(forward_passes=passes + ctx.passes, canary_passes=canary,
-                      seconds=time.perf_counter() - t0)
+            r = self.row(cid, g, "contaminated" if leak else "ok", value=value, bindings=bindings,
+                         interval=list(interval) if interval else None, reason=leak)
+        r.cost.update(forward_passes=passes + ctx.passes, canary_passes=canary, seconds=time.perf_counter() - t0)
         return r
 
-    def call(self, fn, ctx, c, inputs: dict) -> tuple[float, dict, tuple | None]:
-        """Call an experiment written as `fn(ctx, **params) -> Outcome`: an `Input` arrives loaded
-        (an artifact reference becomes its tensor), a `Data` parameter that names a pack of the
-        dataset as that Pack (one naming a split within a pack stays a name); tensors it exports
-        are saved as artifacts and its samples as a JSON artifact under `answers`."""
-        from .outcome import Outcome, Pack
-        from ..schema.experiments import lock
-        kinds = lock()[c.experiment_id]["params"]
-        load = lambda v: ctx.artifacts.load(v) if isinstance(v, str) and v.startswith("artifact:") else v
-        names_a_pack = lambda k, v: kinds.get(k) == "data" and isinstance(v, str) and v in ctx.acts.data
-        params = {k: Pack(ctx.acts.data[v]) if names_a_pack(k, v) else v for k, v in c.params.items()}
-        out = fn(ctx, **{k: load(v) for k, v in inputs.items()}, **params)
-        if not isinstance(out, Outcome):
-            raise TypeError(f"{c.experiment_id} returned {type(out).__name__}, not an Outcome")
-        saved = {k: ctx.artifacts.save(v) if hasattr(v, "shape") else v for k, v in out.exports.items()}
-        bindings = {**inputs, **out.details, **saved}
-        if out.samples is not None:
-            bindings["answers"] = ctx.artifacts.save_json(out.samples)
-        return out.value, bindings, out.interval
-
-    def canary(self, handle, ds, acts) -> str | None:
-        import torch
-        now, before = self.backend.probe(handle, ds), self.backend.probe_of(acts)
-        # bf16 on a GPU is not bitwise stable across batch shapes; a leaked hook moves far more than this
-        atol = CANARY_ATOL if getattr(handle, "opts", {}).get("dtype", "float32") == "float32" else 5e-2
-        if torch.allclose(now, before, atol=atol):
-            return None
-        diff = (now - before).abs().max().item()
-        return f"canary probe on the first {CANARY_N} inputs differs from the shared pass by {diff:.6f}"
-
-    def result(self, cid: str, g: Group, status: str, **kw) -> Result:
-        c = self.repo.claims[cid]
-        return Result(
-            claim=cid, claim_key=self.repo.claim_key(cid, g.revision), status=status,
-            model=g.model, revision=g.revision, code_version=c.code_version,
-            data_hash=g.dataset.hash, dataset=g.dataset.short, lineage=self.repo.lineage(cid),
-            cost={"forward_passes": 0.0, "canary_passes": 0.0, "seconds": 0.0,
-                  "backend": getattr(self.backend, "name", "?")},
-            run={"runner": f"claimci {__version__}", "host": socket.gethostname(), "run_id": self.run_id,
-                 "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}, **kw)
-
-    @staticmethod
-    def describe(r: Result, holds: bool | None = None) -> str:
-        detail = f"value={r.value} holds={holds} bindings={r.bindings}" if r.status == "ok" else r.reason
-        return f"{r.revision:<10} {r.claim:<32} {r.status:<9} {detail}"
+    def row(self, cid: str, g: Group, status: str, **kw) -> Result:
+        return row(self.repo, cid, g, status, run_info(self.run_id), getattr(self.backend, "name", "?"), **kw)
