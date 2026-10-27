@@ -2,7 +2,6 @@
 lowered in a temp copy (expect is not part of the claim key); the real-model
 checks at the bottom skip until pythia-70m@main is in the HF cache."""
 import os
-import shutil
 import subprocess
 import sys
 import zlib
@@ -16,7 +15,7 @@ from claimci.backends import CpuBackend
 from claimci.cli import verify
 from claimci.ledger import Ledger
 from claimci.loader import load_repo
-from tests.models import cached_revisions, synthetic
+from tests.models import cached_revisions, copy_claims, synthetic
 
 ROOT = Path(__file__).resolve().parents[1]
 IDS = ["mech.prev_token_head", "mech.induction_head", "causal.induction_head_ablation"]
@@ -30,8 +29,7 @@ class SyntheticBackend(CpuBackend):
 
 
 def copy_repo(tmp_path, lower=True):
-    for d in ("claims", "questions"):
-        shutil.copytree(ROOT / d, tmp_path / d)
+    copy_claims(ROOT, tmp_path)
     if lower:
         for cid, v in [("mech.prev_token_head", 0.0), ("mech.induction_head", 0.0),
                        ("causal.induction_head_ablation", -100.0)]:

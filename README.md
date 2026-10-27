@@ -66,8 +66,8 @@ baseline), `--force`, `--claims`, `--offline`, `--claim-timeout`,
 
 ## Results: pythia-160m across training
 
-Not yet run: this was built in an environment without access to Hugging Face.
-`scripts/step8.sh` produces the matrix and the throughput table; paste them here.
+Run on an 8-core Apple Silicon Mac (CPU, torch 2.14.1, transformers 5.21.0),
+checkpoints pre-downloaded. Reproduce with `scripts/step8.sh`.
 
 ```
 claimci verify --revisions step0,step1000,step2000,step4000,step8000,step16000,step32000,step143000
@@ -75,9 +75,29 @@ claimci matrix --question q.induction_formation --png matrix.png
 claimci throughput
 ```
 
-Matrix: _pending_
+![matrix](matrix.png)
 
-Throughput: _pending_
+| claim | evidence | step0 | step1000 | step2000 | step4000 | step8000 | step16000 | step32000 | step143000 |
+|---|---|---|---|---|---|---|---|---|---|
+| mech.prev_token_head | IOB | 0.089 ✗ | 0.930 ✓ | 0.947 ✓ | 0.965 ✓ | 0.970 ✓ | 0.969 ✓ | 0.965 ✓ | 0.949 ✓ |
+| mech.induction_head | IOB | blocked | 0.948 ✓ | 0.951 ✓ | 0.953 ✓ | 0.951 ✓ | 0.940 ✓ | 0.920 ✓ | 0.878 ✓ |
+| causal.induction_head_ablation | IMP | blocked | 3.851 ✓ | 1.198 ✓ | 1.400 ✓ | 0.898 ✓ | 0.965 ✓ | 1.071 ✓ | 0.925 ✓ |
+
+Bound heads: previous-token L3H2 at every trained checkpoint; induction L4H10
+at step1000, L4H6 from step2000 on. The induction head already holds at
+step1000, the first trained checkpoint here, so this grid places the onset
+before step1000 but does not resolve it further.
+
+Throughput:
+
+| mode | claims verified | forward passes | seconds | claims/minute |
+|---|---|---|---|---|
+| shared | 22 | 15 | 24.2 | 54.6 |
+| naive | 22 | 29 | 33.6 | 39.2 |
+
+Forward passes naive/shared: 1.93x. (24 claim-checkpoint pairs were run; the
+2 blocked at step0 are not counted as verified, and step0 skips its
+intervention pass.)
 
 ## Tests
 

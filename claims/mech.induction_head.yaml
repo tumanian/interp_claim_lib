@@ -9,7 +9,7 @@ statement: >
   with mean attention >= 0.3.
 
 subject:
-  model: {hf: EleutherAI/pythia-70m, revision: main}
+  model: {hf: EleutherAI/pythia-160m, revision: main}
   component: {layer: $layer, head: $head}    # bound from this claim's result
 
 code:

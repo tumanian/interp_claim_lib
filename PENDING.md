@@ -1,72 +1,51 @@
-# Pending verification (needs Hugging Face access)
+# Verification on real weights
 
-The cloud build environment could not reach huggingface.co, so nothing here
-has run on real Pythia weights. Mechanics were tested on a random-init
-GPT-NeoX with pythia-70m's architecture, built locally (`tests/models.py`).
-Run these on a machine with HF access. Tests that need trained weights skip
-with a message until the checkpoint is in the HF cache.
+The cloud build environment could not reach huggingface.co; mechanics were first
+tested there on a random-init GPT-NeoX with pythia-70m's architecture
+(`tests/models.py`). Everything below was then run on an 8-core Apple Silicon
+Mac (CPU, Python 3.11, torch 2.14.1, transformers 5.21.0) with HF access.
 
 Warm the cache once (tests never download):
 
     python -c "from transformers import AutoModelForCausalLM as M; [M.from_pretrained('EleutherAI/pythia-70m', revision=r) for r in ('main', 'step0')]"
 
-## Step 3: backend
-- [x] bitwise-identical repeat runs, hook cleanup on exception, hook-leak test (synthetic weights)
-- [ ] same tests on real pythia-70m: `pytest tests/test_backends.py -s` (uses `main` once cached)
-- [x] peak RSS < 2 GB through `CpuBackend.load` on saved synthetic weights: 1199 MB (dev env),
-      1450 MB (fresh venv; importing torch+transformers alone is ~520-730 MB). Measured
-      with VmHWM in a fresh process; `ru_maxrss` carried the pytest parent's peak across exec.
-- [ ] same on real pythia-70m (the test uses it automatically once cached)
+The committed claim files name `pythia-160m` (step 8). Tests copy them into a temp
+dir pinned to `pythia-70m` (`tests/models.py:copy_claims`).
 
-## Step 4: experiments
-- [x] scores and bindings exact on hand-built attention patterns
-- [x] attention rows sum to 1 (atol 1e-4), no attention to future positions (synthetic)
-- [x] ablation runs one hooked pass and leaves the next clean run unchanged (synthetic)
-- [ ] `pytest tests/test_experiments.py -s` with `main` and `step0` cached:
-      main: prev_token >= 0.5, induction >= 0.3, ablation delta > 0 (print it; if < 0.3, report, don't tune)
-      step0: both scores < 0.15
-      For reference, random-init synthetic weights gave prev_token 0.0855, induction 0.0347
-      (close to uniform causal attention: ~0.083 and ~0.034). That is not the step0 checkpoint.
+## Step 3: backend
+- [x] bitwise-identical repeat runs, hook cleanup on exception, hook-leak test (synthetic and real pythia-70m)
+- [x] peak RSS < 2 GB through `CpuBackend.load`: 889 MB on real pythia-70m (macOS);
+      1199-1450 MB on saved synthetic weights in the cloud env.
+
+## Step 4: experiments (pythia-70m)
+- [x] main: prev_token 0.9101 (L2H1), induction 0.6987 (L3H6), ablation loss delta 0.8478 nats
+- [x] step0: prev_token 0.0881, induction 0.0360 (both < 0.15)
+- [x] attention rows sum to 1, no attention to future positions
 
 ## Step 5: ledger
-- [x] all checks pass here (no model needed; "full run" rows are written directly by the test)
+- [x] all checks pass (no model needed)
 
-## Step 6: planner and runner
-Verified here on synthetic weights with thresholds lowered in a temp copy
-(`tests/test_runner.py`): plan with an empty HF cache and without importing
-torch; 3 rows written; rerun = 0 executed / 3 ledger hits; naive values equal
-shared values to 6 decimals; failing parent -> dependent `blocked`, no
-intervention pass; raising experiment -> `error`, siblings ok; leaked hook ->
-canary -> `hook_leak`; two forced runs give identical values.
-
-- [ ] `claimci verify --revisions main` on real pythia-70m: 3 rows, all three hold
-      (`pytest tests/test_runner.py::test_real_model_all_three_hold -s` does this in a temp copy)
-- [ ] rerun reports `executed: 0   ledger hits: 3`
-- [ ] `claimci verify --revisions main --mode naive`: values equal shared to 6 decimals
-- Spec note: naive mode records **4** forward passes, not 3. Naive gives each claim its
-  own clean pass (3), and the ablation also needs its hooked pass (1). Shared mode is 2.
+## Step 6: planner and runner (pythia-70m@main)
+- [x] `claimci verify --revisions main`: 3 rows, all hold, 2 forward passes
+- [x] rerun: `executed: 0   ledger hits: 3`
+- [x] `--mode naive`: values equal shared to 6 decimals; 4 forward passes
+      (3 clean, one per claim, plus the ablation's hooked pass)
 
 ## Step 7: reports
-- [x] matrix (one column, three rows, values match ledger), PNG renders, throughput
-      shared < naive passes, status stale=0 then `code changed` for the edited claim
-      and its dependent; editing `expect` re-evaluates holds without rerun
-      (`tests/test_report.py`, synthetic ledger)
-- [ ] same three commands after the real step 6 runs
+- [x] matrix (one column `main`, three rows), PNG, throughput (shared 2 < naive 4 passes),
+      status `stale: 0`
 
-## Step 8: the real run (not run; needs HF access)
-- [ ] `scripts/step8.sh` switches the claim files to pythia-160m, runs shared and naive
-      verification over the eight checkpoints, renders `matrix.png`, prints throughput,
-      then `scripts/check_step8.py` prints raw values and PASS/FAIL for each criterion:
-      wall clock < 15 min, step0 all fail, induction onset in [step1000, step16000] and
-      holding after. Commit the claim-file switch and matrix.png afterwards.
-- Dry run on synthetic weights: 8 checkpoints in 16 s excluding downloads; the check
-  script runs and correctly fails the onset criteria (random weights).
-- Note: when `mech.prev_token_head` does not hold at a checkpoint, the induction claims
-  there are `blocked` (per RUNNER.md) and have no raw value. If the onset check fails,
-  `claimci verify --claims mech.induction_head` won't help either, since ancestors are
-  included; we'd need to discuss whether to expose raw values for blocked claims.
+## Step 8: pythia-160m across eight checkpoints
+- [x] `scripts/step8.sh`, checkpoints pre-downloaded (download alone took ~3 min):
+      shared 27 s, naive 37 s wall clock; all `check_step8.py` criteria PASS.
+      Matrix and throughput in README.md.
+- Onset: the induction head already holds at step1000 (0.948), the first trained
+  checkpoint in the grid, so the onset lies somewhere in (step0, step1000]. Pythia
+  also publishes step1..step512 (powers of two); adding step128/256/512 would locate it.
+- step0 induction/ablation are `blocked` (prev_token fails), so they have no raw value
+  at the negative control. Still open: whether to expose raw values for blocked claims.
 
 ## Step 9: README
-- [x] fresh clone + new venv + `pip install -e '.[report,test]'` + `claimci validate && claimci plan --revisions main` (exit 0); full test suite passes in that venv (41 passed, 3 skipped)
-- [ ] the optional CPU-wheel line (`download.pytorch.org`) was blocked here too; untested
-- [ ] paste the step 8 matrix and throughput table into README.md
+- [x] fresh clone + venv + `pip install -e '.[report,test]'` + `claimci validate && claimci plan --revisions main`
+- [x] step 8 matrix and throughput table in README.md
+- [ ] the optional CPU-wheel line (`download.pytorch.org`) is untested (the macOS default wheel is CPU already)

@@ -7,12 +7,26 @@ trained weights use real() and skip when it returns None.
 """
 from __future__ import annotations
 
+import re
+import shutil
+from pathlib import Path
+
 import torch
 
 MODEL = "EleutherAI/pythia-70m"
 PYTHIA_70M = dict(vocab_size=50304, hidden_size=512, num_hidden_layers=6, num_attention_heads=8,
                   intermediate_size=2048, rotary_pct=0.25, max_position_embeddings=2048,
                   use_parallel_residual=True)
+
+
+def copy_claims(src: Path, dst: Path) -> Path:
+    """Copy claims/ and questions/ into dst with every claim pinned to MODEL.
+    The committed claim files name the step 8 model; tests always run on MODEL."""
+    for d in ("claims", "questions"):
+        shutil.copytree(src / d, dst / d)
+    for p in (dst / "claims").glob("*.yaml"):
+        p.write_text(re.sub(r"EleutherAI/pythia-[\w.]+", MODEL, p.read_text()))
+    return dst
 
 
 def cached_revisions(model: str = MODEL) -> set[str]:

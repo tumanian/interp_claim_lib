@@ -8,7 +8,7 @@ statement: >
   second copy of repeated random tokens by >= 0.3 nats.
 
 subject:
-  model: {hf: EleutherAI/pythia-70m, revision: main}
+  model: {hf: EleutherAI/pythia-160m, revision: main}
   component: {layer: $layer, head: $head}   # bound from inputs
 
 code:

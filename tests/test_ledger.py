@@ -1,4 +1,3 @@
-import shutil
 from dataclasses import asdict
 from pathlib import Path
 
@@ -8,6 +7,7 @@ import yaml
 from claimci.ledger import Ledger
 from claimci.loader import load_repo
 from claimci.spec import Result
+from tests.models import copy_claims
 
 ROOT = Path(__file__).resolve().parents[1]
 IDS = ["causal.induction_head_ablation", "mech.induction_head", "mech.prev_token_head"]
@@ -15,9 +15,7 @@ IDS = ["causal.induction_head_ablation", "mech.induction_head", "mech.prev_token
 
 @pytest.fixture
 def repo_copy(tmp_path):
-    for d in ("claims", "questions"):
-        shutil.copytree(ROOT / d, tmp_path / d)
-    return tmp_path
+    return copy_claims(ROOT, tmp_path)
 
 
 def row(repo, cid, value=0.5, **kw):

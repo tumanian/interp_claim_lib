@@ -1,4 +1,3 @@
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -8,6 +7,7 @@ import yaml
 
 from claimci.loader import load_repo
 from claimci.validate import validate
+from tests.models import copy_claims
 
 ROOT = Path(__file__).resolve().parents[1]
 IDS = ["mech.prev_token_head", "mech.induction_head", "causal.induction_head_ablation"]
@@ -15,9 +15,7 @@ IDS = ["mech.prev_token_head", "mech.induction_head", "causal.induction_head_abl
 
 @pytest.fixture
 def repo_copy(tmp_path):
-    for d in ("claims", "questions"):
-        shutil.copytree(ROOT / d, tmp_path / d)
-    return tmp_path
+    return copy_claims(ROOT, tmp_path)
 
 
 def edit(root, cid, fn):
