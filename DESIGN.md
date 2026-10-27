@@ -545,6 +545,58 @@ small Llama-style) run on CPU and are enough to check whether the method's
 effect exists and passes its controls. Matching the paper's own model needs a
 GPU, which is where priced backends (section 0, P2) stop being P2.
 
+### Claims from posts: "Qwen3-8B has a Queen Elizabeth II neuron"
+
+Much of what an interpretability agent will meet is not in papers. Example, a
+post on X (@_a9lim, 2026-10-26): "qwen 3 8b appears to have a queen elizabeth
+the second neuron (L11N3799)". Text only: no code, no data, no method stated.
+
+This is a good demo case because it is the opposite of a paper: precise about
+the component, silent about the evidence, hedged ("appears to"). Ingest has to
+handle it, which suggests renaming `kind: paper` to `kind: source` (with
+`provenance.source.kind: paper | post | blog | neuronpedia | ...`).
+
+```yaml
+id: src.a9lim.qwen3_8b_qe2_neuron
+kind: source
+evidence: NAS                     # no method or figure to point to
+statement: Qwen3-8B has a neuron (layer 11, neuron 3799) that represents Queen Elizabeth II.
+quote: "qwen 3 8b appears to have a queen elizabeth the second neuron (L11N3799)"
+hedge: suggests
+subject: {model: {hf: Qwen/Qwen3-8B}, component: {layer: 11, neuron: 3799}}
+provenance:
+  source: {kind: post, ref: "https://x.com/_a9lim/status/2114801107931185322", date: 2026-10-26}
+  supplemented:
+    subject.component: >
+      "L11N3799" read as 0-indexed layer 11, index 3799 of the MLP hidden
+      activation (the input to down_proj). The post does not say.
+```
+
+Resolving "L11N3799" is itself a judgement (0- or 1-indexed layer; which
+activation counts as the neuron). It is recorded as supplemented and fixed
+before any run. Trying both readings and keeping the one that works is a forking
+path; if both are run, both results are kept.
+
+"X is a Y neuron" breaks down into tests at increasing strength. Each one
+narrows what the neuron is, so a verdict can say "a British-monarchy neuron,
+not specific to Elizabeth II" rather than just pass or fail:
+
+| piece | kind, evidence | what it checks |
+|---|---|---|
+| selectivity | test, IOB | activation on Elizabeth II text vs matched controls: other monarchs (Victoria, Elizabeth I, Charles III), other famous women, other Elizabeths, other senses of "queen" (chess, the band). AUROC per control class |
+| top activations | measurement, IOB | share of the neuron's top-k contexts in a natural-text sample (e.g. a FineWeb slice) that are about Elizabeth II; polysemanticity check |
+| steering | test, ISS | clamping or amplifying it on neutral prompts raises the log-probability of Elizabeth II tokens; dose-response; random-neuron control in the same layer; side effects |
+| ablation | test, IMP | zeroing it hurts Elizabeth II facts (log-probability of correct completions) more than facts about other monarchs |
+| robustness | measurement | paraphrases and other languages |
+
+Thresholds for all of these are supplemented: the post states no numbers.
+
+Compute: Qwen3-8B in bf16 is about 16 GB of weights, more than a 16 GB laptop
+can hold with activations. Quantizing changes activations, which is a problem
+when the claim is about one neuron's values. So this needs a GPU (a single
+24 GB card is enough), which moves priced backends from P2 to P1 as soon as the
+demo includes a model of this size.
+
 ### Build order for the demo
 
 The demo reorders section 9: ingestion moves first, the nightly job later.
@@ -561,4 +613,5 @@ The demo reorders section 9: ingestion moves first, the nightly job later.
    streams results. Locally first; a Hugging Face Space on CPU for a shareable
    link.
 
-Open: which steering paper to use for the second golden path.
+Open: which golden paths besides Olsson. Candidates: the Qwen3-8B Elizabeth II
+neuron post (one component, needs a GPU) and a steering paper.
