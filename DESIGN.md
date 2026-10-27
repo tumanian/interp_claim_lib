@@ -1,6 +1,6 @@
 # claimci design: from v0 to a knowledge base for research agents
 
-Status: proposal, not built. SPEC.md and RUNNER.md describe what exists today.
+Status: notes, each marked with what was built. SPEC.md describes what exists today.
 This document describes where it goes next and why. Where they disagree, this
 document is the intent and the specs get updated as each piece lands.
 
