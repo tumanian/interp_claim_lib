@@ -977,3 +977,73 @@ outputs, and existing ledger rows are carried over with `migrated_from` as in se
 Open: canary inputs per experiment family (they must exercise the parameters claims use, e.g.
 interventions at a layer, or the canary passes a change it should catch); tolerance for judged
 experiments, where the judge itself is an API call that can drift.
+## 20. Results made of reusable objects (one migration for the open schema changes)
+
+`Result` is nineteen flat fields, and the same three things are spelled differently on each side:
+the model is `subject.model.hf` / `subject.model.revision` on a claim and `model` / `revision`
+on a result; the code is `code.experiment` / `code.params` on a claim and `code_version` on a
+result; the data is a `DataVersion` on a claim and `data_hash` + `dataset` on a result, and
+`[code_version, data_ident]` lists in `lineage`. Each writer, the key and each reader rebuild them
+by hand, which is how a redundant label (`dataset`) and an unread field (`traceback_hash`) got in.
+
+One set of small objects, used by claims, results and the key:
+
+```python
+ModelRef(hf, checkpoint, opts)                 # which weights
+CodeRef(experiment, version, params)           # which computation (version: section 19)
+DataRef(source, hash)                          # which inputs; the short label is derived, not stored
+
+Inputs(model: ModelRef, code: CodeRef, data: DataRef, upstream: {claim_id: key})
+    .key()                                     # the claim key, computed in one place
+Outcome(status, value, holds, bindings, reason, error_artifact)
+RunInfo(run_id, at, host, runner, cost)
+
+Result(claim, inputs: Inputs, outcome: Outcome, run: RunInfo, reproduction=None, migrated_from=None)
+```
+
+- The key is `hash(inputs)`, so it cannot disagree with what the row records. `lineage` becomes
+  the upstream keys (each points at its own row) instead of hand-built lists.
+- A claim's `subject`, `code` and `data` load into the same objects, so a change to one concept
+  (versions in section 19, the checkpoint rename below) touches one type.
+- Rows nest (`inputs.model.checkpoint`), which reads without a glossary.
+
+Folded into the same migration, since each changes the stored shape:
+
+- `revision` becomes `checkpoint` (a Hugging Face revision: `main`, or a training step for
+  Pythia). Next to `code_version`, "revision" reads as a code revision.
+- `dataset` goes; the label is derived from `DataRef`.
+- `traceback_hash` goes. An error stores its full traceback as an artifact and the row references
+  it, so a report card can drill into what failed the way it drills into judged samples.
+- `expect` becomes an object too, replacing the `OPS` table and the free functions `margin()` and
+  `evaluate()`, which take a raw dict:
+
+  ```python
+  Expect(op, value, tol=None)      # from a claim's `expect:`, validated at load
+      .holds(x)  -> bool | None    # was evaluate()
+      .margin(x) -> float | None   # signed room past the threshold; for ==, tol - |x - value|
+  ```
+
+  Comparisons come from the standard `operator` module. A bad `op` fails when the claim loads,
+  not as a KeyError inside a report. `==` takes a tolerance (`{op: "==", value: 0.91, tol: 0.01}`),
+  since exact equality on a value stored to six decimals flips on noise, and gets a margin it
+  lacks today. No claim uses `==` yet. Verdict and margin are two methods on one object, so they
+  cannot disagree, and cards, the matrix, gating and promotion all call the same methods.
+
+The runner, built in the same change. runner.py mixes eight jobs: model lifecycle (load, unload,
+reload after contamination), group execution (shared pass, memory budget, cost split), dependency
+lookup (twice, near-duplicated), three calling conventions told apart by signature inspection,
+guards (SIGALRM timeout, contamination canary), verdicts (`holds`, `reproduction`), row
+assembly, and persistence and logging. Split:
+
+- Verdicts leave the runner. `holds` and `reproduction` are frozen into rows today, against the
+  rule that values are recorded and verdicts derived on read (gating already is). They become
+  `Expect` methods applied on read; the runner records values.
+- One calling convention: every experiment takes `ctx` and returns an `Outcome`.
+- Rows are built from `Inputs` and `RunInfo`.
+- run/lifecycle.py (load, unload, reload), run/group.py (shared pass, memory check),
+  run/guards.py (timeout, canary), one dependency lookup; runner.py is the loop over them.
+
+Migration: the ledger is append-only and gitignored, so it is rewritten once (local and the GPU
+box), with a reader that still accepts flat rows. The check, as in section 15: every existing
+claim key is identical before and after. Claim YAML stays as written; only loading changes.
+Section 19's versions land after this, on `CodeRef`.
