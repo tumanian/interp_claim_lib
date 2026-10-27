@@ -27,9 +27,10 @@ def key(request: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]", "_", request) + ".json"
 
 
-def export(root: Path, out: Path, base: str | None = None) -> int:
+def export(root: Path, out: Path, base: str | None = None, verified_only: bool = False) -> int:
     """Write the site to `out`. `base` is the URL path it will be served under (e.g. /demo/), so
-    its relative requests resolve with or without a trailing slash."""
+    its relative requests resolve with or without a trailing slash. `verified_only` leaves out
+    sources none of whose findings is verified yet."""
     root, out = Path(root), Path(out)
     if out.exists():
         shutil.rmtree(out)
@@ -37,6 +38,9 @@ def export(root: Path, out: Path, base: str | None = None) -> int:
     repo = load_repo(root)
     ledger = Ledger.for_repo(repo)
     pages = {"overview": {**overview(root), "why_not": READ_ONLY}}
+    if verified_only:
+        pages["overview"]["sources"] = [s for s in pages["overview"]["sources"]
+                                        if any(c["support"] == "supported" for c in s["claims"])]
     for s in pages["overview"]["sources"]:
         pages[f"report?ref={s['ref']}"] = cards.report(repo, ledger, s["ref"])
     for art in sorted((root / "ledger" / "artifacts").glob("*.json")):

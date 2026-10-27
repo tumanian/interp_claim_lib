@@ -284,6 +284,7 @@ def main(argv: list[str] | None = None) -> int:
     es = sub.add_parser("export-site", help="the web app as a read-only static site (for Vercel or any static host)")
     es.add_argument("--out", default="site")
     es.add_argument("--base", help="URL path the site is served under, e.g. /demo/ (default: the site root)")
+    es.add_argument("--verified-only", action="store_true", help="leave out sources with no verified finding yet")
     vs = sub.add_parser("versions", help="experiments whose code changed; keep or bump their versions")
     vs.add_argument("--keep", help="comma-separated ids: same computation, keep the version")
     vs.add_argument("--bump", help="comma-separated ids: different computation, next version")
@@ -298,7 +299,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "export-site":
         from pathlib import Path
         from .app.static_site import export
-        n = export(Path(args.root), Path(args.out), args.base)
+        n = export(Path(args.root), Path(args.out), args.base, args.verified_only)
         print(f"wrote {n} pages to {args.out}/; deploy with: npx vercel deploy {args.out}")
         return 0
     if args.cmd == "serve":
