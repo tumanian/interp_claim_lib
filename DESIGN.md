@@ -94,9 +94,9 @@ What local-first needs beyond sections 1 to 10:
 - Agreement within tolerance. Same-machine reruns are bitwise identical; CPU vs
   GPU and different BLAS builds are not. Reproduction means values within a
   tolerance and the same verdict, with the environment fingerprint recorded.
-- Priced backends. The Backend interface already separates where from what. A
-  cloud GPU backend plus a cost per pass lets `plan` show money; the user
-  approves the spend, then it runs.
+- Priced backends (P2: only matters past what a CPU can run). The Backend
+  interface already separates where from what. A cloud GPU backend plus a cost
+  per pass lets `plan` show money; the user approves the spend, then it runs.
 - Registration before results. Locally, "threshold set before the run" is only
   as good as the local clock. In a shared base the claim is pushed first (test
   and threshold fixed), then the results, as in a clinical-trial registry.
