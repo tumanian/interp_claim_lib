@@ -22,20 +22,33 @@ def _words(text: str) -> list[str]:
     return re.findall(r"[a-z0-9]+", (text or "").lower())
 
 
+def run_on(c) -> str | None:
+    """original: on the model the source used; expanded: on another one (claimci expand)."""
+    if c.is_finding:
+        return None
+    return "expanded" if c.provenance.get("expanded_from") else "original"
+
+
 def search(repo: Repo, ledger: Ledger, query: str, kind: str | None = None, model: str | None = None,
-           limit: int = 10) -> list[dict]:
-    """Claims ranked by how many query words appear in their id, statement, quote, source title and model."""
+           limit: int = 10, evidence: str | None = None) -> list[dict]:
+    """Claims ranked by how many query words appear in their id, statement, quote, source, model,
+    experiment and evidence (code and label, e.g. ISS, steering). An empty query lists everything
+    that passes the filters."""
     q = Counter(_words(query))
     out = []
     for cid, c in repo.claims.items():
         if kind and c.kind != kind:
             continue
+        if evidence and c.evidence != evidence.upper():
+            continue
         src = c.provenance.get("source") or {}
         if model and model.lower() not in (c.subject.get("model", {}).get("hf", "") or "").lower():
             continue
+        label = " ".join(cards.EVIDENCE_LABELS.get(c.evidence, ()))
         hay = Counter(_words(" ".join([cid.replace(".", " "), c.statement, c.quote or "", src.get("title") or "",
-                                       src.get("ref") or "", (c.subject.get("model") or {}).get("hf", "") or ""])))
-        score = sum(min(n, hay[w]) * (2 if w in _words(cid) else 1) for w, n in q.items())
+                                       src.get("ref") or "", (c.subject.get("model") or {}).get("hf", "") or "",
+                                       (c.experiment_id or "").replace(".", " "), c.evidence, label, c.metric or ""])))
+        score = sum(min(n, hay[w]) * (2 if w in _words(cid) else 1) for w, n in q.items()) if q else 1
         if score:
             out.append((score, cid))
     out.sort(key=lambda x: (-x[0], x[1]))
@@ -44,7 +57,8 @@ def search(repo: Repo, ledger: Ledger, query: str, kind: str | None = None, mode
         c = repo.claims[cid]
         res.append({"id": cid, "kind": cards.KIND_LABELS[c.kind], "statement": " ".join(c.statement.split()),
                     "verdict": (cards.card(repo, ledger, cid)["support"] if c.is_finding else cards.verdict(repo, ledger, cid)),
-                    "score": score})
+                    "evidence": c.evidence, "model": None if c.is_finding else c.model, "run_on": run_on(c),
+                    "about": c.about, "score": score})
     return res
 
 
@@ -66,7 +80,8 @@ def get(repo: Repo, ledger: Ledger, cid: str, revision: str | None = None) -> di
            "post_hoc": bool(c.provenance.get("post_hoc")), "caveats": cards.caveats(repo, ledger, cid),
            "controls": [{"id": k, "verdict": cards.verdict(repo, ledger, k)} for k, o in repo.claims.items() if o.control_for == cid],
            "bindings": {k: v for k, v in (r.bindings if r else {}).items() if not str(v).startswith("artifact:")},
-           "evidence": cards.EVIDENCE_LABELS.get(c.evidence), "about": c.about}
+           "evidence": c.evidence, "evidence_label": " | ".join(cards.EVIDENCE_LABELS.get(c.evidence, ())),
+           "run_on": run_on(c), "expanded_from": c.provenance.get("expanded_from"), "about": c.about}
     return out
 
 

@@ -162,7 +162,7 @@ def cmd_agent(args) -> int:
     repo = _load_or_fail(args.root)
     ledger = Ledger.for_repo(repo)
     if args.cmd == "search":
-        out = agent_api.search(repo, ledger, args.query, args.kind, args.model, args.limit)
+        out = agent_api.search(repo, ledger, args.query, args.kind, args.model, args.limit, args.evidence)
         if args.json:
             print(json.dumps(out, indent=1))
         else:
@@ -263,10 +263,11 @@ def main(argv: list[str] | None = None) -> int:
     ex.add_argument("--models", required=True, help="comma-separated Hugging Face model ids")
     ex.add_argument("--verify", action="store_true", help="run the new claims (on the GPU box when configured)")
     se = sub.add_parser("search", help="find claims by words in their id, statement, quote or source")
-    se.add_argument("query")
+    se.add_argument("query", nargs="?", default="", help="words; empty lists everything that passes the filters")
     se.add_argument("--kind", choices=["finding", "test", "measurement"])
     se.add_argument("--model", help="substring of the model id")
-    se.add_argument("--limit", type=int, default=10)
+    se.add_argument("--evidence", help="an evidence code: TAS, NAS, IOB, ICP, IMP, ISS, ICA")
+    se.add_argument("--limit", type=int, default=10, help="at most this many results (default 10)")
     se.add_argument("--json", action="store_true")
     ge = sub.add_parser("get", help="one claim's current result as JSON (verdict, value, margin, controls, caveats)")
     ge.add_argument("claim")

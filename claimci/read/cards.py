@@ -72,7 +72,9 @@ def verdict(repo: Repo, ledger: Ledger, cid: str) -> str:
 def card(repo: Repo, ledger: Ledger, cid: str) -> dict:
     c = repo.claims[cid]
     src = c.provenance.get("source") or {}
-    d = {"id": cid, "kind": c.kind, "evidence": c.evidence, "statement": " ".join(c.statement.split()),
+    d = {"id": cid, "kind": c.kind, "evidence": c.evidence, "evidence_label": " | ".join(EVIDENCE_LABELS.get(c.evidence, ())),
+         "run_on": None if c.is_finding else ("expanded" if c.provenance.get("expanded_from") else "original"),
+         "statement": " ".join(c.statement.split()),
          "question": c.question, "about": c.about, "status_in_file": c.status}
     if c.is_finding:
         d.update(hedge=c.hedge, level=c.level, quote=c.quote, source={k: src.get(k) for k in ("kind", "ref", "locator", "title", "date", "scope", "code") if src.get(k)},
@@ -124,12 +126,13 @@ def card(repo: Repo, ledger: Ledger, cid: str) -> dict:
 
 
 def explain(repo: Repo, ledger: Ledger, ref: str) -> list[dict]:
-    """Cards for every source claim from one source (an arXiv id, a URL, or a claim id)."""
+    """Cards for every finding of one source: an arXiv id, a URL, a short name (chen2025, the part
+    after src. in finding ids), or a single claim id."""
     if ref in repo.claims:
         return [card(repo, ledger, ref)]
     norm = ref.lower().replace("arxiv:", "").strip()
     ids = sorted(k for k, c in repo.claims.items() if c.is_finding
-                 and norm in str((c.provenance.get("source") or {}).get("ref", "")).lower())
+                 and (norm in str((c.provenance.get("source") or {}).get("ref", "")).lower() or k.startswith(f"src.{norm}.")))
     return [card(repo, ledger, k) for k in ids]
 
 
