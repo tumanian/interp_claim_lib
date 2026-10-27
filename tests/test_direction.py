@@ -107,3 +107,25 @@ def test_add_hook_all_and_last_positions():
         out = h.layers[0](x)[0]
     assert torch.equal(out[0, :2], torch.zeros(2, 2)) and torch.equal(out[0, 2], torch.tensor([2.0, 4.0]))
     assert torch.equal(h.layers[0](x)[0], x)               # hooks removed on exit
+
+
+def test_runner_hands_outcome_style_experiments_loaded_inputs_and_packs(tmp_path):
+    from types import SimpleNamespace
+    from claimci.experiments import Outcome
+    from claimci.run.runner import Runner
+    from claimci.store.artifacts import Store
+    store = Store(tmp_path)
+    ref = store.save(torch.ones(3))
+    seen = {}
+
+    def fn(ctx, direction, block, coef, pack, random_seed=None, positions="all"):
+        seen.update(direction=direction, test=pack.test)
+        return Outcome(value=0.5, exports={"v": torch.zeros(2)}, details={"n": 1}, samples=[{"q": 1}])
+
+    ctx = SimpleNamespace(artifacts=store, acts=SimpleNamespace(data={"p": {"test": [1, 2]}}))
+    claim = SimpleNamespace(experiment_id="caa.steer", params={"block": 3, "coef": 1.0, "pack": "p"})
+    value, bindings = Runner.call(None, fn, ctx, claim, {"direction": ref})
+    assert torch.equal(seen["direction"], torch.ones(3)) and seen["test"] == [1, 2]   # loaded, and a Pack
+    assert value == 0.5 and bindings["direction"] == ref and bindings["n"] == 1      # inputs stay references
+    assert torch.equal(store.load(bindings["v"]), torch.zeros(2))                    # exports saved
+    assert bindings["answers"].startswith("artifact:")                               # samples saved for the card

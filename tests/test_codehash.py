@@ -42,9 +42,9 @@ def test_registry_is_found_without_importing(pkg):
 def test_comments_docstrings_imports_and_decorators_do_not_count(pkg):
     before = h("caa.steer")
     f = pkg / "experiments" / "direction.py"
-    edit(f, '"""Balanced P(behaviour-matching answer) on the test split, steered minus unsteered."""', '"""Reworded."""')
+    edit(f, '"""P(behaviour-matching answer) on the test split, steered minus unsteered. Balanced over which', '"""Reworded. Balanced over which')
     edit(f, "import torch\n", "import torch  # a comment\nimport os\n")
-    edit(f, "    items = _pack(acts, pack)[\"test\"]\n", "    # a comment inside\n    items = _pack(acts, pack)[\"test\"]\n")
+    edit(f, "    items = pack.test\n", "    # a comment inside\n    items = pack.test\n")
     assert h("caa.steer") == before
 
 
@@ -52,15 +52,13 @@ def test_moving_a_function_to_another_module_does_not_count(pkg):
     before = h("persona.steer")
     src = pkg / "experiments" / "direction.py"
     s = src.read_text()
-    start = s.index("def _trait_scores(")
+    start = s.index("def judge_trait(")
     end = s.index("\n\n\n", start) + 3
     helper = s[start:end]
     src.write_text(s[:start] + s[end:])            # move the helper to a new module, imported from there
     (pkg / "experiments" / "persona_helpers.py").write_text(
-        "from ..run import operations as ops\nfrom ..run.formats import format_prompt\n\n\ndef _judge(pairs, prompts, model, effort):\n"
-        "    from .judge import judge\n    return judge(pairs, {\"aligned\": prompts[\"trait\"], \"coherent\": prompts[\"coherence\"]}, model, effort)\n\n\n"
-        + helper)
-    edit(src, "from ..run import operations as ops\n", "from ..run import operations as ops\nfrom .persona_helpers import _trait_scores\n")
+        "JUDGE_MODEL, JUDGE_EFFORT = \"claude-haiku-5-5\", \"low\"\n\n\n" + helper)
+    edit(src, "from ..run import operations as ops\n", "from ..run import operations as ops\nfrom .persona_helpers import judge_trait\n")
     assert h("persona.steer") == before
 
 

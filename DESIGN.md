@@ -469,6 +469,11 @@ Each step ends with something usable.
   (OV circuit). Add a measurement for it before calling
   `lit.olsson.induction_heads_exist` supported, or record it as a gap?
 
+- V3, experiments at scale: once agents write recipes (section 13), do they keep committing new
+  or tweaked experiments? Something has to decide which become shared, registered experiments and
+  which stay one-off variants of a claim, or the library grows without bound and near-duplicates
+  split the evidence. Left for V3.
+
 - Tools layer: only the judge is a standalone tool (`claimci judge`). Re-judging, steering
   diagnostics and data vendoring are scripts; the quote checker, source fetching, model helpers,
   interventions, readouts, the remote runner and the artifact store are buried in the pipeline.

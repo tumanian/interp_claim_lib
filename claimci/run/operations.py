@@ -79,6 +79,13 @@ def block_outputs(h, texts: list[str], block: int, pos: int | None = -1,
     return torch.cat(offsets)
 
 
+def response_outputs(h, prompts: list[str], responses: list[str], block: int) -> torch.Tensor:
+    """[N, D] output of decoder block `block`, averaged over each response's tokens (the prompt's
+    tokens excluded): what a model computes while it answers."""
+    starts = [len(h.tokenizer(with_bos(h, [p])[0], add_special_tokens=False).input_ids) for p in prompts]
+    return block_outputs(h, [p + r for p, r in zip(prompts, responses)], block, pos=None, start=starts)
+
+
 def generate(h, prompts: list[str], hooks=(), n: int = 1, max_new_tokens: int = 200,
              temperature: float = 1.0, seed: int = 0) -> list[list[str]]:
     """n sampled continuations per formatted prompt (greedy when temperature is 0)."""
