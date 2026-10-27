@@ -971,9 +971,20 @@ Folded into the same migration, since each changes the stored shape:
 - `dataset` goes; the label is derived from `DataRef`.
 - `traceback_hash` goes. An error stores its full traceback as an artifact and the row references
   it, so a report card can drill into what failed the way it drills into judged samples.
-- Comparisons use the standard `operator` module instead of a hand-written table. `==` on a float
-  either goes or takes a tolerance (`{op: "==", value: 0.91, tol: 0.01}`); exact equality on a
-  value stored to six decimals flips on noise. No claim uses `==` today.
+- `expect` becomes an object too, replacing the `OPS` table and the free functions `margin()` and
+  `evaluate()`, which take a raw dict:
+
+  ```python
+  Expect(op, value, tol=None)      # from a claim's `expect:`, validated at load
+      .holds(x)  -> bool | None    # was evaluate()
+      .margin(x) -> float | None   # signed room past the threshold; for ==, tol - |x - value|
+  ```
+
+  Comparisons come from the standard `operator` module. A bad `op` fails when the claim loads,
+  not as a KeyError inside a report. `==` takes a tolerance (`{op: "==", value: 0.91, tol: 0.01}`),
+  since exact equality on a value stored to six decimals flips on noise, and gets a margin it
+  lacks today. No claim uses `==` yet. Verdict and margin are two methods on one object, so they
+  cannot disagree, and cards, the matrix, gating and promotion all call the same methods.
 
 Migration: the ledger is append-only and gitignored, so it is rewritten once (local and the GPU
 box), with a reader that still accepts flat rows. The check, as in section 15: every existing
