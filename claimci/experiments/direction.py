@@ -23,7 +23,8 @@ from . import Data, Input, Layer, Outcome, experiment, intervention, require
 from ..run import operations as ops
 from ..run.formats import format_prompt
 from ..run.interventions import add_vector, random_like
-from ..run.readouts import ab_matching, balanced, letter
+from ..run.readouts import ab_matching, balanced, balanced_interval, letter
+from ..run.stats import bootstrap, wilson
 
 JUDGE_MODEL, JUDGE_EFFORT = "claude-haiku-5-5", "low"
 
@@ -61,9 +62,9 @@ def steer_ab(ctx, direction: Input, block: Layer, coef: float, pack: Data, rando
     items = pack.test
     steer = add_vector(ctx.handle, block, or_random(direction, random_seed), coef, positions)
     matching_letter = lambda it: letter(it["answer_matching_behavior"])
-    before = balanced(items, ab_matching(ctx, items), matching_letter)
-    after = balanced(items, ab_matching(ctx, items, steer), matching_letter)
-    return Outcome(value=after - before,
+    unsteered, steered = ab_matching(ctx, items), ab_matching(ctx, items, steer)
+    before, after = balanced(items, unsteered, matching_letter), balanced(items, steered, matching_letter)
+    return Outcome(value=after - before, interval=balanced_interval(items, matching_letter, unsteered, steered),
                    details={"baseline": round(before, 4), "steered": round(after, 4), "coef": coef,
                             "block": block, "random_seed": random_seed, "n": len(items)})
 
@@ -148,7 +149,8 @@ def persona_direction(ctx, block: Layer, pack: Data, n_per_pair: int = 2, max_ne
     ctx.count(4)
     samples = [a.sample(side=side) for e, s in zip(eliciting, suppressing)
                for side, a in (("trait", e), ("anti-trait", s))]
-    return Outcome(value=len(kept) / len(eliciting), exports={"direction": direction},
+    return Outcome(value=len(kept) / len(eliciting), interval=wilson(len(kept), len(eliciting)),
+                   exports={"direction": direction},
                    details={"block": block, "pairs_kept": len(kept), "pairs_total": len(eliciting),
                             "norm": round(float(direction.norm()), 4)},
                    samples=samples)
@@ -171,7 +173,9 @@ def steer_persona(ctx, direction: Input, block: Layer, coef: float, pack: Data, 
 
     unsteered, steered = judged([]), judged(steer)
     coherence = [a.coherent for a in steered if isinstance(a.coherent, float)]
+    traits = lambda answers: [a.trait for a in answers if isinstance(a.trait, float)]
     return Outcome(value=mean(a.trait for a in steered) - mean(a.trait for a in unsteered),
+                   interval=bootstrap(lambda s, u: s.mean() - u.mean(), traits(steered), traits(unsteered)),
                    details={"baseline_trait": round(mean(a.trait for a in unsteered), 2),
                             "steered_trait": round(mean(a.trait for a in steered), 2),
                             "baseline_coherence": round(mean(a.coherent for a in unsteered), 2),

@@ -83,6 +83,6 @@ def gated_by(repo: Repo, ledger: Ledger, cid: str, rev: str) -> list[str]:
     out = []
     for a in sorted(repo.ancestors(cid)):
         r = current_row(repo, ledger, a, rev)
-        if r is None or r.status != "ok" or repo.claims[a].holds(r.value) is False:
+        if r is None or r.status != "ok" or repo.claims[a].holds(r.value, r.interval) is False:
             out.append(a)
     return out

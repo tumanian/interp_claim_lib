@@ -165,6 +165,8 @@ details.samples > summary { grid-template-columns: minmax(0, 1fr) 16px; padding:
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 const fmt = (x) => x == null ? "–" : typeof x !== "number" ? esc(x) : Math.abs(x) >= 100 ? x.toFixed(0) : x.toFixed(3);
+// a value with its 95% interval, when the experiment reported one
+const val = (r) => !r ? "–" : fmt(r.value) + (r.interval ? ` <small class="ci">[${fmt(r.interval[0])}, ${fmt(r.interval[1])}]</small>` : "");
 let current = null, busy = false;
 
 const STATUS = {"Verified": "ok", "Not supported": "bad", "Partly verified": "warn", "Not yet run": "", "Untested": "",
@@ -196,7 +198,7 @@ async function loadSources() {
 function resultsTable(results) {
   if (!results.length) return `<p class="gap">Not run yet.</p>`;
   return `<div class="scroll"><table class="res"><tr><th>model</th><th>revision</th><th>value</th><th>margin</th><th>status</th></tr>
-    ${results.map((r) => `<tr><td>${esc(r.model)}</td><td>${esc(r.revision)}</td><td>${fmt(r.value)}</td>
+    ${results.map((r) => `<tr><td>${esc(r.model)}</td><td>${esc(r.revision)}</td><td>${val(r)}</td>
       <td>${r.margin == null ? "" : (r.margin >= 0 ? "+" : "") + fmt(r.margin)}</td><td>${esc(r.status)}</td></tr>`).join("")}</table></div>`;
 }
 
@@ -251,7 +253,7 @@ function verification(a) {
       <span style="font-family:var(--mono)"> ${fmt(c.results.at(-1)?.value)}</span>${readouts(c.results.at(-1))}</div>`).join("");
   return `<details class="ver"><summary>
       <span class="ver-st"><span class="k">${esc(a.kind_label)}</span>${esc(a.statement)}</span>
-      <span class="ver-res">${a.expansion ? `<span class="pill accent">beyond the paper</span> ` : ""}${a.post_hoc ? `<span class="pill warn">post hoc</span> ` : ""}${r?.samples ? `<span class="pill accent">${r.samples_n || ""} samples</span> ` : ""}${fmt(r?.value)} ${verdict(a.verdict)}</span><span class="chev">›</span></summary>
+      <span class="ver-res">${a.expansion ? `<span class="pill accent">beyond the paper</span> ` : ""}${a.post_hoc ? `<span class="pill warn">post hoc</span> ` : ""}${r?.samples ? `<span class="pill accent">${r.samples_n || ""} samples</span> ` : ""}${val(r)} ${verdict(a.verdict)}</span><span class="chev">›</span></summary>
     <div class="ver-body">
       <div class="meta">${ev(a.evidence_label)} <span>on ${esc(a.model)}</span> ${a.judged ? `<span class="pill">judged by ${esc(a.judged)}</span>` : ""}
         ${a.expansion ? `<span class="pill accent" title="Expanded from ${esc(a.expansion)}">not in the paper</span>` : ""}

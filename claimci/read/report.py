@@ -24,7 +24,7 @@ def cell(repo: Repo, r: Result | None, gated: list[str] | None = None) -> tuple[
         return f"{r.value:.3f}", "other"  # a measurement: a value, no verdict
     if gated:
         return f"{r.value:.3f} gated", "gated"
-    holds = repo.claims[r.claim].holds(r.value)
+    holds = repo.claims[r.claim].holds(r.value, r.interval)
     return f"{r.value:.3f} {'✓' if holds else '✗'}", "pass" if holds else "fail"
 
 
@@ -113,7 +113,7 @@ def computed_status(repo: Repo, r: Result | None, ledger: Ledger | None = None) 
         return "measured"
     if ledger is not None and gated_by(repo, ledger, r.claim, r.revision):
         return "gated"
-    return "verified" if repo.claims[r.claim].holds(r.value) else "not holding"
+    return "verified" if repo.claims[r.claim].holds(r.value, r.interval) else "not holding"
 
 
 def status_report(repo: Repo, ledger: Ledger, revisions: list[str] | None = None) -> str:

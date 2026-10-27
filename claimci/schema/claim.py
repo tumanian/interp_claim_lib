@@ -189,6 +189,7 @@ class Result:
     cost: dict = field(default_factory=dict)
     run: dict = field(default_factory=dict)
     migrated_from: str | None = None  # a copy of an earlier row under a re-derived key (same computation)
+    interval: list | None = None  # 95% interval around value, when the experiment reports one
 
 
 OPS = {">=": operator.ge, ">": operator.gt, "<=": operator.le, "<": operator.lt, "==": operator.eq}

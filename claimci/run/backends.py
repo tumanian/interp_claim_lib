@@ -199,6 +199,11 @@ class Ctx:
         self.passes += 1
         return self.backend.run(self.handle, self.dataset, hooks)
 
+    def data(self, name: str):
+        """A data pack of the group's dataset, read by attribute."""
+        from .outcome import Pack
+        return Pack(self.acts.data[name])
+
     def count(self, n: float = 1.0) -> None:
         """Chat experiments run their own batched passes; they report them here for cost."""
         self.passes += n
