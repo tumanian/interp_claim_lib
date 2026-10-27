@@ -205,6 +205,20 @@ def cmd_card(args) -> int:
     return 0
 
 
+def load_env(root) -> None:
+    """KEY=value lines from <root>/.env into the environment; variables already set win."""
+    import os
+    from pathlib import Path
+    path = Path(root) / ".env"
+    if not path.is_file():
+        return
+    for line in path.read_text().splitlines():
+        key, sep, value = line.partition("=")
+        key, value = key.strip(), value.split(" #")[0].strip().strip("'\"")
+        if sep and key and not key.startswith("#") and value:
+            os.environ.setdefault(key, value)
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="claimci")
     p.add_argument("--root", default=".", help="repo root containing claims/, questions/, ledger/")
@@ -274,6 +288,7 @@ def main(argv: list[str] | None = None) -> int:
     sv = sub.add_parser("serve", help="the local web app: ingest sources, read cards, run verification")
     sv.add_argument("--port", type=int, default=8765)
     args = p.parse_args(argv)
+    load_env(args.root)
     if args.cmd == "judge":
         from .read.judging import main as judge_main
         return judge_main(args.path, args.rubric, args.model, args.effort, args.out)

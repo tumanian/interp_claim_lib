@@ -64,7 +64,7 @@ def _ssh_verify(root: Path, claims: list[str], log=print, force: bool = False) -
     root = Path(root)
     cfg = config(root)
     if cfg is None:
-        raise RuntimeError("no .claimci-remote.json; see claimci/remote.py")
+        raise RuntimeError("no .claimci-remote.json (see README, Setup)")
     d = cfg["dir"]
     sync_ledger_up(root, cfg)  # the box reuses results already known here instead of recomputing them
     for item in PUSH:  # a trailing slash syncs a directory's contents (Path() would strip it)

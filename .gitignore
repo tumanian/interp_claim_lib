@@ -5,3 +5,4 @@ ledger/rejudge_*
 .claimci-remote.json
 ledger/.remote_results.jsonl
 .claude/launch.json
+.env
