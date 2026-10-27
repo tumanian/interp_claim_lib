@@ -38,7 +38,8 @@ def objects_of(repo: Repo, ledger: Ledger, cid: str) -> list[dict]:
         if str(b.get("direction", "")).startswith("artifact:"):
             key = b["direction"].split(":")[1][:10]
             out.append({"id": f"{c.model}@{rev}/direction/{key}", "kind": "residual direction",
-                        "label": f"layer {b.get('layer')}, position {b.get('pos')} ({key})", "model": c.model, "revision": rev})
+                        "label": (f"layer {b['layer']}, position {b['pos']} ({key})" if "pos" in b else f"direction {key}"),
+                        "model": c.model, "revision": rev})
     return out
 
 
@@ -47,5 +48,8 @@ def objects(repo: Repo, ledger: Ledger, claim_ids) -> list[dict]:
     found: dict[str, dict] = {}
     for cid in sorted(claim_ids):
         for o in objects_of(repo, ledger, cid):
-            found.setdefault(o["id"], {**o, "claims": []})["claims"].append(cid)
+            e = found.setdefault(o["id"], {**o, "claims": []})
+            e["claims"].append(cid)
+            if len(o["label"]) > len(e["label"]):  # the claim that exports the object describes it best
+                e["label"] = o["label"]
     return sorted(found.values(), key=lambda o: (o["model"], o["kind"], revision_order(o["revision"]), o["id"]))
