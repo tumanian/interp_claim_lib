@@ -111,6 +111,16 @@ def _literal(node):
         return None
 
 
+MARKERS = {"Layer": "layer", "Component": "component", "Tokenizer": "tokenizer", "Input": "input", "Data": "data"}
+
+
+def _kinds_from_hints(fn: ast.FunctionDef) -> dict:
+    """Parameter kinds from type hints (`block: Layer`); any other parameter is a scalar."""
+    args = fn.args.args + fn.args.kwonlyargs
+    return {a.arg: MARKERS.get(getattr(a.annotation, "id", None), "scalar")
+            for a in args if a.arg not in ("ctx", "acts")}
+
+
 @lru_cache(maxsize=None)
 def registry() -> dict[str, Registered]:
     out = {}
@@ -118,7 +128,7 @@ def registry() -> dict[str, Registered]:
         for name, node in m.defs.items():
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
-            eid, params, tags = None, {}, set()
+            eid, params, tags = None, None, set()
             for d in node.decorator_list:
                 fn = d.func if isinstance(d, ast.Call) else d
                 dname = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", None)
@@ -127,12 +137,14 @@ def registry() -> dict[str, Registered]:
                     for kw in d.keywords:
                         if kw.arg == "params":
                             params = _literal(kw.value) or {}
+                    if params is None:
+                        params = _kinds_from_hints(node)
                 elif dname:
                     tags.add(dname)
             if eid:
                 if eid in out:
                     raise ValueError(f"experiment id {eid!r} registered twice ({out[eid].entrypoint}, {m.name}:{name})")
-                out[eid] = Registered(eid, m.name, name, tuple(sorted(params.items())), frozenset(tags))
+                out[eid] = Registered(eid, m.name, name, tuple(sorted((params or {}).items())), frozenset(tags))
     return out
 
 

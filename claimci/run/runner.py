@@ -158,7 +158,10 @@ class Runner:
                 if acts is None:  # naive mode: no sharing
                     acts, passes = self.backend.run(handle, ds), 1.0
                 fn = resolve_entrypoint(c.entrypoint)
-                if intervention:
+                ctx.acts = acts
+                if next(iter(inspect.signature(fn).parameters)) == "ctx":   # Outcome style
+                    value, bindings = self.call(fn, ctx, c, inputs)
+                elif intervention:
                     out = fn(acts, ctx, **inputs, **c.params)
                     # an intervention returns a value, or (value, extra bindings) for its own readouts
                     value, bindings = (out[0], {**inputs, **out[1]}) if isinstance(out, tuple) else (out, dict(inputs))
@@ -185,6 +188,24 @@ class Runner:
         r.cost.update(forward_passes=passes + ctx.passes, canary_passes=canary,
                       seconds=time.perf_counter() - t0)
         return r
+
+    def call(self, fn, ctx, c, inputs: dict) -> tuple[float, dict]:
+        """Call an experiment written as `fn(ctx, **params) -> Outcome`: an `Input` arrives loaded
+        (an artifact reference becomes its tensor), a `Data` parameter as a Pack; tensors it exports
+        are saved as artifacts and its samples as a JSON artifact under `answers`."""
+        from .outcome import Outcome, Pack
+        from ..schema.codehash import registry
+        kinds = dict(registry()[c.experiment_id].params)
+        load = lambda v: ctx.artifacts.load(v) if isinstance(v, str) and v.startswith("artifact:") else v
+        params = {k: Pack(ctx.acts.data[v]) if kinds.get(k) == "data" else v for k, v in c.params.items()}
+        out = fn(ctx, **{k: load(v) for k, v in inputs.items()}, **params)
+        if not isinstance(out, Outcome):
+            raise TypeError(f"{c.experiment_id} returned {type(out).__name__}, not an Outcome")
+        saved = {k: ctx.artifacts.save(v) if hasattr(v, "shape") else v for k, v in out.exports.items()}
+        bindings = {**inputs, **out.details, **saved}
+        if out.samples is not None:
+            bindings["answers"] = ctx.artifacts.save_json(out.samples)
+        return out.value, bindings
 
     def canary(self, handle, ds, acts) -> str | None:
         import torch

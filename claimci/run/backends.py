@@ -193,6 +193,7 @@ class Ctx:
     adapter: Any
     passes: int = 0
     artifacts: Any = None  # claimci.artifacts.Store, set by the runner
+    acts: Any = None       # the group's shared pass (PromptActs for chat data), set by the runner
 
     def run(self, hooks: Iterable[Hook]) -> Acts:
         self.passes += 1
