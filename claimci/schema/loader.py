@@ -143,6 +143,8 @@ def write_promotion(claim: Claim, reproduced: bool, earned: str, basis: str = "s
     Line edits, so comments and layout survive. Commit the change separately.
     """
     import re
+    from .lifecycle import check
+    check(claim.status, "verified" if reproduced else "unreproduced", by="run")
     text = claim.path.read_text()
     if reproduced:
         text = re.sub(r"(?m)^evidence: \S+", f"evidence: {earned}", text)

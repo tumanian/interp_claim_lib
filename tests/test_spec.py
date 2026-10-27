@@ -273,3 +273,15 @@ def test_intervals():
     pairs = [(0.4, 0.6), (0.5, 0.7), (0.45, 0.62), (0.5, 0.71)]
     a = bootstrap(lambda p: (p[:, 1] - p[:, 0]).mean(), pairs)
     assert a == bootstrap(lambda p: (p[:, 1] - p[:, 0]).mean(), pairs) and a[0] <= 0.19 <= a[1]   # seeded
+
+
+def test_status_lifecycle():
+    import pytest
+    from claimci.schema.lifecycle import TransitionError, check
+    check("proposed", "verified", by="run")
+    check("unreproduced", "verified", by="run")
+    check("verified", "refuted", by="person")
+    with pytest.raises(TransitionError, match="decided by a person"):
+        check("proposed", "refuted", by="run")
+    with pytest.raises(TransitionError, match="cannot go from verified to proposed"):
+        check("verified", "proposed", by="person")
