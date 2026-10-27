@@ -840,3 +840,38 @@ What it buys (the acceptance criteria when this is built):
 
 This is the layer for scaling extraction and re-verification in batch, in the spirit of
 TransformerLens.
+
+## 17. Expand as dumb machinery (agreed, not built)
+
+`expand.py` checks for one template by name and calls `templates.contrastive_direction` with
+knowledge of that template's parameters (`block`, `layer`, `pack`) and its layer-scaling rule. So
+expand works for one experiment family, and every new family would need another branch.
+
+Expand should only be: take the verifications behind a finding, clone them onto another model, run
+them, record results and cards. A template's job ends when it has written claims; everything after
+works on claims.
+
+What makes that possible: experiments declare what their parameters mean, in the experiment
+registry (section 14):
+
+| parameter kind | examples | when moving to another model |
+|---|---|---|
+| layer index | `block`, `min_layer` | scale to the same relative depth (recorded as supplemented) |
+| component index | `neuron`, `head` | not transferable: the closure is refused, with the reason |
+| data | `pack`, dataset files | unchanged |
+| scalar | `coef`, `threshold` | unchanged |
+| artifact input | `direction` | recomputed by the cloned upstream claim, never copied across models |
+
+Expand then:
+1. finds the claims about a finding and their dependency closure (direction, steering, controls);
+2. clones the closure with `subject.model` replaced, ids re-suffixed, `depends_on` and `inputs`
+   rewired to the clones;
+3. maps each parameter by its declared kind; a non-transferable parameter refuses the whole closure,
+   with the reason (e.g. "neuron indices are model-specific");
+4. marks clones `expanded_from` and records each remapping as supplemented;
+5. optionally runs `verify` on the clones; cards show them as "beyond the paper".
+
+What it buys: expand works for every experiment family, including V2's agent-written ones, with no
+expand-specific code; neuron-steering claims are refused with a reason instead of skipped silently;
+templates stop being called by the rest of the system. Depends on the registry (section 14); the
+parameter-kind declarations can live beside the experiment functions until then.
