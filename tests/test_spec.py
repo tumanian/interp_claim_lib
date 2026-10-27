@@ -6,7 +6,7 @@ import pytest
 import yaml
 
 from claimci.schema.loader import load_repo
-from claimci.schema.validate import validate
+from claimci.checks import validate
 from tests.models import copy_claims
 
 ROOT = Path(__file__).resolve().parents[1]

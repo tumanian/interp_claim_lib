@@ -8,7 +8,7 @@ from claimci.sources.expand import scale_block
 from claimci.run import interventions, readouts
 from claimci.schema.loader import load_repo
 from claimci.sources.match import check_params
-from claimci.schema.validate import validate
+from claimci.checks import validate
 
 SRC = {"id": "src.chen2025.persona_vectors_identified", "kind": "source", "evidence": "TAS", "status": "proposed",
        "statement": "s", "question": "q.chen2025",

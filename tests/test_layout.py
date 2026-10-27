@@ -1,6 +1,7 @@
 """The package is grouped by concern and imports point one way (DESIGN.md section 15):
 
-    schema <- store <- run <- experiments;  sources on top;  read beside them;  app, cli above all.
+    schema <- store <- run <- experiments;  checks on schema and store;  sources on top;
+    read beside them;  app, cli above all.
 
 Checked statically on every relative import, including ones inside functions."""
 import ast
@@ -13,10 +14,10 @@ ALLOWED = {
     "store": {"schema", "store"},
     "run": {"schema", "store", "run", "claimci"},          # claimci: __version__, recorded with each result
     "experiments": {"schema", "store", "run", "experiments"},
-    "sources": {"schema", "store", "run", "sources"},
+    "checks": {"schema", "store", "checks"},
+    "sources": {"schema", "store", "run", "checks", "sources"},
     "read": {"schema", "store", "experiments", "read"},    # experiments: the judge tool reuses the judge
 }
-EXCEPTIONS = {("claimci.schema.validate", "store")}       # validate checks that data files hash as declared
 
 
 def _group(module: str) -> str:
@@ -47,7 +48,7 @@ def test_imports_point_one_way():
     bad = []
     for mod, target in _imports():
         src, dst = _group(mod), _group(target)
-        if src in ALLOWED and dst not in ALLOWED[src] and (mod, dst) not in EXCEPTIONS:
+        if src in ALLOWED and dst not in ALLOWED[src]:
             bad.append(f"{mod} -> {target}")
     assert bad == []
 
