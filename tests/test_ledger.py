@@ -24,7 +24,7 @@ def row(repo, cid, value=0.5, **kw):
     kw.setdefault("status", "ok")
     return Result(claim=cid, claim_key=repo.claim_key(cid), value=value, holds=True,
                   bindings={"layer": 1, "head": 2}, model=c.model, revision=c.revision,
-                  code_version=c.code_version, data_hash=c.dataset.hash, dataset=c.dataset.short,
+                  code_version=c.code_version, data_hash=c.dataset.hash,
                   lineage=repo.lineage(cid), reproduction={"target": 0.4, "within_tolerance": True},
                   cost={"forward_passes": 1.0, "seconds": 3.2, "backend": "cpu", "mode": "shared"},
                   run={"runner": "claimci 0.1.0", "host": "h", "at": "2026-10-26T21:00Z", "run_id": "r1"},

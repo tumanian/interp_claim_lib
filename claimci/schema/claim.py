@@ -181,9 +181,8 @@ class Result:
     revision: str | None = None
     code_version: str | None = None
     data_hash: str | None = None
-    dataset: str | None = None
     reason: str | None = None
-    traceback_hash: str | None = None
+    traceback: str | None = None  # an error's full traceback, as a JSON artifact reference
     lineage: dict = field(default_factory=dict)  # {claim_id: [code_version, data_ident]} self + ancestors
     reproduction: dict | None = None
     cost: dict = field(default_factory=dict)

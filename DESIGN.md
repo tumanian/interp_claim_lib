@@ -990,7 +990,8 @@ interventions at a layer, or the canary passes a change it should catch); tolera
 experiments, where the judge itself is an API call that can drift.
 ## 20. Results made of reusable objects (one migration for the open schema changes)
 
-Built so far: `Expect` (op, value, tol; holds and margin, with an optional interval) on the claim
+Built so far: the runner split (runner.py is the loop; calling.py, guards.py, rows.py); rows drop
+the `dataset` label and keep an error's full traceback as an artifact instead of its hash; built so far: `Expect` (op, value, tol; holds and margin, with an optional interval) on the claim
 (`c.holds(v)`, `c.margin(v)`, `c.reproduction(v)`); the runner records values only and every
 verdict is derived on read.
 

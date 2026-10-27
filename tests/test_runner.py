@@ -118,7 +118,7 @@ def test_raising_experiment_records_error(tmp_path, monkeypatch):
     _, res = run(copy_repo(tmp_path))
     rows = by_id(res)
     causal = rows["causal.induction_head_ablation"]
-    assert causal.status == "error" and "ablation exploded" in causal.reason and causal.traceback_hash
+    assert causal.status == "error" and "ablation exploded" in causal.reason and causal.traceback.startswith("artifact:")
     assert rows["mech.prev_token_head"].status == rows["mech.induction_head"].status == "ok"
 
 

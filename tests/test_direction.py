@@ -112,7 +112,7 @@ def test_add_hook_all_and_last_positions():
 def test_runner_hands_outcome_style_experiments_loaded_inputs_and_packs(tmp_path):
     from types import SimpleNamespace
     from claimci.experiments import Outcome
-    from claimci.run.runner import Runner
+    from claimci.run.calling import call_outcome
     from claimci.store.artifacts import Store
     store = Store(tmp_path)
     ref = store.save(torch.ones(3))
@@ -124,7 +124,7 @@ def test_runner_hands_outcome_style_experiments_loaded_inputs_and_packs(tmp_path
 
     ctx = SimpleNamespace(artifacts=store, acts=SimpleNamespace(data={"p": {"test": [1, 2]}}))
     claim = SimpleNamespace(experiment_id="caa.steer", params={"block": 3, "coef": 1.0, "pack": "p"})
-    value, bindings, interval = Runner.call(None, fn, ctx, claim, {"direction": ref})
+    value, bindings, interval = call_outcome(fn, ctx, claim, {"direction": ref})
     assert torch.equal(seen["direction"], torch.ones(3)) and seen["test"] == [1, 2]   # loaded, and a Pack
     assert value == 0.5 and interval is None and bindings["direction"] == ref and bindings["n"] == 1  # inputs stay refs
     assert torch.equal(store.load(bindings["v"]), torch.zeros(2))                    # exports saved
