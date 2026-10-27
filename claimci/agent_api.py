@@ -15,7 +15,7 @@ from .ledger import Ledger
 from .report import computed_status, current_row
 from .spec import Repo, margin
 
-STALE_ORDER = {"code changed": 0, "data changed": 0, "model changed": 0, "inputs or entrypoint changed": 0, "never run": 1}
+STALE_ORDER = {"code changed": 0, "data changed": 0, "model changed": 0, "parameters or inputs changed": 0, "never run": 1}
 
 
 def _words(text: str) -> list[str]:

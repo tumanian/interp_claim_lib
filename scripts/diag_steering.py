@@ -10,7 +10,9 @@ Prints, without writing to the ledger:
 """
 import torch
 
-from claimci import chat
+from claimci import formats, operations
+from claimci.models import load_lm
+from claimci.interventions import add_to_neurons, random_neurons_like
 from claimci.datasets import vendored
 from claimci.experiments import steering
 
@@ -32,7 +34,7 @@ class Ctx:
 
 def generate(h, prompt, hooks, n_tokens=80):
     from claimci.backends import registered
-    text = chat.format_prompt(h, prompt)
+    text = formats.format_prompt(h, prompt)
     enc = h.tokenizer(text, return_tensors="pt", add_special_tokens=False).to(h.device)
     with torch.no_grad(), registered(hooks):
         out = h.model.generate(**enc, max_new_tokens=n_tokens, do_sample=False)
@@ -40,12 +42,12 @@ def generate(h, prompt, hooks, n_tokens=80):
 
 
 def main():
-    h = chat.load_chat("Qwen/Qwen3.5-4B", "main", {"chat": True, "dtype": "bfloat16", "template": "hf",
+    h = load_lm("Qwen/Qwen3.5-4B", "main", {"chat": True, "dtype": "bfloat16", "template": "hf",
                                                   "thinking": False, "batch": 1})
     ctx = Ctx(h)
     print(f"\n== 1. hook check  (intermediate size {h.down_proj(14).weight.shape[1]})")
-    prompt = chat.format_prompt(h, PROMPTS[0])
-    med = chat.resid_norm_medians(h, prompt, [13, 14])
+    prompt = formats.format_prompt(h, PROMPTS[0])
+    med = operations.resid_norm_medians(h, prompt, [13, 14])
     for iv in POSTED:
         L, n = iv["layer"], iv["neuron"]
         got = {}
@@ -54,9 +56,9 @@ def main():
             got[key] = out[0].float()
 
         from claimci.backends import registered
-        for key, hooks in (("clean", []), ("steered", steering._neuron_hooks(h, [iv], med))):
+        for key, hooks in (("clean", []), ("steered", add_to_neurons(h, [iv], med))):
             hk = [(h.down_proj(L), lambda m, a, o, key=key: grab(m, a, o, key), "post")]
-            chat.last_logprobs(h, [prompt], list(hooks) + hk)
+            operations.last_logprobs(h, [prompt], list(hooks) + hk)
         added = (got["steered"] - got["clean"]).norm(dim=-1)
         print(f"  L{L}N{n} dose {iv['dose']:+}: median resid norm leaving L{L} = {med[L]:.2f}; "
               f"added norm per position: mean {added.mean():.2f} (expected {abs(iv['dose']) * med[L]:.2f})")
@@ -67,7 +69,7 @@ def main():
     no = [it for it in items if it["matching"] == "No"]
     print(f"  items: {len(yes)} where 'Yes' is the persona answer, {len(no)} where 'No' is")
     conds = {"baseline": [], "posted (0-indexed)": POSTED, "posted (layers 1-indexed)": ONE_INDEXED,
-             "random seed 0": steering._random_like(h, POSTED, 0), "random seed 1": steering._random_like(h, POSTED, 1)}
+             "random seed 0": random_neurons_like(h, POSTED, 0), "random seed 1": random_neurons_like(h, POSTED, 1)}
     for name, ivs in conds.items():
         sy, sn = steering.persona_scores(ctx, yes, ivs), steering.persona_scores(ctx, no, ivs)
         conf = lambda s: float((s - 0.5).abs().mean())
@@ -77,11 +79,11 @@ def main():
     print("\n== 3. greedy generations (80 tokens)")
     for p in PROMPTS[:3]:
         print(f"\n  PROMPT: {p}")
-        med = chat.resid_norm_medians(h, chat.format_prompt(h, p), [12, 13, 14])
+        med = operations.resid_norm_medians(h, formats.format_prompt(h, p), [12, 13, 14])
         for name, ivs in conds.items():
             if name == "random seed 1":
                 continue
-            print(f"   [{name}] {generate(h, p, steering._neuron_hooks(h, ivs, med) if ivs else [])[:400]}")
+            print(f"   [{name}] {generate(h, p, add_to_neurons(h, ivs, med) if ivs else [])[:400]}")
 
 
 if __name__ == "__main__":

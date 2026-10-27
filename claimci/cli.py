@@ -78,7 +78,7 @@ def cmd_verify(args) -> int:
     if errors:
         return 1
     from .backends import BACKENDS
-    backend = BACKENDS[args.backend](threads=args.threads, offline=args.offline)
+    backend = BACKENDS[args.backend](threads=args.threads, offline=args.offline, device=args.device)
     t0 = time.perf_counter()
     try:
         _, results = verify(repo, backend, _csv(args.revisions), _csv(args.claims), args.mode, args.force,
@@ -190,13 +190,8 @@ def cmd_agent(args) -> int:
     if args.dry_run or not plan:
         return 0
     from pathlib import Path
-    from .remote import config, verify as remote_verify
-    ids = [r["id"] for r in plan]
-    if config(Path(args.root)):
-        return remote_verify(Path(args.root), ids)
-    from .backends import CpuBackend
-    verify(repo, CpuBackend(), claims=ids)
-    return 0
+    from .executors import executor_for
+    return executor_for(Path(args.root)).verify([r["id"] for r in plan])
 
 
 def cmd_card(args) -> int:
@@ -230,7 +225,8 @@ def main(argv: list[str] | None = None) -> int:
         s.add_argument("--mode", choices=["shared", "naive"], default="shared")
         s.add_argument("--force", action="store_true", help="ignore ledger hits")
     v = sub.choices["verify"]
-    v.add_argument("--backend", choices=["cpu"], default="cpu")
+    v.add_argument("--backend", choices=["torch", "cpu"], default="torch", help="cpu is the v0 name for torch")
+    v.add_argument("--device", help="cpu, cuda, mps; default: chat models on CUDA when available, token models on CPU")
     v.add_argument("--threads", type=int, default=None, help="default: all cores")
     v.add_argument("--offline", action="store_true", help="fail if a checkpoint is not cached")
     v.add_argument("--claim-timeout", type=float, default=600, help="seconds per claim")

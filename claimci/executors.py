@@ -1,9 +1,13 @@
-"""Run `verify` on a remote GPU box over SSH and merge its ledger back.
+"""Executors: where a plan runs. A backend (claimci/backends.py) is how a model computes.
 
-Configured by .claimci-remote.json at the repo root (not committed):
-    {"host": "ubuntu@1.2.3.4", "key": "~/.ssh/key.pem", "dir": "~/interp_claim_lib"}
-The remote needs the repo's Python environment (.venv) set up once. The ledger is
-append-only JSONL, so merging is a union of rows; artifacts are content-addressed files.
+  LocalExecutor  verify in this process, with TorchBackend
+  SshExecutor    verify on a remote GPU box over SSH; the local ledger is pushed first (so the
+                 box reuses known results) and the box's ledger is merged back. Configured by
+                 .claimci-remote.json at the repo root (not committed):
+                     {"host": "ubuntu@1.2.3.4", "key": "~/.ssh/key.pem", "dir": "~/interp_claim_lib"}
+                 The box needs the repo's Python environment (.venv) set up once.
+The ledger is append-only JSONL, so merging is a union of rows; artifacts are content-addressed.
+Later: batch queues, Modal, a job runner, each one more executor.
 """
 from __future__ import annotations
 
@@ -56,7 +60,7 @@ def sync_ledger_up(root: Path, cfg: dict) -> None:
     subprocess.run(_ssh(cfg) + [merge], check=True)
 
 
-def verify(root: Path, claims: list[str], log=print, force: bool = False) -> int:
+def _ssh_verify(root: Path, claims: list[str], log=print, force: bool = False) -> int:
     root = Path(root)
     cfg = config(root)
     if cfg is None:
@@ -84,3 +88,33 @@ def verify(root: Path, claims: list[str], log=print, force: bool = False) -> int
     tmp.unlink()
     log(f"merged {added} ledger rows from the remote (exit code {rc})")
     return rc
+
+
+class LocalExecutor:
+    name = "local"
+
+    def __init__(self, root: Path, device: str | None = None):
+        self.root, self.device = Path(root), device
+
+    def verify(self, claims: list[str], log=print, force: bool = False) -> int:
+        from .backends import TorchBackend
+        from .cli import verify
+        from .loader import load_repo
+        _, results = verify(load_repo(self.root), TorchBackend(device=self.device), claims=claims, log=log, force=force)
+        return 1 if any(r.status in ("error", "hook_leak") for r in results) else 0
+
+
+class SshExecutor:
+    name = "ssh"
+
+    def __init__(self, root: Path):
+        self.root = Path(root)
+        self.cfg = config(self.root)
+
+    def verify(self, claims: list[str], log=print, force: bool = False) -> int:
+        return _ssh_verify(self.root, claims, log, force)
+
+
+def executor_for(root: Path):
+    """The GPU box when .claimci-remote.json exists, else this machine."""
+    return SshExecutor(root) if config(root) else LocalExecutor(root)

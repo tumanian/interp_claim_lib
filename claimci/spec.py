@@ -229,7 +229,9 @@ class Repo:
         return out
 
     def lineage(self, cid: str) -> dict:
-        return {c: [self.claims[c].code_version, self.claims[c].dataset.ident if self.claims[c].dataset else None]
+        # a claim's code is its experiment plus its parameters, so a parameter edit reads as "code changed"
+        return {c: [f"{self.claims[c].code_version}+p{sha(self.claims[c].params)[:8]}",
+                    self.claims[c].dataset.ident if self.claims[c].dataset else None]
                 for c in sorted(self.ancestors(cid) | {cid})}
 
     def claim_key(self, cid: str, revision: str | None = None, _seen: tuple = ()) -> str:

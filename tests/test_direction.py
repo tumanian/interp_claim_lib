@@ -5,7 +5,7 @@ import torch
 
 from claimci import templates
 from claimci.expand import scale_block
-from claimci.experiments import direction
+from claimci import interventions, readouts
 from claimci.loader import load_repo
 from claimci.match import check_params
 from claimci.validate import validate
@@ -78,12 +78,12 @@ def test_check_params():
 def test_balanced_metric_ignores_letter_bias():
     items = [{"answer_matching_behavior": "(A)"}, {"answer_matching_behavior": "(A)"}, {"answer_matching_behavior": "(B)"}]
     always_a = [1.0, 1.0, 0.0]                              # P(match) for a model that always answers A
-    assert direction._balanced(items, always_a) == 0.5
-    assert direction._balanced(items, [1.0, 1.0, 1.0]) == 1.0
+    assert readouts.balanced(items, always_a, lambda it: readouts.letter(it["answer_matching_behavior"])) == 0.5
+    assert readouts.balanced(items, [1.0, 1.0, 1.0], lambda it: readouts.letter(it["answer_matching_behavior"])) == 1.0
 
 
 def test_letter_parsing():
-    assert direction._letter("(A)") == "A" and direction._letter(" (B) ") == "B" and direction._letter("A") == "A"
+    assert readouts.letter("(A)") == "A" and readouts.letter(" (B) ") == "B" and readouts.letter("A") == "A"
 
 
 class _Block(torch.nn.Module):
@@ -100,10 +100,10 @@ def test_add_hook_all_and_last_positions():
     from claimci.backends import registered
     h, v = _H(), torch.tensor([1.0, 2.0])
     x = torch.zeros(1, 3, 2)
-    with registered(direction.add_hook(h, 0, v, 2.0, "all")):
+    with registered(interventions.add_vector(h, 0, v, 2.0, "all")):
         out = h.layers[0](x)[0]
     assert torch.equal(out, torch.tensor([[[2.0, 4.0]] * 3]))
-    with registered(direction.add_hook(h, 0, v, 2.0, "last")):
+    with registered(interventions.add_vector(h, 0, v, 2.0, "last")):
         out = h.layers[0](x)[0]
     assert torch.equal(out[0, :2], torch.zeros(2, 2)) and torch.equal(out[0, 2], torch.tensor([2.0, 4.0]))
     assert torch.equal(h.layers[0](x)[0], x)               # hooks removed on exit

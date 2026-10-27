@@ -798,7 +798,7 @@ read uses schema and store only; app and cli may import anything. A test checks 
 direction. With section 14 done first, the move changes no claim key; the refactor's own check is
 that every claim key is identical before and after.
 
-## 16. Backends, executors, and experiments as compositions (agreed, not built)
+## 16. Backends, executors, and experiments as compositions (built: torch backend, executors, formats, operations, interventions, readouts; not yet: other backends, batching across claims)
 
 `CpuBackend` is a v0 name. The Pythia path does run on CPU in float32, but chat models load
 through `chat.load_chat`, which picks CUDA when available, so the GPU runs went through a class

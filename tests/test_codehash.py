@@ -58,18 +58,18 @@ def test_moving_a_function_to_another_module_does_not_count(pkg):
     helper = s[start:end]
     src.write_text(s[:start] + s[end:])            # move the helper to a new module, imported from there
     (pkg / "experiments" / "persona_helpers.py").write_text(
-        "from .. import chat\n\n\ndef _judge(pairs, prompts, model, effort):\n"
+        "from .. import operations as ops\nfrom ..formats import format_prompt\n\n\ndef _judge(pairs, prompts, model, effort):\n"
         "    from .judge import judge\n    return judge(pairs, {\"aligned\": prompts[\"trait\"], \"coherent\": prompts[\"coherence\"]}, model, effort)\n\n\n"
         + helper)
-    edit(src, "from .. import chat\n", "from .. import chat\nfrom .persona_helpers import _trait_scores\n")
+    edit(src, "from .. import operations as ops\n", "from .. import operations as ops\nfrom .persona_helpers import _trait_scores\n")
     assert h("persona.steer") == before
 
 
 def test_changing_a_helper_in_another_module_counts(pkg):
     before = h("caa.steer")
-    edit(pkg / "chat.py", "lp = F.log_softmax(h.model(**enc).logits[:, -1, :].to(torch.float64), dim=-1).cpu()",
+    edit(pkg / "operations.py", "lp = F.log_softmax(h.model(**enc).logits[:, -1, :].to(torch.float64), dim=-1).cpu()",
          "lp = F.log_softmax(h.model(**enc).logits[:, -1, :].to(torch.float32), dim=-1).cpu()")
-    assert h("caa.steer") != before                # last_logprobs, reached via ab_matching -> chat
+    assert h("caa.steer") != before                # operations.last_logprobs, via readouts.ab_matching
 
 
 def test_changing_a_constant_counts(pkg):
@@ -82,7 +82,7 @@ def test_changing_a_constant_counts(pkg):
 
 def test_unrelated_changes_elsewhere_do_not_count(pkg):
     before = h("caa.steer")
-    edit(pkg / "experiments" / "steering.py", "def balanced(items, scores) -> float:", "def balanced(items, scores, unused=None) -> float:")
+    edit(pkg / "experiments" / "steering.py", "def _by_match(it):", "def _by_match(it, unused=None):")
     assert h("caa.steer") == before
 
 

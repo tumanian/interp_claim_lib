@@ -43,5 +43,7 @@ def test_reverify_puts_previously_verified_claims_first(tmp_path):
     d = yaml.safe_load(p.read_text()); d["code"]["params"] = {"unused": 1}; p.write_text(yaml.safe_dump(d, sort_keys=False))
     repo = load_repo(root)
     plan = agent_api.reverify_plan(repo, Ledger.for_repo(repo))
-    assert {r["id"] for r in plan} == set(IDS) and all(r["why"] == "code changed" for r in plan)
+    # the edited claim: its parameters changed; its dependents: an upstream key changed
+    assert {r["id"] for r in plan} == set(IDS) and all(r["why"] in ("parameters or inputs changed", "code changed") for r in plan)
+    assert all(r["why"] != "never run" for r in plan)
     assert agent_api.reverify_plan(repo, Ledger.for_repo(repo), skip_models=("pythia",)) == []

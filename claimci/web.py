@@ -1,7 +1,7 @@
 """A small local web app: drop a paper or post, see its claims, verify them.
 
 Standard library only. Ingest calls the Claude API from this machine; verification runs
-on the remote GPU box when .claimci-remote.json exists (claimci/remote.py), else locally.
+through an executor: the remote GPU box when .claimci-remote.json exists, else locally (claimci/executors.py).
 
     claimci serve --port 8765
 """
@@ -134,13 +134,9 @@ def make_handler(root: Path):
                     return self.send(400, {"error": "nothing to verify"})
 
                 def run(log):
+                    from .executors import executor_for
                     with VERIFY_LOCK:  # one model run at a time
-                        if (root / ".claimci-remote.json").exists():
-                            from .remote import verify as remote_verify
-                            return remote_verify(root, ids, log, force=bool(body.get("force")))
-                        from .backends import CpuBackend
-                        from .cli import verify
-                        verify(load_repo(root), CpuBackend(), claims=ids, log=log, force=bool(body.get("force")))
+                        return executor_for(root).verify(ids, log, force=bool(body.get("force")))
                 jid = start_job("verify", run)
                 return self.send(200, {"job": jid, "claims": ids})
             return self.send(404, {"error": "not found"})

@@ -65,4 +65,4 @@ class Ledger:
             return "data changed"
         if last.model != c.model:
             return "model changed"
-        return "inputs or entrypoint changed"
+        return "parameters or inputs changed"

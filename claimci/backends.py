@@ -77,26 +77,33 @@ class Backend:
         raise NotImplementedError
 
 
-class CpuBackend(Backend):
-    """HF transformers on CPU: eager attention, no_grad, float32, pinned threads."""
-    name = "cpu"
+class TorchBackend(Backend):
+    """PyTorch with HF transformers: no_grad, deterministic algorithms, pinned threads.
+
+    Where a model runs: `device` if given, else the claim's model options (`subject.model.device`),
+    else chat models on CUDA when available and token-sequence models (Pythia) on CPU in float32,
+    where reruns are bitwise identical. Experiments reach the model only through
+    claimci/operations.py, so another backend can implement those operations its own way.
+    """
+    name = "torch"
     loss_chunk = 8  # sequences per unembedding chunk
 
-    def __init__(self, threads: int | None = None, offline: bool = False):
+    def __init__(self, threads: int | None = None, offline: bool = False, device: str | None = None):
         torch.set_num_threads(threads or os.cpu_count() or 1)
         torch.use_deterministic_algorithms(True, warn_only=True)
         torch.manual_seed(0)
-        self.offline = offline
+        self.offline, self.device = offline, device
 
     def load(self, model: str, revision: str, opts: dict | None = None):
         if opts and opts.get("chat"):
-            from .chat import load_chat
-            return load_chat(model, revision, opts, self.offline)
+            from .models import load_lm
+            return load_lm(model, revision, opts, self.device, self.offline)
         from transformers import AutoModelForCausalLM
         m = AutoModelForCausalLM.from_pretrained(
             model, revision=revision, attn_implementation="eager",
             dtype=torch.float32, local_files_only=self.offline)
-        return self.wrap(m, model, revision)
+        dev = (opts or {}).get("device") or self.device
+        return self.wrap(m.to(dev) if dev else m, model, revision)
 
     @staticmethod
     def wrap(model, name: str, revision: str) -> ModelHandle:
@@ -104,10 +111,9 @@ class CpuBackend(Backend):
         return ModelHandle(model, name, revision)
 
     def run(self, handle: ModelHandle, dataset: Dataset, hooks: Iterable[Hook] = ()) -> Acts:
-        if dataset.is_prompts:
-            from .chat import PromptActs, probe
-            return PromptActs(dataset.tokens, probe(handle, dataset.tokens), dataset.meta)
-        ids = torch.tensor(dataset.tokens, dtype=torch.long)
+        if dataset.is_prompts:  # chat experiments run their own operations; this is the canary's baseline
+            return PromptActs(dataset.tokens, prompt_probe(handle, dataset.tokens), dataset.meta)
+        ids = torch.tensor(dataset.tokens, dtype=torch.long, device=next(handle.model.parameters()).device)
         n, t = ids.shape
         model = handle.model
         with torch.no_grad(), registered(hooks):
@@ -119,16 +125,15 @@ class CpuBackend(Backend):
                 logits = unembed(out.last_hidden_state[s:s + self.loss_chunk, :-1]).float()
                 losses.append(F.cross_entropy(logits.flatten(0, 1), ids[s:s + self.loss_chunk, 1:].flatten(),
                                               reduction="none").view(logits.shape[0], t - 1))
-            loss = torch.cat(losses)
-        return Acts(hidden=torch.stack(out.hidden_states), attn=torch.stack(out.attentions),
+            loss = torch.cat(losses).cpu()
+        return Acts(hidden=torch.stack(out.hidden_states).cpu(), attn=torch.stack(out.attentions).cpu(),
                     loss=loss, lengths=torch.full((n,), t), meta=dataset.meta)
 
     def probe(self, handle, dataset: Dataset) -> torch.Tensor:
         """A small, fixed readout for the hook-leak canary: loss on 4 sequences, or top
         log-probs on 4 prompts for a prompt dataset."""
         if dataset.is_prompts:
-            from .chat import probe
-            return probe(handle, dataset.tokens)
+            return prompt_probe(handle, dataset.tokens)
         return self.run(handle, dataset.head(4)).loss
 
     @staticmethod
@@ -140,6 +145,43 @@ class CpuBackend(Backend):
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+
+
+# --- prompt datasets: the shared pass is only the canary's baseline ------------------------------
+
+@dataclass
+class PromptActs:
+    """The shared 'pass' for a prompt dataset: the data plus a canary probe.
+
+    Chat experiments run their own passes through ctx; nothing large is cached."""
+    data: dict
+    probe: torch.Tensor
+    meta: dict = field(default_factory=dict)
+
+
+def canary_prompts(data) -> list[str] | None:
+    """The first four prompts found in the dataset: strings, or items with a `question`."""
+    if isinstance(data, list) and data:
+        if isinstance(data[0], str):
+            return data[:4]
+        if isinstance(data[0], dict) and isinstance(data[0].get("question"), str):
+            return [d["question"] for d in data[:4]]
+    if isinstance(data, dict):
+        for v in data.values():
+            found = canary_prompts(v)
+            if found:
+                return found
+    return None
+
+
+def prompt_probe(h, data: dict) -> torch.Tensor:
+    found = canary_prompts(data)
+    if not found:
+        raise ValueError("prompt dataset has no prompts to probe")
+    from .formats import format_prompt
+    prompts = [format_prompt(h, p) for p in found]
+    from .operations import last_logprobs
+    return last_logprobs(h, prompts, keep=lambda lp: lp.topk(20, dim=-1).values)
 
 
 @dataclass
@@ -161,4 +203,5 @@ class Ctx:
         self.passes += n
 
 
-BACKENDS = {"cpu": CpuBackend}
+CpuBackend = TorchBackend  # the v0 name; it never meant CPU-only for chat models
+BACKENDS = {"torch": TorchBackend, "cpu": TorchBackend}

@@ -17,8 +17,9 @@ from concurrent.futures import ThreadPoolExecutor
 import torch
 
 from . import experiment, intervention
-from .. import chat
-from .steering import _neuron_hooks, _random_like
+from .. import operations as ops
+from ..formats import format_prompt, with_bos
+from ..interventions import add_to_neurons, random_neurons_like
 
 MISALIGNED_BELOW, COHERENT_ABOVE = 30, 50  # the paper's thresholds
 
@@ -28,12 +29,12 @@ def sample(ctx, question: str, interventions, n: int, max_new_tokens: int, tempe
     residual norms come from the unsteered prompt)."""
     from ..backends import registered
     h = ctx.handle
-    prompt = chat.format_prompt(h, question)
+    prompt = format_prompt(h, question)
     hooks = []
     if interventions:
         layers = sorted({int(iv["layer"]) for iv in interventions})
-        hooks = _neuron_hooks(h, interventions, chat.resid_norm_medians(h, prompt, layers))
-    enc = h.tokenizer(chat._bos(h, [prompt]), return_tensors="pt", add_special_tokens=False).to(h.device)
+        hooks = add_to_neurons(h, interventions, ops.resid_norm_medians(h, prompt, layers))
+    enc = h.tokenizer(with_bos(h, [prompt]), return_tensors="pt", add_special_tokens=False).to(h.device)
     torch.manual_seed(seed)
     with torch.no_grad(), registered(hooks):
         out = h.model.generate(**enc, do_sample=True, temperature=temperature, top_p=1.0, top_k=0,
@@ -121,7 +122,7 @@ def judged_random_neurons(acts, ctx, interventions, seeds=(0, 1), n_per_question
     """The same, on random neurons in the same layers with the same recipe (mean over seeds)."""
     per, all_answers, picked = [], [], []
     for s_ in seeds:
-        ivs = _random_like(ctx.handle, interventions, int(s_))
+        ivs = random_neurons_like(ctx.handle, interventions, int(s_))
         picked.append([iv["neuron"] for iv in ivs])
         answers, s = _run(acts, ctx, ivs, n_per_question, max_new_tokens, temperature, seed, judge_model, judge_effort)
         per.append(s)
