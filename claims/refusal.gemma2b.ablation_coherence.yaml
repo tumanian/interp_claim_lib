@@ -1,9 +1,10 @@
 id: refusal.gemma2b.ablation_coherence
-kind: measurement
+kind: test
 question: q.refusal_direction
 evidence: IMP
 status: proposed
-statement: Cross-entropy on 32 wikitext-2 paragraphs with the direction ablated, minus without.
+statement: 'Ablating the refusal direction barely changes the model''s language modelling: cross-entropy
+  on 32 wikitext-2 paragraphs rises by at most 0.1 nats.'
 about: src.arditi2024.coherence_preserved
 subject:
   model:
@@ -20,6 +21,9 @@ code:
 data:
   inherit: refusal.gemma2b.direction
 metric: ce_loss_delta_nats
+expect:
+  op: <=
+  value: 0.1
 depends_on:
 - refusal.gemma2b.direction
 inputs:
@@ -32,3 +36,8 @@ provenance:
     subject.model.dtype:
       by: agent:claude-code (MVP)
       note: bfloat16; the paper does not pin a dtype here
+    expect:
+      by: claimci
+      note: The abstract says 'minimal effect on other capabilities' and states no number; 0.1 nats is
+        ours. Set after the value (-0.007) was seen, so post hoc.
+  post_hoc: true

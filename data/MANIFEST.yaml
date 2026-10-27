@@ -38,3 +38,8 @@ caa/corrigible-neutral-HHH.json:
   from: https://github.com/nrimsky/CAA
   commit: 5dabbbd9a0bca5f25e174501e959de378806aa48
   license: MIT
+sentiment/sentiment_pack.json:
+  what: positive and negative adjectives (made here; half build the direction, half are held out) and the first 200 SST-2 validation sentences
+  from: https://huggingface.co/datasets/stanfordnlp/sst2 (validation split)
+  commit: 8d51e7e4887a4caaa95b3fbebbf53c0490b58bbb
+  license: SST-2 states no license on the Hub ("unknown"); a public benchmark redistributed through GLUE. Adjectives are ours (MIT).

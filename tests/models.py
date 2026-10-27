@@ -28,7 +28,7 @@ def copy_claims(src: Path, dst: Path) -> Path:
     (dst / "questions").mkdir()
     shutil.copy(src / "questions" / "q.induction_formation.yaml", dst / "questions")
     for p in (src / "claims").glob("*.yaml"):
-        if "EleutherAI/pythia" in p.read_text():
+        if re.search(r"(?m)^question: q\.induction_formation$", p.read_text()):
             shutil.copy(p, dst / "claims")
     for p in (dst / "claims").glob("*.yaml"):
         text = re.sub(r"EleutherAI/pythia-[\w.]+", MODEL, p.read_text())

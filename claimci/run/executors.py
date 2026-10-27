@@ -69,7 +69,8 @@ def _ssh_verify(root: Path, claims: list[str], log=print, force: bool = False) -
     sync_ledger_up(root, cfg)  # the box reuses results already known here instead of recomputing them
     for item in PUSH:  # a trailing slash syncs a directory's contents (Path() would strip it)
         src = str(root / item) + ("/" if item.endswith("/") else "")
-        subprocess.run(_rsync(cfg) + [src, f"{cfg['host']}:{d}/{item}"], check=True)
+        mirror = ["--delete"] if item.endswith("/") else []   # a claim removed here is removed there
+        subprocess.run(_rsync(cfg) + mirror + [src, f"{cfg['host']}:{d}/{item}"], check=True)
     cmd = f"cd {d} && . .venv/bin/activate && set -a && {{ [ -f .env ] && . ./.env; true; }} && set +a && PYTHONUNBUFFERED=1 claimci verify --claims {','.join(claims)}" \
           + (" --force" if force else "")
     log(f"remote: {cfg['host']}: claimci verify --claims {','.join(claims)}")

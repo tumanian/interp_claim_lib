@@ -1,0 +1,43 @@
+id: sent.pythia14b.ablate_most
+kind: test
+question: q.tigges2023
+status: proposed
+evidence: IMP
+statement: The same ablation removes at least half of the above-chance zero-shot SST accuracy (the paper
+  reports 76%).
+about: src.tigges2023.ablation_accuracy_loss
+subject:
+  model:
+    hf: EleutherAI/pythia-1.4b
+    revision: main
+    chat: true
+    dtype: float32
+    batch: 16
+code:
+  experiment: sentiment.ablate_zero_shot
+  params:
+    pack: pack
+    at: everywhere
+data:
+  inherit: sent.pythia14b.direction
+metric: share_of_above_chance_accuracy_lost
+expect:
+  op: '>='
+  value: 0.5
+depends_on:
+- sent.pythia14b.direction
+inputs:
+  direction: sent.pythia14b.direction.direction
+provenance:
+  assigned_by: agent:claude-code
+  date: '2026-10-27'
+  supplemented:
+    code.params.layer:
+      by: claimci
+      note: 'Layer 6 of 24 (early-middle, where the paper locates the direction). Layers 4 and 9 were
+        also looked at in a smoke test before these claims were written: held-out adjectives 0.90 / 0.90,
+        SST via the direction 0.63 / 0.86.'
+    expect:
+      by: claimci
+      note: The paper's 76% is for its own models and prompt; >= 0.5 is ours, in its spirit. Set before
+        these claims ran.

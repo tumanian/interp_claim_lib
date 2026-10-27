@@ -1,0 +1,44 @@
+id: sent.pythia14b.direction
+kind: measurement
+question: q.tigges2023
+status: proposed
+evidence: IOB
+statement: The positive-minus-negative mean direction from 10+10 adjectives at block 6 of pythia-1.4b;
+  the value is its accuracy on 20 held-out adjectives.
+about: src.tigges2023.sentiment_linear_direction
+subject:
+  model:
+    hf: EleutherAI/pythia-1.4b
+    revision: main
+    chat: true
+    dtype: float32
+    batch: 16
+code:
+  experiment: sentiment.direction
+  params:
+    layer: 6
+    pack: pack
+data:
+  dataset:
+    gen: vendored
+    params:
+      files:
+        pack: sentiment/sentiment_pack.json
+  hash: bae4f273cb611c8453f5c52d688a48378e96b95ee1c50ab10c26762f66d3b773
+metric: held_out_accuracy
+exports:
+- direction
+provenance:
+  assigned_by: agent:claude-code
+  date: '2026-10-27'
+  supplemented:
+    code.params.layer:
+      by: claimci
+      note: 'Layer 6 of 24 (early-middle, where the paper locates the direction). Layers 4 and 9 were
+        also looked at in a smoke test before these claims were written: held-out adjectives 0.90 / 0.90,
+        SST via the direction 0.63 / 0.86.'
+    kind:
+      by: claimci
+      note: First written as a test (>= 0.9); split into this readout and sent.pythia14b.direction_heldout
+        after the first run, because a threshold here gated every claim that uses the direction. The threshold
+        and the value are unchanged.

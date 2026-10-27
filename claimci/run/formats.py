@@ -12,6 +12,8 @@ def format_prompt(h, instruction: str, system: str | None = None, prefix: str = 
     """The chat-formatted prompt, ready for the assistant's first token. `system` adds a system turn
     (folded into the user turn for templates without one); `prefix` starts the assistant's answer."""
     template = h.opts.get("template", "hf")
+    if template == "plain" or (template == "hf" and not getattr(h.tokenizer, "chat_template", None)):
+        return (f"{system}\n\n{instruction}" if system else instruction) + prefix   # a base model: the text as is
     if template == "gemma_paper":
         text = f"{system}\n\n{instruction}" if system else instruction
         return GEMMA_PAPER_TEMPLATE.format(instruction=text) + prefix
