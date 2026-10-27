@@ -36,7 +36,7 @@ header .grow { flex: 1; }
 .btn { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; }
 .btn.ghost { background: transparent; color: var(--accent); }
 .btn:disabled { opacity: .5; cursor: default; }
-.pill.lineage { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+.pill.lineage { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 .act { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; max-width: 240px; }
 .act .why { color: var(--muted, #8a8f98); font-size: 11px; text-align: right; line-height: 1.3; }
 #addform { display: none; gap: 8px; padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
@@ -331,7 +331,10 @@ async function show(ref) {
       <div class="tally"><div><b>${r.n_findings}</b><span>findings</span></div>
         ${order.filter((k) => r.counts[k]).map((k) => `<div class="${k}"><b>${r.counts[k]}</b><span>${k.toLowerCase()}</span></div>`).join("")}</div>
       <div class="tested">
-        <div><h4>Models</h4><ul>${r.models.map((m) => `<li>${esc(m)}</li>`).join("") || "<li class='gap'>none yet</li>"}</ul></div>
+        <div><h4>Models</h4><ul>${(r.model_runs || r.models.map((m) => ({model: m}))).map((m) => `<li>${esc(m.model)}
+          ${m.run_on === "original" ? `<span class="pill ok" title="The model the source used">original</span>`
+            : m.run_on === "expanded" ? `<span class="pill accent" title="A model the source did not test">expanded</span>
+               ${m.from.map((f) => `<span class="pill lineage" title="Carried over from ${esc(f)}">from ${esc(shortModel(f))}</span>`).join(" ")}` : ""}</li>`).join("") || "<li class='gap'>none yet</li>"}</ul></div>
         <div><h4>Data</h4>${byOrigin(r.data, r.origins, (d) => `<li>${esc(d.what)}<small>${esc(d.from)}${d.license ? " · " + esc(d.license) : ""}</small></li>`)}</div>
         <div><h4>Code</h4>${byOrigin(r.code, r.origins, (c) => `<li><code>${esc(c.what)}</code><small>${esc(c.how)}${c.functions.length ? ` · ${c.functions.length} experiment${c.functions.length === 1 ? "" : "s"}` : ""}</small></li>`)}</div>
       </div>
