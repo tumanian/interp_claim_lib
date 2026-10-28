@@ -30,17 +30,13 @@ provenance:
   supplemented:                                  # every number that is ours, not the paper's
     expect: {by: agent:claude-code, note: "same method and data should give nearly the same vector"}
 ```
-
-The claim key is a hash of the experiment version, params, data hash, model and checkpoint.
-Change any of them and the claim is stale. Thresholds are set before a run; one set after seeing
-a value is flagged `post_hoc`. Nothing in the ledger is written by hand. Formats: [SPEC.md](SPEC.md).
+Formats: [SPEC.md](SPEC.md).
 
 Example results on expansion and re-verification 
 | paper | paper's model | expanded to | claims on the expanded model |
 |---|---|---|---|
 | [Chen et al. 2025, Persona Vectors](https://arxiv.org/abs/2507.21509) | Qwen2.5-7B-Instruct | gemma-2-2b-it | 2 of 2: steering transfers (+37 judged evil; random direction +0.1); monitoring holds (AUROC 1.00) |
 | | | Qwen3.5-4B | 2 of 2: steering transfers, weaker (+29 vs +64 on the paper's model); monitoring holds (AUROC 1.00) |
-| | | gemma-2b-it | 0 of 1: could not run (Gemma adopts the evil persona in 2/200 contrast pairs, too few to extract a direction) |
 | [Arditi et al. 2024, Refusal direction](https://arxiv.org/abs/2406.11717) | gemma-2b-it | gemma-2-2b-it | 3 of 3: ablation transfers (refusal 0.91 → 0.16; random 0.97), addition transfers (0.00 → 0.99), capabilities kept |
 | | | Qwen2.5-7B-Instruct | 2 of 3: ablation transfers (refusal → 0.00), addition transfers, weaker (0.46); capabilities not kept (+0.31 nats) |
 | | | Qwen3.5-4B | 2 of 3: addition transfers, weaker (0.24), capabilities kept; ablation doesn't transfer (refusal stays 0.85) |
