@@ -190,7 +190,7 @@ let current = null, busy = false;
 const STATUS = {"Verified": "ok", "Could not replicate": "bad", "Effect not specific": "bad", "Partly verified": "warn", "Not yet run": "", "Untested": "",
                 "Not run on the paper's model": "warn", "Tested beyond the paper only": "warn"};
 const expansionText = (e) => e.could_not_run && !e.ran ? `${e.model}: could not run` : `${e.model}: ${e.held} of ${e.ran} transfer`;
-const VERDICT = {"holds": ["Holds", "ok"], "fails": ["Fails", "bad"], "holds, control failed": ["Holds, control failed", "bad"],
+const VERDICT = {"holds": ["Holds", "ok"], "failed": ["Failed", "bad"], "holds, control failed": ["Holds, control failed", "bad"],
                  "measured": ["Read out", "accent"], "not run": ["Not run", ""], "gated": ["Gated", "warn"],
                  "transfers": ["Transfers", "ok"], "transfers, weaker": ["Transfers, weaker", "warn"], "didn't transfer": ["Didn't transfer", "bad"]};
 const ev = (lab) => lab ? `<span class="ev ${esc(lab[0])}"><b>${esc(lab[0])}</b><span>${esc(lab[1])}</span></span>` : "";

@@ -38,7 +38,7 @@ and with an empty query lists everything that passes the filters. Every verifica
 `expanded_from`). Short source names are the part after `src.` in finding ids.
 
 When you report a result, give the verdict with its value and interval, say whether it ran on the
-source's model or an expansion, and pass on caveats and post hoc flags. "Fails" can mean the
+source's model or an expansion, and pass on caveats and post hoc flags. "Failed" can mean the
 paper is wrong or our test is a poor fit; say which the evidence supports.
 
 ## Adding claims
