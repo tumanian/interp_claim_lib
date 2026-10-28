@@ -58,7 +58,7 @@ def matrix_png(repo: Repo, ledger: Ledger, question: str, path: str) -> None:
     import matplotlib.pyplot as plt
     claims, revs, cells = matrix(repo, ledger, question)
     colors = {"pass": "#cfe8cf", "fail": "#f3c9c4", "gated": "#e6e6e6", "other": "#e6e6e6", "missing": "#ffffff"}
-    text = [[cells[c][r][0].replace("✓", "pass").replace("✗", "fail") for r in revs] for c in claims]
+    text = [[cells[c][r][0].replace("✓", "pass").replace("✗", "failed") for r in revs] for c in claims]
     fill = [[colors[cells[c][r][1]] for r in revs] for c in claims]
     fig, ax = plt.subplots(figsize=(1.6 + 1.25 * max(len(revs), 1) + 2.6, 0.5 + 0.45 * (len(claims) + 1)))
     ax.axis("off")

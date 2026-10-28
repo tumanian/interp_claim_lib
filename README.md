@@ -40,8 +40,8 @@ Example results on expansion and re-verification
 | [Arditi et al. 2024, Refusal direction](https://arxiv.org/abs/2406.11717) | gemma-2b-it | gemma-2-2b-it | 3 of 3: ablation transfers (refusal 0.91 → 0.16; random 0.97), addition transfers (0.00 → 0.99), capabilities kept |
 | | | Qwen2.5-7B-Instruct | 2 of 3: ablation transfers (refusal → 0.00), addition transfers, weaker (0.46); capabilities not kept (+0.31 nats) |
 | | | Qwen3.5-4B | 2 of 3: addition transfers, weaker (0.24), capabilities kept; ablation didn't transfer (refusal stays 0.85) |
-| [Tigges et al. 2023, Linear sentiment](https://arxiv.org/abs/2310.15154) | pythia-1.4b | pythia-2.8b | 3 of 5: ablation transfers (100% of above-chance SST accuracy lost), the direction reads SST (0.77); held-out adjectives and commas-only fail |
-| | | pythia-410m | 2 of 5: ablation transfers (87% lost); reads SST 0.76 short of 0.7 at its interval's edge; held-out adjectives and commas-only fail |
+| [Tigges et al. 2023, Linear sentiment](https://arxiv.org/abs/2310.15154) | pythia-1.4b | pythia-2.8b | 3 of 5: ablation transfers (100% of above-chance SST accuracy lost), the direction reads SST (0.77); held-out adjectives and commas-only failed |
+| | | pythia-410m | 2 of 5: ablation transfers (87% lost); reads SST 0.76 short of 0.7 at its interval's edge; held-out adjectives and commas-only failed |
 | | | gpt2 | 0 of 5: zero-shot SST at chance (0.52), so the ablation tests cannot be measured |
 | [Panickssery et al. 2023, CAA](https://arxiv.org/abs/2312.06681) | Llama-2-7b-chat (gated; not run) | Qwen3.5-4B | 1 of 4: corrigibility up transfers (+0.12; control +0.05); corrigibility down and sycophancy both ways did not |
 | | | gemma-2-2b-it | 1 of 4: corrigibility up transfers (+0.18); the rest did not |
