@@ -60,7 +60,7 @@ def sync_ledger_up(root: Path, cfg: dict) -> None:
     subprocess.run(_ssh(cfg) + [merge], check=True)
 
 
-def _ssh_verify(root: Path, claims: list[str], log=print, force: bool = False) -> int:
+def _ssh_verify(root: Path, claims: list[str], log=print, force: bool = False, claim_timeout: float | None = None) -> int:
     root = Path(root)
     cfg = config(root)
     if cfg is None:
@@ -72,7 +72,7 @@ def _ssh_verify(root: Path, claims: list[str], log=print, force: bool = False) -
         mirror = ["--delete"] if item.endswith("/") else []   # a claim removed here is removed there
         subprocess.run(_rsync(cfg) + mirror + [src, f"{cfg['host']}:{d}/{item}"], check=True)
     cmd = f"cd {d} && . .venv/bin/activate && set -a && {{ [ -f .env ] && . ./.env; true; }} && set +a && PYTHONUNBUFFERED=1 claimci verify --claims {','.join(claims)}" \
-          + (" --force" if force else "")
+          + (" --force" if force else "") + (f" --claim-timeout {claim_timeout}" if claim_timeout else "")
     log(f"remote: {cfg['host']}: claimci verify --claims {','.join(claims)}")
     proc = subprocess.Popen(_ssh(cfg) + [cmd], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     for line in proc.stdout:
@@ -112,8 +112,8 @@ class SshExecutor:
         self.root = Path(root)
         self.cfg = config(self.root)
 
-    def verify(self, claims: list[str], log=print, force: bool = False) -> int:
-        return _ssh_verify(self.root, claims, log, force)
+    def verify(self, claims: list[str], log=print, force: bool = False, claim_timeout: float | None = None) -> int:
+        return _ssh_verify(self.root, claims, log, force, claim_timeout)
 
 
 def executor_for(root: Path):

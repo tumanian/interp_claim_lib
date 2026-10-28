@@ -1,0 +1,46 @@
+id: sent.pythia410m.reads_sst
+kind: test
+question: q.tigges2023
+status: proposed
+evidence: ICP
+statement: 'The same direction, unchanged, sorts Stanford Sentiment Treebank sentences by sentiment: balanced
+  accuracy at least 0.7 on 200 sentences.'
+about: src.tigges2023.sentiment_linear_direction
+subject:
+  model:
+    hf: EleutherAI/pythia-410m
+    revision: main
+    chat: true
+    dtype: float32
+    template: hf
+    batch: 16
+code:
+  experiment: sentiment.reads_sst
+  params:
+    layer: 6
+    pack: pack
+data:
+  inherit: sent.pythia410m.direction
+metric: balanced_accuracy
+expect:
+  op: '>='
+  value: 0.7
+depends_on:
+- sent.pythia410m.direction
+inputs:
+  direction: sent.pythia410m.direction.direction
+provenance:
+  assigned_by: agent:claude-code
+  date: '2026-10-27'
+  supplemented:
+    code.params.layer:
+      by: expand
+      note: layer 6 of 24 layers in EleutherAI/pythia-1.4b -> 6 of 24 in EleutherAI/pythia-410m, by relative
+        depth
+    expect:
+      by: claimci
+      note: '''across a range of tasks'' states no number; >= 0.7 is ours. Set before these claims ran.'
+    subject.model:
+      by: expand
+      note: moved from EleutherAI/pythia-1.4b; the source did not test EleutherAI/pythia-410m
+  expanded_from: EleutherAI/pythia-1.4b

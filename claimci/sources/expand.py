@@ -43,7 +43,8 @@ def n_layers(hf_model: str) -> int:
         if hf_model in KNOWN_LAYERS:
             return KNOWN_LAYERS[hf_model]
         raise
-    return int((cfg.get("text_config") or cfg)["num_hidden_layers"])
+    cfg = cfg.get("text_config") or cfg
+    return int(next(cfg[k] for k in ("num_hidden_layers", "n_layer", "num_layers") if k in cfg))   # GPT-2 says n_layer
 
 
 def scale_block(block: int, src_layers: int, dst_layers: int) -> int:
@@ -60,7 +61,22 @@ def default_opts(hf_model: str, like: dict) -> dict:
     specific to its model (a paper's hand-written template, its batch size)."""
     opts = {k: v for k, v in like.items() if k in ("chat", "dtype", "thinking")}
     opts.update(template="hf", batch=1 if "qwen3.5" in hf_model.lower() else 16)  # linear attention: no padding
+    if "qwen3" in hf_model.lower():
+        opts["thinking"] = False   # else every answer opens with a thinking block, not the answer's first token
     return opts
+
+
+def retokenize(texts: list[str], hf_model: str) -> tuple[list[int], str | None]:
+    """The ids of each text as a single token of hf_model's tokenizer, or why not."""
+    from transformers import AutoTokenizer
+    tok = AutoTokenizer.from_pretrained(hf_model)
+    ids = []
+    for t in texts:
+        enc = tok.encode(t, add_special_tokens=False)
+        if len(enc) != 1:
+            return [], f"{t!r} is {len(enc)} tokens for {hf_model}; expected one"
+        ids.append(enc[0])
+    return ids, None
 
 
 def closures(repo, ref: str) -> list[tuple[str, list[str]]]:
@@ -94,8 +110,24 @@ def clone(repo, ids: list[str], src_model: str, dst_model: str, layers: tuple[in
         kinds = reg[c.experiment_id]["params"]
         d = copy.deepcopy(yaml.safe_load(c.path.read_text()))
         notes = {}
+        stated = d.get("stated") or {}
+        for p in list(stated.get("model_specific") or []):   # e.g. the authors' published direction for their model
+            if p in (d.get("code", {}).get("params") or {}):
+                del d["code"]["params"][p]
+                notes[f"code.params.{p}"] = {"by": "expand", "note": f"dropped: specific to {src_model}"}
+                if d.get("kind") == "test":   # its threshold was about the dropped comparison
+                    d["kind"] = "measurement"
+                    d.pop("expect", None)
+                    notes["kind"] = {"by": "expand", "note": f"a readout here: its test compared against {p}, which exists only for {src_model}"}
         for p, v in (d.get("code", {}).get("params") or {}).items():
             kind = kinds.get(p)
+            if kind == "tokenizer" and p in (stated.get("token_text") or {}):
+                ids, why = retokenize(stated["token_text"][p], dst_model)
+                if why:
+                    return [], f"{k}: `{p}`: {why}"
+                d["code"]["params"][p] = ids
+                notes[f"code.params.{p}"] = {"by": "expand", "note": f"the tokens {stated['token_text'][p]} re-tokenized for {dst_model}: {ids}"}
+                continue
             if kind not in MOVABLE:
                 why = "undeclared" if kind is None else f"a {kind} parameter"
                 return [], f"{k}: `{p}` is {why}, specific to {src_model}; this experiment cannot move to another model"

@@ -43,3 +43,7 @@ provenance:
     expect:
       by: agent:claude-code (MVP)
       note: '>= 0.8; a random direction should not remove refusal'
+stated:
+  token_text:
+    refusal_toks:
+    - I

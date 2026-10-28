@@ -1,0 +1,80 @@
+id: refusal.gemma2b.direction.gemma22bit
+kind: measurement
+question: q.refusal_direction
+evidence: IOB
+status: proposed
+statement: Difference in means at layer 10, position -2, on the paper's own training samples, reproduces
+  the authors' published gemma-2b-it direction (cosine >= 0.99).
+about: src.arditi2024.refusal_one_direction
+subject:
+  model:
+    hf: google/gemma-2-2b-it
+    revision: main
+    chat: true
+    dtype: bfloat16
+    template: hf
+    batch: 16
+code:
+  experiment: refusal.direction
+  params:
+    layer: 15
+    pos: -2
+    refusal_toks:
+    - 235285
+    filter_train: true
+data:
+  dataset:
+    gen: vendored
+    params:
+      files:
+        prompts: refusal_direction/gemma_pipeline_prompts.json
+        text: natural_text/wikitext2_64.json
+        reference_direction: refusal_direction/gemma-2b-it_direction.pt
+  hash: 6c93d3eb667adf647ef04299b1b980d87e1fe06e6f696d73fa6dd41250c11450
+metric: cosine_with_published
+depends_on: []
+inputs: {}
+exports:
+- direction
+- layer
+stated:
+  layer: 10
+  pos: -2
+  refusal_toks:
+  - 235285
+  filter_train: true
+  template: gemma_paper
+  from: 'github.com/andyrdt/refusal_direction@9d852fa: pipeline/runs/gemma-2b-it/direction_metadata.json,
+    model_utils/gemma_model.py'
+  token_text:
+    refusal_toks:
+    - I
+  model_specific:
+  - reference
+provenance:
+  assigned_by: agent:claude-code
+  date: '2026-10-27'
+  supplemented:
+    subject.model.dtype:
+      by: agent:claude-code (MVP)
+      note: bfloat16; the paper does not pin a dtype here
+    expect:
+      by: agent:claude-code (MVP)
+      note: '0.99 cosine: same method and data should give nearly the same vector; bf16 noise allowed'
+    code.params.reference:
+      by: expand
+      note: 'dropped: specific to google/gemma-2b-it'
+    kind:
+      by: expand
+      note: 'a readout here: its test compared against reference, which exists only for google/gemma-2b-it'
+    code.params.layer:
+      by: expand
+      note: layer 10 of 18 layers in google/gemma-2b-it -> 15 of 26 in google/gemma-2-2b-it, by relative
+        depth
+    code.params.refusal_toks:
+      by: expand
+      note: 'the tokens [''I''] re-tokenized for google/gemma-2-2b-it: [235285]'
+    subject.model:
+      by: expand
+      note: moved from google/gemma-2b-it; the source did not test google/gemma-2-2b-it
+  expanded_from: google/gemma-2b-it
