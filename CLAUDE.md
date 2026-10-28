@@ -17,7 +17,7 @@ append-only ledger. Read results through the CLI, never by parsing files by hand
 - Verdicts are derived on read, never stored: a test **holds** only if its value's whole 95%
   interval clears the threshold. On an **expanded** model, a test with a random control is judged
   by effect instead: **transfers** (its interval clears the control's in the predicted direction),
-  **transfers, weaker** (under half the effect on the source's model), or **doesn't transfer**. A test is **gated** if a parent does not hold; **stale** if its
+  **transfers, weaker** (under half the effect on the source's model), or **didn't transfer**. A test is **gated** if a parent does not hold; **stale** if its
   key (experiment version, params, data, model, checkpoint, parents) has no ledger row.
 
 ## Reading results (no keys, no GPU)

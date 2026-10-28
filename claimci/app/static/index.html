@@ -192,7 +192,7 @@ const STATUS = {"Verified": "ok", "Could not replicate": "bad", "Effect not spec
 const expansionText = (e) => e.could_not_run && !e.ran ? `${e.model}: could not run` : `${e.model}: ${e.held} of ${e.ran} transfer`;
 const VERDICT = {"holds": ["Holds", "ok"], "fails": ["Fails", "bad"], "holds, control failed": ["Holds, control failed", "bad"],
                  "measured": ["Read out", "accent"], "not run": ["Not run", ""], "gated": ["Gated", "warn"],
-                 "transfers": ["Transfers", "ok"], "transfers, weaker": ["Transfers, weaker", "warn"], "doesn't transfer": ["Doesn't transfer", "bad"]};
+                 "transfers": ["Transfers", "ok"], "transfers, weaker": ["Transfers, weaker", "warn"], "didn't transfer": ["Didn't transfer", "bad"]};
 const ev = (lab) => lab ? `<span class="ev ${esc(lab[0])}"><b>${esc(lab[0])}</b><span>${esc(lab[1])}</span></span>` : "";
 const verdict = (v) => { const [t, c] = VERDICT[v] || [v, "warn"]; return `<span class="pill ${c}">${esc(t)}</span>`; };
 
