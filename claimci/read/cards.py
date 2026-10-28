@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from ..store.ledger import Ledger
 from .report import computed_status, current_row, gated_by, revision_order
-from ..schema.claim import OPS
+from ..schema.claim import OPS, model_slug
 from ..schema.repo import Repo
 
 
@@ -55,13 +55,73 @@ def caveats(repo: Repo, ledger: Ledger, cid: str) -> list[str]:
     return out
 
 
+def original_of(repo: Repo, cid: str) -> str | None:
+    """The claim an expanded claim was copied from: recorded by expand, or recovered from the ids
+    (expand names a copy by swapping the model in the id, or by appending the new model)."""
+    c = repo.claims[cid]
+    src = c.provenance.get("expanded_from")
+    if not src:
+        return None
+    recorded = c.provenance.get("expanded_from_claim")
+    old, new = model_slug(src), model_slug(c.model)
+    for k in (recorded, cid.replace(new, old), cid[: -len(new) - 1] if cid.endswith("." + new) else None):
+        if k in repo.claims and repo.claims[k].model == src:
+            return k
+    return None
+
+
+def _effect(repo: Repo, ledger: Ledger, cid: str):
+    """(row, its control's row) for a test with a random control, both run, or (None, None)."""
+    c = repo.claims[cid]
+    control = next((k for k, o in repo.claims.items() if o.control_for == cid), None)
+    t = current_row(repo, ledger, cid, c.revision)
+    k = current_row(repo, ledger, control, repo.claims[control].revision) if control else None
+    ok = t is not None and k is not None and t.status == k.status == "ok"
+    return (t, k) if ok else (None, None)
+
+
+def transfer(repo: Repo, ledger: Ledger, cid: str) -> str | None:
+    """For an expanded test with a random control: does the behaviour carry over to this model?
+
+    The paper's thresholds were set for the paper's model, so an expansion is judged by its effect
+    against its own control instead: it transfers if the intervention moves the metric the way
+    the threshold points and its 95% interval does not overlap the control's; it is weaker if that
+    effect is under half the same effect on the source's model. None when the rule does not apply
+    (not an expansion, no control, or no intervals), and the threshold decides."""
+    c = repo.claims[cid]
+    if not c.provenance.get("expanded_from") or c.kind != "test" or not c.threshold or c.control_for:
+        return None
+    t, k = _effect(repo, ledger, cid)
+    if t is None or not t.interval or not k.interval:
+        return None
+    up = c.threshold.op in (">=", ">")
+    separated = t.interval[0] > k.interval[1] if up else t.interval[1] < k.interval[0]
+    if not separated:
+        return "doesn't transfer"
+    effect = (t.value - k.value) * (1 if up else -1)
+    orig = original_of(repo, cid)
+    if orig:
+        t0, k0 = _effect(repo, ledger, orig)
+        if t0 is not None:
+            effect0 = (t0.value - k0.value) * (1 if up else -1)
+            if effect0 > 0 and effect < effect0 / 2:
+                return "transfers, weaker"
+    return "transfers"
+
+
+TRANSFER_HELD = ("transfers", "transfers, weaker")
+
+
 def verdict(repo: Repo, ledger: Ledger, cid: str) -> str:
-    """One word for a test at its subject revision, folding in its controls."""
+    """One word for a test at its subject revision, folding in its controls. An expansion with a
+    random control is judged by transfer() instead of the source's threshold."""
     c = repo.claims[cid]
     rows = [x for x in _results(repo, ledger, cid) if x["revision"] == c.revision]
     if not rows:
         return "not run"
     status = rows[-1]["status"]
+    if status in ("verified", "not holding") and (moved := transfer(repo, ledger, cid)):
+        return moved
     if c.kind != "test" or status != "verified":
         return {"not holding": "fails", "verified": "holds"}.get(status, status)
     controls = [k for k, o in repo.claims.items() if o.control_for == cid]
@@ -103,8 +163,8 @@ def card(repo: Repo, ledger: Ledger, cid: str) -> dict:
         for a in all_tests:
             if a["expansion"]:
                 by_model.setdefault(a["model"], []).append(a["verdict"])
-        d["expansions"] = [{"model": m, "held": sum(v == "holds" for v in vs),
-                            "ran": sum(v in ("holds", "fails", "holds, control failed") for v in vs),
+        d["expansions"] = [{"model": m, "held": sum(v == "holds" or v in TRANSFER_HELD for v in vs),
+                            "ran": sum(v in ("holds", "fails", "holds, control failed", "doesn't transfer") or v in TRANSFER_HELD for v in vs),
                             "could_not_run": sum(v in ("blocked", "error", "contaminated") for v in vs), "total": len(vs)}
                            for m, vs in sorted(by_model.items())]
         d["support"] = ("untested" if not all_tests else

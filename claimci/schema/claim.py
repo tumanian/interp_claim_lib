@@ -192,6 +192,12 @@ class Result:
     interval: list | None = None  # 95% interval around value, when the experiment reports one
 
 
+def model_slug(model: str) -> str:
+    """How a model appears in claim ids: 'Qwen/Qwen2.5-7B-Instruct' -> 'qwen257binstruct'."""
+    import re
+    return re.sub(r"[^a-z0-9]+", "", model.split("/")[-1].lower())
+
+
 OPS = {">=": operator.ge, ">": operator.gt, "<=": operator.le, "<": operator.lt, "==": operator.eq}
 
 

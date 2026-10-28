@@ -19,11 +19,11 @@ from __future__ import annotations
 
 import copy
 import json
-import re
 from pathlib import Path
 
 import yaml
 
+from ..schema.claim import model_slug
 from ..schema.experiments import lock
 from ..schema.loader import load_repo
 from ..checks import validate
@@ -50,10 +50,6 @@ def n_layers(hf_model: str) -> int:
 def scale_block(block: int, src_layers: int, dst_layers: int) -> int:
     """The block at the same relative depth: blocks are 0..n-1, depth measured to the block's output."""
     return max(0, min(dst_layers - 1, round((block + 1) / src_layers * dst_layers) - 1))
-
-
-def _slug(model: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "", model.split("/")[-1].lower())
 
 
 def default_opts(hf_model: str, like: dict) -> dict:
@@ -102,7 +98,7 @@ def closures(repo, ref: str) -> list[tuple[str, list[str]]]:
 def clone(repo, ids: list[str], src_model: str, dst_model: str, layers: tuple[int, int]) -> tuple[list[dict], str | None]:
     """Clone claim files onto dst_model, or ([], reason) when a parameter cannot move."""
     reg = lock()
-    s_old, s_new = _slug(src_model), _slug(dst_model)
+    s_old, s_new = model_slug(src_model), model_slug(dst_model)
     rename = {k: (k.replace(s_old, s_new) if s_old in k else f"{k}.{s_new}") for k in ids}
     out = []
     for k in ids:
@@ -146,6 +142,7 @@ def clone(repo, ids: list[str], src_model: str, dst_model: str, layers: tuple[in
             d["control_for"] = rename[d["control_for"]]
         prov = d.setdefault("provenance", {})
         prov["expanded_from"] = src_model
+        prov["expanded_from_claim"] = k
         prov.setdefault("supplemented", {}).update(notes)
         prov["supplemented"]["subject.model"] = {"by": "expand", "note": f"moved from {src_model}; the source did not test {dst_model}"}
         out.append(d)

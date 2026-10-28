@@ -96,3 +96,20 @@ def test_expand_needs_a_gpu_like_verify(tmp_path, monkeypatch):
     assert web.why_not(tmp_path)["expand"]
     (tmp_path / ".claimci-remote.json").write_text("{}")
     assert web.why_not(tmp_path)["expand"] is None
+
+
+def test_expansions_are_judged_by_effect_against_their_control():
+    """An expansion transfers if its interval clears its random control's in the predicted
+    direction, whatever the paper's threshold; weaker if under half the source model's effect."""
+    from claimci.read import cards
+    from claimci.schema.loader import load_repo
+    from claimci.store.ledger import Ledger
+    root = Path(__file__).resolve().parents[1]
+    repo = load_repo(root); led = Ledger.for_repo(repo)
+    v = lambda cid: cards.verdict(repo, led, cid)
+    assert v("refusal.gemma2b.ablation_jbb.gemma22bit") == "transfers"        # 0.16 vs control 0.97: fails <= 0.1, still transfers
+    assert v("refusal.gemma2b.ablation_jbb.qwen354b") == "doesn't transfer"   # 0.85 vs 0.92: intervals overlap
+    assert v("refusal.gemma2b.addition_harmless.qwen257binstruct") == "transfers, weaker"
+    assert v("refusal.gemma2b.ablation_jbb") == "holds"                       # the source's own model keeps its threshold
+    assert v("refusal.gemma2b.ablation_coherence.qwen257binstruct") == "fails"   # no control: the threshold decides
+    assert cards.original_of(repo, "dir.qwen354b.evil.chen2025.steer_up") == "dir.qwen257binstruct.evil.chen2025.steer_up"
