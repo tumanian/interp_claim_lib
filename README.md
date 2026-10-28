@@ -1,14 +1,8 @@
-# claimci
+# claimci [ read only demo ](https://tumanian.dev/interp_lib_demo/)
 
-If interp is to grow as a field the speed of knowledge discovery needs to match the speed of the model development, so that every time a new model, code or dataset comes up we can verify whether the previous findings hold. To that end we need a database of findings and machinery to replicate findings at scale.  Inspired by the [Goodfire Proposal](<GF post link>) and [Gene Onthology](https://geneontology.org/) project, I built a minimal exchange format and finding replication pipeline. The mapping from Gene Ontology to interp can be: 
+As mechinterp grows as a field the speed of knowledge discovery needs to match the speed of the model development, so that every time a new model, code or dataset comes up we can verify whether the previous findings hold. To that end we need a database of findings and machinery to replicate findings at scale.  Inspired by the [Goodfire Proposal](<GF post link>) and [Gene Onthology](https://geneontology.org/) project, I built a minimal exchange format and finding replication pipeline. 
 
-| Gene Ontology | claimci |
-|---|---|
-| Gene product (a protein, an RNA) | Model component (a head, a layer, a direction, a neuron) |
-| GO term (a function, process or location) | Statement (what the component does, with a metric and threshold) |
-| Annotation: gene product × term × evidence | Claim file: subject × statement × evidence |
-
-Whats great about the interp field  vs biology is that we can directly replicate and verify any claim in a paper (or  a tweet :D ) and check the transferability of the claims across models, data sources or even code versions. 
+Where the Gene Ontology annotates a gene product (a protein, an RNA) with a term (a function, process or location) and an evidence code, claimci annotates a model component (a head, a layer, a direction, a neuron) with a statement (what it does, with a metric and threshold) and an evidence code; a claim file is one such annotation.  Whats great about the interp vs biology is that we can directly replicate and verify any claim in a paper (or  a tweet(!)) and check the transferability of the claims across models, data sources or even code versions. 
 
 The demo below shows the following: 
 
@@ -18,18 +12,41 @@ The demo below shows the following:
 4. Downstream agents can refer to semi-machine readable results, generate new claims, verify them using the same tools and write the results back. 
 
 
-The read-only demo for the verifications and expansions (where we try the method on a new model) that I ran [here](https://tumanian.dev/interp_lib_demo/)
+How to install and run on local (readonly ):  
+```
+git clone https://github.com/tumanian/interp_claim_lib && cd interp_claim_lib
+python -m venv .venv && . .venv/bin/activate
+pip install -e '.[report,test,ingest]'
+claimci serve                                   # http://127.0.0.1:8765
+```
 
-To run the  paper ingestion and verification pipeline you will need 
+To support papers ingestion (needs Claude CLI Keys)
+```
+cp .env.example .env                            # then set ANTHROPIC_API_KEY=... in .env
+claimci ingest arXiv:2310.15154                 # findings from the abstract, the paper's own tests from the body
+claimci serve                                   # or use "Add a source" in the web app
+```
 
-* Claude API keys for ingestion, claim extraction
-* AWS keys for running the verification experiments 
+To support verification experiments (needs GPU box to ssh into)
+```
+# a GPU box you can SSH into (we used an AWS g6.xlarge); once, on the box: clone, install, add .env
+echo '{"host": "ubuntu@<ip>", "key": "~/.ssh/<key>.pem", "dir": "~/interp_claim_lib"}' > .claimci-remote.json
+claimci verify --claims sent.pythia14b.ablate   # runs on the box, results merge into ledger/
+claimci reverify --dry-run                      # what is stale, in the order it would rerun
+claimci expand arXiv:2312.06681 --models Qwen/Qwen2.5-7B-Instruct --verify
+```
 
-
+To run agents from Claue reading the results (runs from claude)
+```
+claude                                          # Claude Code in the repo: CLAUDE.md tells it the vocabulary, commands and rules
+# then ask, e.g.: "Which steering claims hold on Qwen, and with what margin?"
+#                 "Add a verification of src.chen2025.deployment_monitoring on Qwen3.5-4B and run it."
+claimci search "steering" --json                # what Claude runs underneath: find claims
+claimci get dir.qwen257binstruct.evil.chen2025.steer_up   # verdict, value, 95% interval, margin, controls, caveats
+```
 Next steps: 
 
 * Batch and scale the verification, to speed up parallel runs of the verifcation. 
-
 
 
 Ingestion and verification tested on so far: 
@@ -40,38 +57,7 @@ Ingestion and verification tested on so far:
 - [@_lyraaaa_ on X](https://x.com/_lyraaaa_/status/2113833330429083662): two neurons make Qwen3.5-4B evil, verified (it loses coherence)
 - Induction heads ([Olsson et al. 2022](https://arxiv.org/abs/2209.11895)): form between step512 and step1000 of pythia-160m, verified
 
-How to install and run on local (readonly ):  
-```
-git clone https://github.com/tumanian/interp_claim_lib && cd interp_claim_lib
-python -m venv .venv && . .venv/bin/activate
-pip install -e '.[report,test,ingest]'
-claimci serve                                   # http://127.0.0.1:8765
-```
 
-To support papers ingestion
-```
-cp .env.example .env                            # then set ANTHROPIC_API_KEY=... in .env
-claimci ingest arXiv:2310.15154                 # findings from the abstract, the paper's own tests from the body
-claimci serve                                   # or use "Add a source" in the web app
-```
-
-To support verification experiments
-```
-# a GPU box you can SSH into (we used an AWS g6.xlarge); once, on the box: clone, install, add .env
-echo '{"host": "ubuntu@<ip>", "key": "~/.ssh/<key>.pem", "dir": "~/interp_claim_lib"}' > .claimci-remote.json
-claimci verify --claims sent.pythia14b.ablate   # runs on the box, results merge into ledger/
-claimci reverify --dry-run                      # what is stale, in the order it would rerun
-claimci expand arXiv:2312.06681 --models Qwen/Qwen2.5-7B-Instruct --verify
-```
-
-To run agents from Claue reading the results 
-```
-claude                                          # Claude Code in the repo: CLAUDE.md tells it the vocabulary, commands and rules
-# then ask, e.g.: "Which steering claims hold on Qwen, and with what margin?"
-#                 "Add a verification of src.chen2025.deployment_monitoring on Qwen3.5-4B and run it."
-claimci search "steering" --json                # what Claude runs underneath: find claims
-claimci get dir.qwen257binstruct.evil.chen2025.steer_up   # verdict, value, 95% interval, margin, controls, caveats
-```
 
 More: [GUIDE.md](GUIDE.md) (setup, commands, results in detail), [SPEC.md](SPEC.md) (formats),
 [DESIGN.md](DESIGN.md) (where this is going). MIT license.
