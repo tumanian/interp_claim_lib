@@ -81,16 +81,5 @@ Next steps:
 
 * Batch and scale the verification, to speed up parallel runs of the verifcation. 
 
-
-Ingestion and verification tested on so far: 
-- [Refusal in Language Models Is Mediated by a Single Direction](https://arxiv.org/abs/2406.11717) (Arditi et al. 2024): 4 of 5 findings verified on gemma-2b-it
-- [Persona Vectors](https://arxiv.org/abs/2507.21509) (Chen et al. 2025): 2 of 5 verified on Qwen2.5-7B-Instruct; expanded to gemma-2b-it (could not run)
-- [Linear Representations of Sentiment in Large Language Models](https://arxiv.org/abs/2310.15154) (Tigges et al. 2023): 2 of 4 verified on pythia-1.4b, 2 not reproduced
-- [Steering Llama 2 via Contrastive Activation Addition](https://arxiv.org/abs/2312.06681) (Panickssery et al. 2023): expanded to Qwen2.5-7B-Instruct and Qwen3.5-4B, where it does not transfer; not run on Llama-2 (gated)
-- [@_lyraaaa_ on X](https://x.com/_lyraaaa_/status/2113833330429083662): two neurons make Qwen3.5-4B evil, verified (it loses coherence)
-- Induction heads ([Olsson et al. 2022](https://arxiv.org/abs/2209.11895)): form between step512 and step1000 of pythia-160m, verified
-
-
-
 More: [GUIDE.md](GUIDE.md) (setup, commands, results in detail), [SPEC.md](SPEC.md) (formats),
 [DESIGN.md](DESIGN.md) (where this is going). MIT license.
