@@ -1,4 +1,4 @@
-# claimci \[ [ read only demo ](https://tumanian.dev/interp_lib_demo/)\]
+# claimci \[ [ read only demo here](https://tumanian.dev/interp_lib_demo/)\]
 
 As mechinterp grows as a field the speed of knowledge discovery needs to match the speed of the model development, so that every time a new model, code or dataset comes up we can verify whether the previous findings hold. To that end we need a database of findings and machinery to replicate findings at scale.  Inspired by the [Goodfire Proposal](https://www.goodfire.com/blog/accelerating-interpretability) and [Gene Onthology](https://geneontology.org/) project, I built a minimal exchange format and finding replication pipeline. 
 
