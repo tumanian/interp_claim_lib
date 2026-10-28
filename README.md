@@ -38,10 +38,20 @@ a value is flagged `post_hoc`. Nothing in the ledger is written by hand. Formats
 Example results on expansion and re-verification 
 | paper | paper's model | expanded to | claims on the expanded model |
 |---|---|---|---|
-| [Chen et al. 2025, Persona Vectors](https://arxiv.org/abs/2507.21509) | Qwen2.5-7B-Instruct | gemma-2b-it | 0 of 4: the direction claim fails (Gemma adopts the evil persona in 2/200 contrast pairs, threshold not met), so steer up, steer down and the random control are blocked |
-| [Panickssery et al. 2023, CAA](https://arxiv.org/abs/2312.06681) | Llama-2-7b-chat (gated; not run) | Qwen2.5-7B-Instruct | 2 of 6: both directions extract; 0 of 4 steering claims hold (sycophancy +0.001 / −0.007, corrigibility +0.024 / −0.033, threshold ±0.1) |
-| | | Qwen3.5-4B | 3 of 6: both directions extract; 1 of 4 steering claims hold (corrigibility up +0.12 ✓; corrigibility down −0.03, sycophancy ±0.01 ✗) |
-| [Olsson et al. 2022, induction heads](https://arxiv.org/abs/2209.11895) | in-house models (not public) | pythia-160m, 19 checkpoints | 3 of 3: previous-token head, induction head, ablation (+0.85 nats); forms between step512 and step1000 |
+| [Chen et al. 2025, Persona Vectors](https://arxiv.org/abs/2507.21509) | Qwen2.5-7B-Instruct | gemma-2-2b-it | 2 of 2: steering transfers (+37 judged evil; random direction +0.1); monitoring holds (AUROC 1.00) |
+| | | Qwen3.5-4B | 2 of 2: steering transfers, weaker (+29 vs +64 on the paper's model); monitoring holds (AUROC 1.00) |
+| | | gemma-2b-it | 0 of 1: could not run (Gemma adopts the evil persona in 2/200 contrast pairs, too few to extract a direction) |
+| [Arditi et al. 2024, Refusal direction](https://arxiv.org/abs/2406.11717) | gemma-2b-it | gemma-2-2b-it | 3 of 3: ablation transfers (refusal 0.91 → 0.16; random 0.97), addition transfers (0.00 → 0.99), capabilities kept |
+| | | Qwen2.5-7B-Instruct | 2 of 3: ablation transfers (refusal → 0.00), addition transfers, weaker (0.46); capabilities not kept (+0.31 nats) |
+| | | Qwen3.5-4B | 2 of 3: addition transfers, weaker (0.24), capabilities kept; ablation doesn't transfer (refusal stays 0.85) |
+| [Tigges et al. 2023, Linear sentiment](https://arxiv.org/abs/2310.15154) | pythia-1.4b | pythia-2.8b | 3 of 5: ablation transfers (100% of above-chance SST accuracy lost), the direction reads SST (0.77); held-out adjectives and commas-only fail |
+| | | pythia-410m | 2 of 5: ablation transfers (87% lost); reads SST 0.76 short of 0.7 at its interval's edge; held-out adjectives and commas-only fail |
+| | | gpt2 | 0 of 5: zero-shot SST at chance (0.52), so the ablation tests cannot be measured |
+| [Panickssery et al. 2023, CAA](https://arxiv.org/abs/2312.06681) | Llama-2-7b-chat (gated; not run) | Qwen3.5-4B | 1 of 4: corrigibility up transfers (+0.12; control +0.05); corrigibility down and sycophancy both ways do not |
+| | | gemma-2-2b-it | 1 of 4: corrigibility up transfers (+0.18); the rest do not |
+| | | Qwen2.5-7B-Instruct | 0 of 4: no steering effect beyond the random control (sycophancy +0.001 / −0.007, corrigibility +0.024 / −0.033) |
+| | | gemma-2b-it | 0 of 4: no steering effect beyond the random control |
+| [Olsson et al. 2022, induction heads](https://arxiv.org/abs/2209.11895) | in-house models (not public) | pythia-160m, 19 checkpoints | 3 of 3: previous-token head, induction head, ablation (+0.92 nats); forms between step512 and step1000 |
 
 
 
