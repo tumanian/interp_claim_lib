@@ -49,23 +49,57 @@ rerunnable code when it reproduces. Claims depend on each other, and the codes c
 
 ## Results: verified claims and expansions
 
-Rows are findings, columns are models. **(paper)** marks the model the source used; every other
-cell is an expansion beyond the source. Values carry 95% intervals (Wilson for rates, a seeded
-bootstrap over items for differences); a verdict holds only if the whole interval clears its
-threshold.
+One table per study. **original** is the model the source used (for linear sentiment, our first
+run, on one of the paper's model families); every other row is an expansion. Values carry 95%
+intervals (Wilson for rates, a seeded bootstrap over items for differences). On the original model
+a test **holds** (✓) only if its whole interval clears the threshold. On an expansion, a test with a
+random control is judged by effect instead, since the thresholds were set for the source's model:
+it **transfers** when its interval clears the control's in the predicted direction, **weaker** when
+that effect is under half the original's, and **doesn't transfer** otherwise; tests without a
+control keep the threshold. ⊘ could not run (see the card for why).
 
-| finding (source) | gemma-2b-it | Qwen2.5-7B-Instruct | Qwen3.5-4B | Llama-2-7b-chat | pythia-160m / 1.4b |
-|---|---|---|---|---|---|
-| Refusal is one direction: ablating it stops refusal, adding it induces it, with minimal effect on other capabilities ([Arditi et al. 2024](https://arxiv.org/abs/2406.11717)) | **(paper) ✓ verified**: JailbreakBench refusal 0.91 [0.84, 0.95] → 0.00 [0.00, 0.04] ablated (random direction: 0.91); harmless 0.00 → 1.00 [0.96, 1.00] added; cosine with the authors' direction 0.99999; text loss −0.007 nats (≤ +0.1, post hoc) | | | | |
-| Two neurons make Qwen evil ([@_lyraaaa_ on X](https://x.com/_lyraaaa_/status/2113833330429083662)) | | | **(post) ✓ verified\***: 94% [85, 98] of answers judged misaligned (random neurons: 6% [3, 12]; unsteered: 0% [0, 6]) | | |
-| A persona vector steers the trait, and monitors it ([Chen et al. 2025](https://arxiv.org/abs/2507.21509)) | **⊘ could not run**: 2/200 contrast pairs pass the judge, no vector to extract | **(paper) ✓ verified\***: judged evil +64 [59, 69] (random direction: −0.2 [−0.6, 0.05]); monitoring: AUROC 1.00 on held-out questions (≥ 0.8) | | | |
-| Steering vectors shift sycophancy both ways ([Panickssery et al. 2023](https://arxiv.org/abs/2312.06681)) | | **✗ does not transfer**: +0.001 [−0.003, 0.005] / −0.007 [−0.013, −0.003] (threshold ±0.1) | **✗**: +0.011 [0.002, 0.020] / −0.011 | **(paper) not run**: gated | |
-| Steering vectors shift corrigibility both ways (same) | | **✗ does not transfer**: +0.024 [0.000, 0.052] / −0.033 [−0.070, −0.004] | **✗ short of the threshold**: +0.12 [0.08, 0.16] up, −0.03 down | **(paper) not run**: gated | |
-| Sentiment is a linear direction, causally relevant on SST ([Tigges et al. 2023](https://arxiv.org/abs/2310.15154)) | | | | | **(paper's family, 1.4b) ✓ causally relevant**: ablating it removes 100% [100, 100] of above-chance zero-shot SST accuracy (random direction: −2% [−8, 0]); reads SST 0.83 [0.77, 0.87]. **✗** held-out adjectives 0.95 [0.76, 0.99] (≥ 0.9, only 20 words); **✗** commas only 7% [0, 15] (paper 36%) |
-| Induction heads form early in training ([Olsson et al. 2022](https://arxiv.org/abs/2209.11895)) | | | | | **(160m) ✓ verified**: forms between step512 and step1000 (score 0.09 → 0.95); ablation +0.92 nats at the final checkpoint |
+**[Persona Vectors (Chen et al. 2025)](https://arxiv.org/abs/2507.21509)**
 
-\* the steered models lose coherence (5% and 3% of answers coherent); the sources claim the trait,
-not coherence, so it is a caveat, not part of the verdict. Every cell opens in the web app to its
+| model | | steering raises the trait | monitoring (AUROC) |
+|---|---|---|---|
+| Qwen2.5-7B-Instruct | **original** | ✓ +64 [59, 69] | ✓ 1.00 [1.00, 1.00] |
+| Qwen3.5-4B | expanded | ✓ weaker +29 [23, 35] | ✓ 1.00 [1.00, 1.00] |
+| gemma-2-2b-it | expanded | ✓ transfers +37 [32, 42] | ✓ 1.00 [1.00, 1.00] |
+| gemma-2b-it | expanded | ⊘ could not run |  |
+
+**[Refusal direction (Arditi et al. 2024)](https://arxiv.org/abs/2406.11717)**
+
+| model | | ablating removes refusal | adding induces refusal | capabilities kept (Δ loss) |
+|---|---|---|---|---|
+| gemma-2b-it | **original** | ✓ 0.00 [0.00, 0.04] | ✓ 1.00 [0.96, 1.00] | ✓ -0.01 |
+| Qwen2.5-7B-Instruct | expanded | ✓ transfers 0.00 [0.00, 0.04] | ✓ weaker 0.46 [0.37, 0.56] | ✗ 0.31 |
+| Qwen3.5-4B | expanded | ✗ doesn't transfer 0.85 [0.77, 0.91] | ✓ weaker 0.24 [0.17, 0.33] | ✓ -0.01 |
+| gemma-2-2b-it | expanded | ✓ transfers 0.16 [0.10, 0.24] | ✓ transfers 0.99 [0.95, 1.00] | ✓ -0.00 |
+
+**[Linear sentiment (Tigges et al. 2023)](https://arxiv.org/abs/2310.15154)**
+
+| model | | ablation removes SST accuracy | direction reads SST | commas only |
+|---|---|---|---|---|
+| pythia-1.4b | **original** | ✓ 1.00 [1.00, 1.00] | ✓ 0.83 [0.77, 0.87] | ✗ 0.07 [0.00, 0.15] |
+| pythia-2.8b | expanded | ✓ transfers 1.00 [1.00, 1.00] | ✓ 0.77 [0.71, 0.82] | ✗ 0.00 [0.00, 0.00] |
+| pythia-410m | expanded | ✓ transfers 0.87 [0.64, 1.00] | ✗ 0.76 [0.69, 0.81] | ✗ 0.00 [0.00, 0.00] |
+| gpt2 | expanded | ⊘ could not run | ✗ 0.52 [0.44, 0.58] | ⊘ could not run |
+
+**[CAA (Panickssery et al. 2023)](https://arxiv.org/abs/2312.06681)**
+
+| model | | corrigibility up | sycophancy up |
+|---|---|---|---|
+| Llama-2-7b-chat-hf | **original** | not run (gated) | not run (gated) |
+| Qwen2.5-7B-Instruct | expanded | ✗ doesn't transfer 0.02 [-0.00, 0.05] | ✗ doesn't transfer 0.00 [-0.00, 0.00] |
+| Qwen3.5-4B | expanded | ✓ transfers 0.12 [0.08, 0.16] | ✗ doesn't transfer 0.01 [0.00, 0.02] |
+| gemma-2-2b-it | expanded | ✓ transfers 0.18 [0.08, 0.29] | ✗ doesn't transfer 0.00 [-0.00, 0.01] |
+| gemma-2b-it | expanded | ✗ doesn't transfer 0.00 [-0.01, 0.01] | ✗ doesn't transfer 0.00 [-0.00, 0.00] |
+
+Also verified, on the source's own model: two neurons make Qwen3.5-4B evil
+([@_lyraaaa_ on X](https://x.com/_lyraaaa_/status/2113833330429083662)): 94% [85, 98] of answers
+judged misaligned, against 6% [3, 12] for random neurons (the steered model loses coherence);
+induction heads form between step512 and step1000 of pythia-160m
+([Olsson et al. 2022](https://arxiv.org/abs/2209.11895)). Every row opens in the web app to its
 evidence: quotes, the authors' tests, our thresholds and who set them, controls, judged samples.
 
 ## What it does, in detail
