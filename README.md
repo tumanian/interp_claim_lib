@@ -1,13 +1,13 @@
 # claimci \[ [ read only web demo here](https://tumanian.dev/interp_lib_demo/)\]
 
-As mechinterp grows as a field the speed of knowledge discovery needs to match the speed of the model development, so that every time a new model, code or dataset comes up we can verify whether the previous findings hold. To that end we need a database of findings and machinery to replicate findings at scale.  Inspired by the [Goodfire Proposal](https://www.goodfire.com/blog/accelerating-interpretability) and [Gene Onthology](https://geneontology.org/) project, I built a minimal exchange format and finding replication pipeline. 
+As mechinterp grows as a field the speed of knowledge discovery needs to match the speed of the model development, so that every time a new model, code or dataset comes up we can verify whether the previous findings hold. To that end we need a database of findings and machinery to replicate findings at scale.  Inspired by the [Goodfire Proposal](https://www.goodfire.com/blog/accelerating-interpretability) and [Gene Ontology](https://geneontology.org/) project, I built a minimal exchange format and finding replication pipeline. 
 
-Where the Gene Ontology annotates a gene product (a protein, an RNA) with a term (a function, process or location) and an evidence code, claimci annotates a model component (a head, a layer, a direction, a neuron) with a statement (what it does, with a metric and threshold) and an evidence code; a claim file is one such annotation.  Whats great about the interp vs biology is that we can directly replicate and verify any claim in a paper (or  a tweet(!)) and check the transferability of the claims across models, data sources or even code versions. 
+Where the Gene Ontology annotates a gene product (a protein, an RNA) with a term (a function, process or location) and an evidence code, claimci annotates a model component (a head, a layer, a direction, a neuron) with a statement (what it does, with a metric and threshold) and an evidence code; a claim file is one such annotation.  What's great about the interp vs biology is that we can directly replicate and verify any claim in a paper (or  a tweet(!)) and check the transferability of the claims across models, data sources or even code versions. 
 
-## The demo implements following: 
+## The demo implements the following: 
 
 1. Given a paper, extracts the claims, formulates experiments to run, runs on different models (expands on what was in the paper if possible)
-2. Can rerun/re-verfy the claims for new models, code or datasets - this is where most of the compute spend would go to keep the knowledge up to date. We can probably prioritize which claims are more important to recheck regularly.  
+2. Can rerun/re-verify the claims for new models, code or datasets - this is where most of the compute spend would go to keep the knowledge up to date. We can probably prioritize which claims are more important to recheck regularly.  
 3. Stores the metadata (code + set up + anything else) in a local yaml (trivially can be transformed into  a live service)
 4. Downstream agents can refer to semi-machine readable results, generate new claims, verify them using the same tools and write the results back. 
 
@@ -45,7 +45,7 @@ Example results on expansion and re-verification
 
 
 
-How to install and run on local (readonly ):  
+How to install and run on local (read-only):  
 ```
 git clone https://github.com/tumanian/interp_claim_lib && cd interp_claim_lib
 python -m venv .venv && . .venv/bin/activate
@@ -53,11 +53,11 @@ pip install -e '.[report,test,ingest]'
 claimci serve                                   # http://127.0.0.1:8765
 ```
 
-To support papers ingestion (needs Claude CLI Keys)
+To support papers ingestion (needs Claude API keys)
 ```
 cp .env.example .env                            # then set ANTHROPIC_API_KEY=... in .env
 claimci ingest arXiv:2310.15154                 # findings from the abstract, the paper's own tests from the body
-claimci serve                                   # or use "Add a source" in the web app
+claimci serve                                   # or use "Add a study" in the web app
 ```
 
 To support verification experiments (needs GPU box to ssh into)
@@ -69,7 +69,7 @@ claimci reverify --dry-run                      # what is stale, in the order it
 claimci expand arXiv:2312.06681 --models Qwen/Qwen2.5-7B-Instruct --verify
 ```
 
-To run agents from Claue reading the results (runs from claude)
+To run agents from Claude reading the results (runs from claude)
 ```
 claude                                          # Claude Code in the repo: CLAUDE.md tells it the vocabulary, commands and rules
 # then ask, e.g.: "Which steering claims hold on Qwen, and with what margin?"
@@ -79,7 +79,7 @@ claimci get dir.qwen257binstruct.evil.chen2025.steer_up   # verdict, value, 95% 
 ```
 Next steps: 
 
-* Batch and scale the verification, to speed up parallel runs of the verifcation. 
+* Batch and scale the verification, to speed up parallel runs of the verification. 
 
 More: [GUIDE.md](GUIDE.md) (setup, commands, results in detail), [SPEC.md](SPEC.md) (formats),
 [DESIGN.md](DESIGN.md) (where this is going). MIT license.
