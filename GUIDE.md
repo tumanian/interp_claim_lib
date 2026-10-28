@@ -55,7 +55,7 @@ intervals (Wilson for rates, a seeded bootstrap over items for differences). On 
 a test **holds** (✓) only if its whole interval clears the threshold. On an expansion, a test with a
 random control is judged by effect instead, since the thresholds were set for the source's model:
 it **transfers** when its interval clears the control's in the predicted direction, **weaker** when
-that effect is under half the original's, and **doesn't transfer** otherwise; tests without a
+that effect is under half the original's, and **didn't transfer** otherwise; tests without a
 control keep the threshold. ⊘ could not run (see the card for why).
 
 **[Persona Vectors (Chen et al. 2025)](https://arxiv.org/abs/2507.21509)**
@@ -73,7 +73,7 @@ control keep the threshold. ⊘ could not run (see the card for why).
 |---|---|---|---|---|
 | gemma-2b-it | **original** | ✓ 0.00 [0.00, 0.04] | ✓ 1.00 [0.96, 1.00] | ✓ -0.01 |
 | Qwen2.5-7B-Instruct | expanded | ✓ transfers 0.00 [0.00, 0.04] | ✓ weaker 0.46 [0.37, 0.56] | ✗ 0.31 |
-| Qwen3.5-4B | expanded | ✗ doesn't transfer 0.85 [0.77, 0.91] | ✓ weaker 0.24 [0.17, 0.33] | ✓ -0.01 |
+| Qwen3.5-4B | expanded | ✗ didn't transfer 0.85 [0.77, 0.91] | ✓ weaker 0.24 [0.17, 0.33] | ✓ -0.01 |
 | gemma-2-2b-it | expanded | ✓ transfers 0.16 [0.10, 0.24] | ✓ transfers 0.99 [0.95, 1.00] | ✓ -0.00 |
 
 **[Linear sentiment (Tigges et al. 2023)](https://arxiv.org/abs/2310.15154)**
@@ -90,10 +90,10 @@ control keep the threshold. ⊘ could not run (see the card for why).
 | model | | corrigibility up | sycophancy up |
 |---|---|---|---|
 | Llama-2-7b-chat-hf | **original** | not run (gated) | not run (gated) |
-| Qwen2.5-7B-Instruct | expanded | ✗ doesn't transfer 0.02 [-0.00, 0.05] | ✗ doesn't transfer 0.00 [-0.00, 0.00] |
-| Qwen3.5-4B | expanded | ✓ transfers 0.12 [0.08, 0.16] | ✗ doesn't transfer 0.01 [0.00, 0.02] |
-| gemma-2-2b-it | expanded | ✓ transfers 0.18 [0.08, 0.29] | ✗ doesn't transfer 0.00 [-0.00, 0.01] |
-| gemma-2b-it | expanded | ✗ doesn't transfer 0.00 [-0.01, 0.01] | ✗ doesn't transfer 0.00 [-0.00, 0.00] |
+| Qwen2.5-7B-Instruct | expanded | ✗ didn't transfer 0.02 [-0.00, 0.05] | ✗ didn't transfer 0.00 [-0.00, 0.00] |
+| Qwen3.5-4B | expanded | ✓ transfers 0.12 [0.08, 0.16] | ✗ didn't transfer 0.01 [0.00, 0.02] |
+| gemma-2-2b-it | expanded | ✓ transfers 0.18 [0.08, 0.29] | ✗ didn't transfer 0.00 [-0.00, 0.01] |
+| gemma-2b-it | expanded | ✗ didn't transfer 0.00 [-0.01, 0.01] | ✗ didn't transfer 0.00 [-0.00, 0.00] |
 
 Also verified, on the source's own model: two neurons make Qwen3.5-4B evil
 ([@_lyraaaa_ on X](https://x.com/_lyraaaa_/status/2113833330429083662)): 94% [85, 98] of answers

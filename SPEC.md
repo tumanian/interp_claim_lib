@@ -37,7 +37,7 @@ An expanded claim (one run on a model the source did not test) that has a random
 judged by effect, not by the source's threshold, which was set for the source's model: it
 **transfers** when its 95% interval clears the control's in the direction the threshold points,
 **transfers, weaker** when that effect is under half the same effect on the source's model, and
-**doesn't transfer** otherwise. Expanded claims without a control keep the threshold.
+**didn't transfer** otherwise. Expanded claims without a control keep the threshold.
 
 What a reader sees beyond that is derived from the ledger on read and never written: measured
 (a value, no threshold), stale (the claim's current key has no row), not holding, gated (a
