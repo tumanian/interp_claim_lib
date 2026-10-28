@@ -79,7 +79,9 @@ claimci get dir.qwen257binstruct.evil.chen2025.steer_up   # verdict, value, 95% 
 ```
 Next steps: 
 
-* Batch and scale the verification, to speed up parallel runs of the verification. 
+* Batch and scale the verification, to speed up parallel runs of the verification.
+* stand up working web UI with nightly verification checks running on the backend
+* seed more papers and findings
 
 More: [GUIDE.md](GUIDE.md) (setup, commands, results in detail), [SPEC.md](SPEC.md) (formats),
 [DESIGN.md](DESIGN.md) (where this is going). MIT license.
