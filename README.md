@@ -35,6 +35,16 @@ The claim key is a hash of the experiment version, params, data hash, model and 
 Change any of them and the claim is stale. Thresholds are set before a run; one set after seeing
 a value is flagged `post_hoc`. Nothing in the ledger is written by hand. Formats: [SPEC.md](SPEC.md).
 
+Example results on expansion and re-verification 
+| paper | paper's model | expanded to | claims on the expanded model |
+|---|---|---|---|
+| [Chen et al. 2025, Persona Vectors](https://arxiv.org/abs/2507.21509) | Qwen2.5-7B-Instruct | gemma-2b-it | 0 of 4: the direction claim fails (Gemma adopts the evil persona in 2/200 contrast pairs, threshold not met), so steer up, steer down and the random control are blocked |
+| [Panickssery et al. 2023, CAA](https://arxiv.org/abs/2312.06681) | Llama-2-7b-chat (gated; not run) | Qwen2.5-7B-Instruct | 2 of 6: both directions extract; 0 of 4 steering claims hold (sycophancy +0.001 / −0.007, corrigibility +0.024 / −0.033, threshold ±0.1) |
+| | | Qwen3.5-4B | 3 of 6: both directions extract; 1 of 4 steering claims hold (corrigibility up +0.12 ✓; corrigibility down −0.03, sycophancy ±0.01 ✗) |
+| [Olsson et al. 2022, induction heads](https://arxiv.org/abs/2209.11895) | in-house models (not public) | pythia-160m, 19 checkpoints | 3 of 3: previous-token head, induction head, ablation (+0.85 nats); forms between step512 and step1000 |
+
+
+
 How to install and run on local (readonly ):  
 ```
 git clone https://github.com/tumanian/interp_claim_lib && cd interp_claim_lib
