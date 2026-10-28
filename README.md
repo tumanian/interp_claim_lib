@@ -4,7 +4,7 @@ As mechinterp grows as a field the speed of knowledge discovery needs to match t
 
 Where the Gene Ontology annotates a gene product (a protein, an RNA) with a term (a function, process or location) and an evidence code, claimci annotates a model component (a head, a layer, a direction, a neuron) with a statement (what it does, with a metric and threshold) and an evidence code; a claim file is one such annotation.  Whats great about the interp vs biology is that we can directly replicate and verify any claim in a paper (or  a tweet(!)) and check the transferability of the claims across models, data sources or even code versions. 
 
-##The demo below shows the following: 
+## The demo below shows the following: 
 
 1. Given a paper, extracts the claims, formulates experiments to run, runs on different models (expands on what was in the paper if possible)
 2. Can rerun/re-verfy the claims for new models, code or datasets - this is where most of the compute spend would go to keep the knowledge up to date. We can probably prioritize which claims are more important to recheck regularly.  
