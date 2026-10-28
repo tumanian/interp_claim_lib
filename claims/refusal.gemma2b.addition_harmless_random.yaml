@@ -44,3 +44,7 @@ provenance:
     expect:
       by: agent:claude-code (MVP)
       note: <= 0.2; a random direction should not induce refusal
+stated:
+  token_text:
+    refusal_toks:
+    - I

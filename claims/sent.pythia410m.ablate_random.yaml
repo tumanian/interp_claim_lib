@@ -1,0 +1,49 @@
+id: sent.pythia410m.ablate_random
+kind: test
+question: q.tigges2023
+status: proposed
+evidence: IMP
+statement: A random direction of the same norm, projected out the same way, removes at most 10% of the
+  above-chance accuracy.
+about: src.tigges2023.direction_causally_relevant
+subject:
+  model:
+    hf: EleutherAI/pythia-410m
+    revision: main
+    chat: true
+    dtype: float32
+    template: hf
+    batch: 16
+control_for: sent.pythia410m.ablate
+code:
+  experiment: sentiment.ablate_zero_shot
+  params:
+    pack: pack
+    at: everywhere
+    random_seed: 0
+data:
+  inherit: sent.pythia410m.direction
+metric: share_of_above_chance_accuracy_lost
+expect:
+  op: <=
+  value: 0.1
+depends_on:
+- sent.pythia410m.direction
+inputs:
+  direction: sent.pythia410m.direction.direction
+provenance:
+  assigned_by: agent:claude-code
+  date: '2026-10-27'
+  supplemented:
+    code.params.layer:
+      by: claimci
+      note: 'Layer 6 of 24 (early-middle, where the paper locates the direction). Layers 4 and 9 were
+        also looked at in a smoke test before these claims were written: held-out adjectives 0.90 / 0.90,
+        SST via the direction 0.63 / 0.86.'
+    expect:
+      by: claimci
+      note: The control's bound is ours. Set before these claims ran.
+    subject.model:
+      by: expand
+      note: moved from EleutherAI/pythia-1.4b; the source did not test EleutherAI/pythia-410m
+  expanded_from: EleutherAI/pythia-1.4b

@@ -1,0 +1,72 @@
+id: dir.gemma22bit.evil.chen2025.steer_down
+kind: measurement
+question: q.chen2025
+evidence: ISS
+status: proposed
+statement: 'Subtracting the vector (x-1.5): change in the judged evil score (a readout; the unsteered
+  model is already near 0).'
+about: src.chen2025.persona_vectors_identified
+depends_on:
+- dir.gemma22bit.evil.chen2025.direction
+inputs:
+  direction: dir.gemma22bit.evil.chen2025.direction.direction
+subject:
+  model:
+    hf: google/gemma-2-2b-it
+    revision: main
+    chat: true
+    dtype: bfloat16
+    thinking: false
+    template: hf
+    batch: 16
+code:
+  experiment: persona.steer
+  params:
+    pack: pack
+    block: 18
+    coef: -1.5
+data:
+  dataset:
+    gen: vendored
+    params:
+      files:
+        pack: persona_vectors/evil.json
+  hash: da97d791343ede0d7bac148a4a6dd1ca3d81c9fab6897791d81478a266a4d432
+metric: trait_score_delta
+exports: []
+stated:
+  layer: 20
+  pack: persona_vectors/evil
+  from: src.chen2025.persona_vectors_identified
+provenance:
+  assigned_by: template contrastive_direction
+  template:
+    name: contrastive_direction
+    params:
+      hf_model: Qwen/Qwen2.5-7B-Instruct
+      layer: 20
+      block: 19
+      pack: persona_vectors/evil
+  supplemented:
+    code.params.block:
+      by: expand
+      note: block 19 of 28 layers in Qwen/Qwen2.5-7B-Instruct -> 18 of 26 in google/gemma-2-2b-it, by
+        relative depth
+    code.params.coef:
+      by: template contrastive_direction
+      note: +2.0 to induce the trait (the paper sweeps 0.5-2.5); -1.5 to suppress, from scripts/eval_steering.sh
+    subject.model.dtype:
+      by: template contrastive_direction
+      note: bfloat16
+    judge:
+      by: template contrastive_direction
+      note: Claude Haiku 5.5 at low effort with the paper's own trait and coherence prompts; the paper
+        used gpt-4.1-mini
+    samples:
+      by: template contrastive_direction
+      note: 2 answers per system-prompt pair for the vector, 4 per question for steering, 200 new tokens;
+        the paper used more
+    subject.model:
+      by: expand
+      note: moved from Qwen/Qwen2.5-7B-Instruct; the source did not test google/gemma-2-2b-it
+  expanded_from: Qwen/Qwen2.5-7B-Instruct
