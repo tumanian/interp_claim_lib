@@ -108,8 +108,8 @@ def test_expansions_are_judged_by_effect_against_their_control():
     repo = load_repo(root); led = Ledger.for_repo(repo)
     v = lambda cid: cards.verdict(repo, led, cid)
     assert v("refusal.gemma2b.ablation_jbb.gemma22bit") == "transfers"        # 0.16 vs control 0.97: fails <= 0.1, still transfers
-    assert v("refusal.gemma2b.ablation_jbb.qwen354b") == "didn't transfer"   # 0.85 vs 0.92: intervals overlap
+    assert v("refusal.gemma2b.ablation_jbb.qwen354b") == "doesn't transfer"   # 0.85 vs 0.92: intervals overlap
     assert v("refusal.gemma2b.addition_harmless.qwen257binstruct") == "transfers, weaker"
     assert v("refusal.gemma2b.ablation_jbb") == "holds"                       # the source's own model keeps its threshold
-    assert v("refusal.gemma2b.ablation_coherence.qwen257binstruct") == "failed"   # no control: the threshold decides
+    assert v("refusal.gemma2b.ablation_coherence.qwen257binstruct") == "fails"   # no control: the threshold decides
     assert cards.original_of(repo, "dir.qwen354b.evil.chen2025.steer_up") == "dir.qwen257binstruct.evil.chen2025.steer_up"
