@@ -7,7 +7,7 @@ Where the Gene Ontology annotates a gene product (a protein, an RNA) with a term
 The demo below shows the following: 
 
 1. Given a paper, extracts the claims, formulates experiments to run, runs on different models (expands on what was in the paper if possible)
-2. Can rerun/re-verfy the claims for new models, code or datasets - this is where most of the compute spend would go to keep the knowledge up to date. We can probably pririize which claims are more important to recheck regularly.  
+2. Can rerun/re-verfy the claims for new models, code or datasets - this is where most of the compute spend would go to keep the knowledge up to date. We can probably prioritize which claims are more important to recheck regularly.  
 3. Stores the metadata (code + set up + anything else) in a local yaml (trivially can be transformed into  a live service)
 4. Downstream agents can refer to semi-machine readable results, generate new claims, verify them using the same tools and write the results back. 
 
