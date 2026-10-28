@@ -4,13 +4,36 @@ As mechinterp grows as a field the speed of knowledge discovery needs to match t
 
 Where the Gene Ontology annotates a gene product (a protein, an RNA) with a term (a function, process or location) and an evidence code, claimci annotates a model component (a head, a layer, a direction, a neuron) with a statement (what it does, with a metric and threshold) and an evidence code; a claim file is one such annotation.  Whats great about the interp vs biology is that we can directly replicate and verify any claim in a paper (or  a tweet(!)) and check the transferability of the claims across models, data sources or even code versions. 
 
-The demo below shows the following: 
+##The demo below shows the following: 
 
 1. Given a paper, extracts the claims, formulates experiments to run, runs on different models (expands on what was in the paper if possible)
 2. Can rerun/re-verfy the claims for new models, code or datasets - this is where most of the compute spend would go to keep the knowledge up to date. We can probably prioritize which claims are more important to recheck regularly.  
 3. Stores the metadata (code + set up + anything else) in a local yaml (trivially can be transformed into  a live service)
 4. Downstream agents can refer to semi-machine readable results, generate new claims, verify them using the same tools and write the results back. 
 
+## What a claim looks like
+
+```yaml
+id: refusal.gemma2b.direction
+kind: test
+evidence: IOB
+statement: Difference in means at layer 10, position -2, on the paper's own training
+  samples, reproduces the authors' published gemma-2b-it direction (cosine >= 0.99).
+about: src.arditi2024.refusal_one_direction      # the finding this tests
+subject: {model: {hf: google/gemma-2b-it, revision: main}}
+code:   {experiment: refusal.direction, params: {layer: 10, pos: -2}}
+data:   {dataset: {gen: vendored, params: {...}}, hash: 6c93d3eb...}
+metric: cosine_with_published
+expect: {op: '>=', value: 0.99}
+exports: [direction, layer]                      # downstream claims bind to these
+provenance:
+  supplemented:                                  # every number that is ours, not the paper's
+    expect: {by: agent:claude-code, note: "same method and data should give nearly the same vector"}
+```
+
+The claim key is a hash of the experiment version, params, data hash, model and checkpoint.
+Change any of them and the claim is stale. Thresholds are set before a run; one set after seeing
+a value is flagged `post_hoc`. Nothing in the ledger is written by hand. Formats: [SPEC.md](SPEC.md).
 
 How to install and run on local (readonly ):  
 ```
