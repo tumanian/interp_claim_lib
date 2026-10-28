@@ -97,7 +97,7 @@ def transfer(repo: Repo, ledger: Ledger, cid: str) -> str | None:
     up = c.threshold.op in (">=", ">")
     separated = t.interval[0] > k.interval[1] if up else t.interval[1] < k.interval[0]
     if not separated:
-        return "didn't transfer"
+        return "doesn't transfer"
     effect = (t.value - k.value) * (1 if up else -1)
     orig = original_of(repo, cid)
     if orig:
@@ -123,7 +123,7 @@ def verdict(repo: Repo, ledger: Ledger, cid: str) -> str:
     if status in ("verified", "not holding") and (moved := transfer(repo, ledger, cid)):
         return moved
     if c.kind != "test" or status != "verified":
-        return {"not holding": "failed", "verified": "holds"}.get(status, status)
+        return {"not holding": "fails", "verified": "holds"}.get(status, status)
     controls = [k for k, o in repo.claims.items() if o.control_for == cid]
     bad = [k for k in controls if verdict(repo, ledger, k) != "holds"]
     return "holds, control failed" if bad else "holds"
@@ -164,7 +164,7 @@ def card(repo: Repo, ledger: Ledger, cid: str) -> dict:
             if a["expansion"]:
                 by_model.setdefault(a["model"], []).append(a["verdict"])
         d["expansions"] = [{"model": m, "held": sum(v == "holds" or v in TRANSFER_HELD for v in vs),
-                            "ran": sum(v in ("holds", "failed", "holds, control failed", "didn't transfer") or v in TRANSFER_HELD for v in vs),
+                            "ran": sum(v in ("holds", "fails", "holds, control failed", "doesn't transfer") or v in TRANSFER_HELD for v in vs),
                             "could_not_run": sum(v in ("blocked", "error", "contaminated") for v in vs), "total": len(vs)}
                            for m, vs in sorted(by_model.items())]
         d["support"] = ("untested" if not all_tests else
@@ -172,7 +172,7 @@ def card(repo: Repo, ledger: Ledger, cid: str) -> dict:
                         "not run on the source's model" if all(a["verdict"] in ("not run", "error", "blocked", "contaminated") for a in tests)
                         and any(a["verdict"] != "not run" for a in all_tests) else
                         "tests attached, not run" if all(a["verdict"] == "not run" for a in tests) else
-                        "contradicted by a test" if any(a["verdict"] == "failed" for a in tests) else
+                        "contradicted by a test" if any(a["verdict"] == "fails" for a in tests) else
                         "not supported: a control reproduced the effect" if any(a["verdict"] == "holds, control failed" for a in tests) else
                         "supported" if all(a["verdict"] == "holds" for a in tests) else "partly tested")
         return d
