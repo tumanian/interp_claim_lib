@@ -61,6 +61,18 @@ experiments it is missing, safely ([DESIGN.md](DESIGN.md) section 13).
 | Olsson et al. 2022, induction heads | induction heads form abruptly early in training | pythia-160m, 19 checkpoints | **verified**: forms between step512 and step1000 (score 0.09 → 0.95); ablation +0.85 nats |
 | Betley et al. 2025, Emergent Misalignment (arXiv:2502.17424) | fine-tuning on insecure code causes broad misalignment | — | **gap**: needs fine-tuning, which the library does not have yet (the first target for self-written experiments) |
 
+### Expansions
+
+The same experiments on models the paper did not test. Layers move to the same relative depth;
+thresholds stay the paper's. A miss here counts as scope, not as evidence against the paper.
+
+| paper | paper's model | expanded to | claims on the expanded model |
+|---|---|---|---|
+| Chen et al. 2025, Persona Vectors | Qwen2.5-7B-Instruct | gemma-2b-it | 0 of 4: the direction claim fails (Gemma adopts the evil persona in 2/200 contrast pairs, threshold not met), so steer up, steer down and the random control are blocked |
+| Panickssery et al. 2023, CAA | Llama-2-7b-chat (gated; not run) | Qwen2.5-7B-Instruct | 2 of 6: both directions extract; 0 of 4 steering claims hold (sycophancy +0.001 / −0.007, corrigibility +0.024 / −0.033, threshold ±0.1) |
+| | | Qwen3.5-4B | 3 of 6: both directions extract; 1 of 4 steering claims hold (corrigibility up +0.12 ✓; corrigibility down −0.03, sycophancy ±0.01 ✗) |
+| Olsson et al. 2022, induction heads | in-house models (not public) | pythia-160m, 19 checkpoints | 3 of 3: previous-token head, induction head, ablation (+0.85 nats); forms between step512 and step1000 |
+
 Every row opens in the web app to the evidence: the quote, the authors' own tests, our
 verifications with thresholds and who set them, controls, and judged samples you can read.
 
