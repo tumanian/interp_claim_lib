@@ -10,3 +10,4 @@ ledger/.remote_results.jsonl
 site/
 .vercel/
 ledger/jobs/
+.venv/

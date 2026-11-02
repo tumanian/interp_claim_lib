@@ -1,0 +1,5 @@
+{
+  "daily":   {"api_tokens": 2000000, "gpu_seconds": 14400},
+  "per_job": {"api_tokens": 300000,  "gpu_seconds": 3600},
+  "max_open_jobs": 20
+}

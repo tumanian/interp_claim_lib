@@ -66,6 +66,10 @@ claimci ingest arXiv:2310.15154                 # findings from the abstract, th
 claimci serve                                   # or use "Add a study" in the web app
 ```
 
+The web app and the compute are decoupled by a job queue: the app only enqueues recipes (ingest a
+paper, verify claims, expand to models); `claimci worker` runs them under a daily and per-job
+budget of API tokens and GPU seconds; `/queue` shows jobs, spend and the worker. See GUIDE.md.
+
 To support verification experiments (needs GPU box to ssh into)
 ```
 # a GPU box you can SSH into (we used an AWS g6.xlarge); once, on the box: clone, install, add .env

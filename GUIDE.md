@@ -182,6 +182,32 @@ echo '{"host": "ubuntu@<ip>", "key": "~/.ssh/<key>.pem", "dir": "~/interp_claim_
 ledger to the box, run there, and merge the results back. The file is gitignored; an IP that
 changes on restart only needs editing here.
 
+## The queue, the worker and the budget
+
+The web app never runs anything itself. `Add a study`, `Run verifications` and `Expand to more
+models` put a **recipe** on a job queue, and a separate `claimci worker` process runs it:
+
+```
+claimci serve                     # the app: enqueues, shows the queue at /queue
+claimci worker                    # runs approved jobs, oldest first, one at a time; Ctrl-C to stop
+claimci queue add verify --claims sent.pythia14b.ablate     # the same from the shell
+claimci queue list | approve <id> | cancel <id>
+```
+
+- **Where the queue lives.** `CLAIMCI_DB_URL` in `.env` (a Postgres URI, e.g. Supabase's session
+  pooler) makes the queue shared across machines; tables are created in the `claimci` schema on
+  first use. Without it the queue is SQLite at `ledger/queue.sqlite`, for one machine.
+- **The safety buffer.** `.claimci-budget.json` (copy `.claimci-budget.example.json`) caps API
+  tokens and GPU seconds per day and per job. Every recipe gets an estimate before it is queued:
+  under the per-job cap it is approved at once, over it it waits for approval on `/queue`. The
+  worker starts nothing that would pass a daily cap. Actual usage is recorded on each job: every
+  Claude call reports its tokens, and verification wall time counts as GPU seconds.
+- **Dedupe.** The same recipe twice is one job while it is pending, approved or running.
+- **Logs.** Each job streams to `ledger/jobs/<id>.log`; the app and `/queue` tail it.
+- **Where the keys go.** The worker needs `ANTHROPIC_API_KEY` (ingest, judged claims) and the GPU
+  box in `.claimci-remote.json`; the app needs only the queue. A worker that stops mid-job is
+  noticed by its missing heartbeat, and the job is re-queued once.
+
 ## Commands
 
 ```
@@ -199,7 +225,9 @@ claimci search "refusal direction" [--json]       # find claims
 claimci get CLAIM                                 # one result as JSON: verdict, value, margin, controls, caveats
 claimci card CLAIM | claimci explain arXiv:ID     # cards, text or --json
 claimci judge answers.jsonl                       # the LLM judge as a tool (Claude Haiku 5.5 by default)
-claimci serve                                     # the web app
+claimci serve                                     # the web app (enqueues; /queue shows the jobs)
+claimci worker [--once]                           # run queued jobs under the budget
+claimci queue add|list|approve|cancel             # the job queue from the shell
 claimci export-site --out site [--base /path/]    # the web app as a read-only static site (Vercel, any static host)
 ```
 
