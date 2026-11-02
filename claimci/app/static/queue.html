@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>claimci queue</title>
+<style>
+:root { --bg: #f3f5f8; --panel: #ffffff; --ink: #17202b; --muted: #5c6878; --rule: #dde3ea; --ok: #2e8b57; --bad: #c0392b; --warn: #b7791f; --accent: #3b6fd6; --mono: ui-monospace, SFMono-Regular, Menlo, monospace; }
+@media (prefers-color-scheme: dark) { :root { --bg: #10141a; --panel: #171d25; --ink: #e6eaf0; --muted: #9aa5b4; --rule: #29323e; } }
+* { box-sizing: border-box; } body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, sans-serif; }
+header { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-bottom: 1px solid var(--rule); background: var(--panel); }
+header h1 { font-size: 16px; margin: 0; } header a { color: var(--accent); text-decoration: none; }
+main { padding: 16px 20px; display: grid; gap: 14px; max-width: 1200px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; }
+.card h4 { margin: 0 0 6px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.bar { height: 8px; background: var(--rule); border-radius: 4px; overflow: hidden; margin: 6px 0 4px; } .bar i { display: block; height: 100%; background: var(--accent); }
+.bar i.warn { background: var(--warn); } .bar i.bad { background: var(--bad); }
+table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; font-size: 13px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; } th { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+tr.sel td { background: color-mix(in srgb, var(--accent) 10%, transparent); } tbody tr { cursor: pointer; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; border: 1px solid var(--rule); }
+.pill.ok { color: var(--ok); } .pill.bad { color: var(--bad); } .pill.warn { color: var(--warn); } .pill.accent { color: var(--accent); }
+.mono { font: 12px var(--mono); } small { color: var(--muted); }
+button { font: inherit; padding: 3px 10px; border-radius: 6px; border: 1px solid var(--rule); background: transparent; color: var(--ink); cursor: pointer; margin-right: 4px; }
+pre { margin: 0; padding: 10px 12px; background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; max-height: 320px; overflow: auto; font: 12px/1.45 var(--mono); white-space: pre-wrap; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); margin-right: 6px; } .dot.on { background: var(--ok); }
+</style>
+</head>
+<body>
+<header><h1>claimci <span style="font-weight:400;color:var(--muted)">queue</span></h1><a href="/">← studies</a><span style="flex:1"></span><small id="backend"></small></header>
+<main>
+  <div class="cards">
+    <div class="card"><h4>Worker</h4><div id="worker"></div></div>
+    <div class="card"><h4>API tokens today</h4><div id="api"></div></div>
+    <div class="card"><h4>GPU seconds today</h4><div id="gpu"></div></div>
+    <div class="card"><h4>Jobs</h4><div id="counts"></div></div>
+  </div>
+  <table><thead><tr><th>job</th><th>kind</th><th>recipe</th><th>status</th><th>estimate → cost</th><th>by</th><th>created</th><th></th></tr></thead><tbody id="jobs"></tbody></table>
+  <div><small id="logtitle">Pick a job to see its log.</small><pre id="log"></pre></div>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const STATUS = {pending: "warn", approved: "accent", running: "accent", done: "ok", failed: "bad", cancelled: ""};
+let selected = null, logN = 0;
+async function api(path, method = "GET") { const r = await fetch(path, {method}); const j = await r.json(); if (!r.ok) throw new Error(j.error || r.statusText); return j; }
+function bar(spent, cap) {
+  const pct = cap ? Math.min(100, Math.round(100 * spent / cap)) : 0, cls = pct >= 90 ? "bad" : pct >= 70 ? "warn" : "";
+  return `<b>${spent.toLocaleString()}</b> <small>of ${cap.toLocaleString()}</small><div class="bar"><i class="${cls}" style="width:${pct}%"></i></div>`;
+}
+const ago = (s) => s ? Math.round((Date.now() - Date.parse(s)) / 1000) + "s ago" : "never";
+const cost = (j) => { const e = j.estimate || {}, c = j.cost || {}; const f = (x) => x == null ? "–" : Math.round(x).toLocaleString();
+  return `<span class="mono">${f(e.api_tokens)} tok / ${f(e.gpu_seconds)}s → ${f(c.api_tokens)} tok / ${f(c.gpu_seconds)}s</span>`; };
+async function refresh() {
+  const v = await api("/api/jobs");
+  $("#backend").textContent = v.backend === "PostgresQueue" ? "Postgres (Supabase)" : "SQLite (local)";
+  $("#worker").innerHTML = v.workers.length ? v.workers.map((w) => `<div><span class="dot ${v.worker_alive ? "on" : ""}"></span>${esc(w.id)} <small>seen ${ago(w.seen)}${w.job ? ", on " + esc(w.job) : ""}</small></div>`).join("")
+                                            : `<span class="dot"></span>none seen <small>start <code>claimci worker</code></small>`;
+  $("#api").innerHTML = bar(v.spent_today.api_tokens, v.budget.daily.api_tokens) + `<small>per job: ${v.budget.per_job.api_tokens.toLocaleString()}</small>`;
+  $("#gpu").innerHTML = bar(v.spent_today.gpu_seconds, v.budget.daily.gpu_seconds) + `<small>per job: ${v.budget.per_job.gpu_seconds.toLocaleString()}</small>`;
+  const n = (s) => v.jobs.filter((j) => j.status === s).length;
+  $("#counts").innerHTML = `<b>${n("pending")}</b> awaiting approval · <b>${n("approved")}</b> queued · <b>${n("running")}</b> running<br><small>${n("done")} done · ${n("failed")} failed · max open ${v.budget.max_open_jobs}</small>`;
+  $("#jobs").innerHTML = v.jobs.map((j) => `<tr data-id="${esc(j.id)}" class="${selected === j.id ? "sel" : ""}">
+    <td class="mono">${esc(j.id)}</td><td>${esc(j.kind)}</td><td class="mono">${esc(JSON.stringify(j.recipe)).slice(0, 80)}</td>
+    <td><span class="pill ${STATUS[j.status] || ""}">${esc(j.status)}</span>${j.error ? `<br><small>${esc(j.error.slice(0, 90))}</small>` : ""}</td>
+    <td>${cost(j)}</td><td>${esc(j.requested_by || "")}</td><td><small>${esc((j.created || "").replace("T", " ").replace("Z", ""))}</small></td>
+    <td>${j.status === "pending" ? `<button data-act="approve">approve</button>` : ""}${["pending", "approved"].includes(j.status) ? `<button data-act="cancel">cancel</button>` : ""}</td></tr>`).join("");
+  document.querySelectorAll("#jobs tr").forEach((tr) => tr.onclick = (e) => { if (e.target.tagName === "BUTTON") return; selected = tr.dataset.id; logN = 0; $("#log").textContent = ""; refresh(); });
+  document.querySelectorAll("#jobs button").forEach((b) => b.onclick = async (e) => { e.stopPropagation(); const id = b.closest("tr").dataset.id;
+    try { await api(`/api/jobs/${id}/${b.dataset.act}`, "POST"); } catch (err) { alert(err.message); } refresh(); });
+  if (selected) {
+    const j = await api(`/api/jobs/${selected}?since=${logN}`);
+    $("#logtitle").textContent = `${j.id} · ${j.kind} · ${j.status}` + (j.worker ? ` · ${j.worker}` : "");
+    if (j.lines.length) { $("#log").textContent += j.lines.join("\n") + "\n"; $("#log").scrollTop = 1e9; }
+    logN = j.n;
+  }
+}
+refresh(); setInterval(refresh, 3000);
+</script>
+</body>
+</html>

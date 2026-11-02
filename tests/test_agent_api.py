@@ -51,15 +51,14 @@ def test_reverify_puts_previously_verified_claims_first(tmp_path):
     assert agent_api.reverify_plan(repo, Ledger.for_repo(repo), skip_models=("pythia",)) == []
 
 
-def test_web_app_says_why_an_action_cannot_run_here(tmp_path, monkeypatch):
+def test_web_app_warns_while_no_worker_is_alive(tmp_path, monkeypatch):
     from claimci.app import web
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    monkeypatch.setattr(web, "_cuda", lambda: False)
-    w = web.why_not(tmp_path)
-    assert "ANTHROPIC_API_KEY" in w["ingest"] and "GPU" in w["verify"]
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")
-    (tmp_path / ".claimci-remote.json").write_text("{}")
-    assert web.why_not(tmp_path) == {"ingest": None, "verify": None, "expand": None}
+    from claimci.store.queue import SqliteQueue
+    monkeypatch.delenv("CLAIMCI_DB_URL", raising=False)
+    assert web.why_not(tmp_path) == {"ingest": None, "verify": None, "expand": None}   # the live app never blocks
+    assert "No worker running" in web.notice(tmp_path)
+    SqliteQueue(tmp_path / "ledger" / "queue.sqlite").heartbeat("w1")
+    assert web.notice(tmp_path) is None
 
 
 def test_static_site_names_every_request_the_page_makes(tmp_path):
@@ -90,12 +89,42 @@ def test_agent_read_path_on_the_committed_results():
     assert cards.explain(repo, led, "chen2025") == cards.explain(repo, led, "arXiv:2507.21509") != []
 
 
-def test_expand_needs_a_gpu_like_verify(tmp_path, monkeypatch):
+def test_web_app_enqueues_instead_of_running(tmp_path, monkeypatch):
+    """POST /api/verify puts a recipe on the queue; /api/jobs lists it; approve/cancel act on it."""
+    import json, threading, urllib.request
+    from http.server import ThreadingHTTPServer
     from claimci.app import web
-    monkeypatch.setattr(web, "_cuda", lambda: False)
-    assert web.why_not(tmp_path)["expand"]
-    (tmp_path / ".claimci-remote.json").write_text("{}")
-    assert web.why_not(tmp_path)["expand"] is None
+    from claimci.run import budget
+    monkeypatch.delenv("CLAIMCI_DB_URL", raising=False)
+    monkeypatch.setattr(budget, "estimate", lambda root, kind, recipe: {"api_tokens": 1, "gpu_seconds": 1})
+    root = Path(__file__).resolve().parents[1]
+    monkeypatch.setattr(web, "open_queue", None, raising=False)
+    from claimci.store import queue as qmod
+    monkeypatch.setattr(qmod, "open_queue", lambda r=".": qmod.SqliteQueue(tmp_path / "q.sqlite"))
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), web.make_handler(root))
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{httpd.server_port}"
+    def call(path, body=None, method=None):
+        req = urllib.request.Request(base + path, data=json.dumps(body).encode() if body is not None else None,
+                                     method=method or ("POST" if body is not None else "GET"), headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req) as r:
+                return r.status, json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+    try:
+        code, j = call("/api/verify", {"claims": ["mech.prev_token_head"]})
+        assert code == 200 and j["status"] == "approved" and j["claims"] == ["mech.prev_token_head"]
+        again = call("/api/verify", {"claims": ["mech.prev_token_head"]})[1]
+        assert again["job"] == j["job"]                                   # same recipe, same job
+        code, v = call("/api/jobs")
+        assert code == 200 and [x["id"] for x in v["jobs"]] == [j["job"]] and v["backend"] == "SqliteQueue"
+        assert call(f"/api/jobs/{j['job']}/cancel", method="POST")[1]["status"] == "cancelled"
+        assert call(f"/api/jobs/{j['job']}")[1]["done"] is True
+        assert call("/api/ingest", {"source": ""})[0] == 400
+        assert urllib.request.urlopen(base + "/queue").status == 200
+    finally:
+        httpd.shutdown()
 
 
 def test_expansions_are_judged_by_effect_against_their_control():
