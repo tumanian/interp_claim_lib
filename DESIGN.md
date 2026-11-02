@@ -1111,3 +1111,41 @@ and proposed to unreproduced; only a person refutes or withdraws a refutation. P
 through the table, so a run cannot refute or demote. What a reader sees beyond that (measured,
 stale, not holding, gated) is derived from the ledger and never written; validation rejects it in
 a claim file. Validation itself is small rule tables in claimci/checks/ (section 15's layering).
+
+## 23. A backend queue between the web app and the compute (brief)
+
+Today `claimci serve` runs ingest, verify and expand as in-memory threads: nothing persists, nothing
+is budgeted, and the frontend process is the one holding API keys and SSH to the GPU box. The
+frontend should only enqueue recipes; a separate worker runs them under a budget.
+
+```
+browser -> serve (frontend) -> ledger/queue.sqlite -> claimci worker -> ingest (Claude) / verify, expand (GPU box)
+                                                                     -> /queue page: jobs, budgets, heartbeat, logs
+```
+
+A recipe is a job spec `{kind: ingest|verify|expand, source?, claims?, models?, force?}`; the same
+recipe twice is one job.
+
+1. Queue store (store/queue.py, SQLite via stdlib): jobs(id, kind, recipe, recipe_hash, status,
+   estimate, cost, requested_by, created, started, finished, error, log); pending -> approved ->
+   running -> done | failed | cancelled; dedupe on recipe_hash while pending or running;
+   `claimci queue add|list|approve|cancel`.
+2. Estimates and accounting (run/budget.py): estimate per recipe before it runs (verify and expand
+   from the planner's cost history; ingest ~2 Claude calls; judged claims ~ answers x 2 calls);
+   record actual usage by wrapping the Anthropic client in extract.py and judge.py so every call's
+   tokens land on the current job.
+3. Safety buffer (.claimci-budget.json): daily API-token and GPU-second caps, per-job caps, max
+   queue depth, cooldown. Over the per-job cap a job waits for approval on the page; under it, it
+   is auto-approved. The worker starts nothing once a daily cap is hit and says so in its heartbeat.
+4. Worker (`claimci worker`): one job at a time, oldest approved first, within budget; runs the
+   existing pipeline functions; log streamed to an artifact file; cost recorded; heartbeat every
+   10 s; graceful stop; a job whose worker died is re-queued once.
+5. Frontend switch: /api/ingest|verify|expand enqueue; /api/jobs reads the queue; serve imports
+   neither torch nor anthropic. The static demo is unchanged.
+6. Monitoring page (/queue): jobs with status, estimate vs actual, requester, elapsed; today's
+   budget bars; heartbeat and current job; per-job log tail; approve and cancel.
+7. Run: `claimci serve` + `claimci worker`; the worker uses .claimci-remote.json as now.
+8. Later: the worker on the GPU box with the queue over HTTP (frontend on Vercel); several workers.
+
+Decisions: SQLite in ledger/ (local-first, no new dependency), auto-approval under a per-job cap.
+Each step its own PR with tests; nothing calls Claude or the GPU before step 7's smoke test.
