@@ -1112,7 +1112,12 @@ through the table, so a run cannot refute or demote. What a reader sees beyond t
 stale, not holding, gated) is derived from the ledger and never written; validation rejects it in
 a claim file. Validation itself is small rule tables in claimci/checks/ (section 15's layering).
 
-## 23. A backend queue between the web app and the compute (brief)
+## 23. A backend queue between the web app and the compute (built: steps 1-7)
+
+Built on Postgres (Supabase, `claimci` schema) with a SQLite fallback: store/queue.py,
+run/budget.py, run/worker.py, the web app enqueues, /queue monitors. Not built: step 8 (a worker
+on the GPU box with the frontend on Vercel; several workers). One wrinkle: a verify job whose
+claims are all ledger hits still goes to the GPU box; it could stay local.
 
 Today `claimci serve` runs ingest, verify and expand as in-memory threads: nothing persists, nothing
 is budgeted, and the frontend process is the one holding API keys and SSH to the GPU box. The

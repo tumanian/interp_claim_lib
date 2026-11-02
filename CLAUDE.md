@@ -67,6 +67,13 @@ anything an experiment runs, `claimci validate` fails until you record a decisio
   on the same inputs (a tiny random model is enough) and compare values.
 - `claimci versions --bump <id>`: different computation; its claims go stale and must rerun.
 
+## Running things through the queue
+
+Ingest, verify and expand go through a job queue (`claimci queue add …`, or the web app) and a
+`claimci worker` runs them under `.claimci-budget.json`. A recipe over the per-job cap waits for
+`claimci queue approve <id>`; the worker refuses to pass a daily cap. `claimci queue list` shows
+state and cost. Direct `claimci verify` still works for a quick local run.
+
 ## Working in this repo
 
 - Tests: `pytest` (107; no downloads, no API calls). Model runs bigger than Pythia-70M belong on
