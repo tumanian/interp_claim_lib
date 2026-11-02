@@ -94,6 +94,8 @@ def _call(prompt: str, schema: dict, client=None) -> dict:
         messages=[{"role": "user", "content": prompt}],
     ) as stream:
         msg = stream.get_final_message()
+    from ..run.budget import record_api
+    record_api(getattr(msg, "usage", None))
     if msg.stop_reason == "refusal":
         raise RuntimeError(f"extraction declined: {getattr(msg.stop_details, 'category', None)}")
     if msg.stop_reason == "max_tokens":

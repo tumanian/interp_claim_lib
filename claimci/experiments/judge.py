@@ -31,6 +31,8 @@ def _judge_one(client, model: str, effort: str, template: str, question: str, an
     msg = client.messages.create(
         model=model, max_tokens=4000, output_config={"effort": effort},
         messages=[{"role": "user", "content": template.format(question=question, answer=answer)}])
+    from ..run.budget import record_api
+    record_api(getattr(msg, "usage", None))
     if msg.stop_reason == "refusal":
         return "JUDGE_REFUSED"
     text = next((b.text for b in msg.content if b.type == "text"), "").strip()

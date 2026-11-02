@@ -12,10 +12,10 @@ PKG = Path(__file__).resolve().parents[1] / "claimci"
 ALLOWED = {
     "schema": {"schema"},
     "store": {"schema", "store"},
-    "run": {"schema", "store", "run", "claimci"},          # claimci: __version__, recorded with each result
+    "run": {"schema", "store", "run", "sources", "claimci"},      # sources: the worker runs ingest and expand          # claimci: __version__, recorded with each result
     "experiments": {"schema", "store", "run", "experiments"},
     "checks": {"schema", "store", "checks"},
-    "sources": {"schema", "store", "run", "checks", "sources"},
+    "sources": {"schema", "store", "run", "checks", "sources"},  # run <-> sources: the worker only, via local imports
     "read": {"schema", "store", "experiments", "read"},    # experiments: the judge tool reuses the judge
 }
 

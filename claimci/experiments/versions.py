@@ -58,7 +58,7 @@ def _imports(module: str, path: Path) -> set[str]:
 
 ORCHESTRATION = {"claimci.experiments", "claimci.run.runner", "claimci.run.verify", "claimci.run.planner",
                  "claimci.run.executors", "claimci.run.outcome", "claimci.run.adapters", "claimci.run.calling",
-                 "claimci.run.guards", "claimci.run.rows"}
+                 "claimci.run.guards", "claimci.run.rows", "claimci.run.budget", "claimci.run.worker"}
 
 
 def computes(module: str) -> bool:
