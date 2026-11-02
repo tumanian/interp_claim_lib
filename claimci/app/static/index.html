@@ -43,6 +43,7 @@ header .grow { flex: 1; }
 .expandform input { padding: 6px 8px; border: 1px solid var(--rule); border-radius: 6px; background: var(--bg); font-size: 12px; min-width: 0; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .chip { font: 11px var(--mono); padding: 2px 8px; border-radius: 10px; border: 1px solid var(--rule); background: transparent; color: var(--muted); }
+a.btn { text-decoration: none; display: inline-block; margin-right: 10px; }
 .act { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; max-width: 240px; }
 .act .why { color: var(--muted, #8a8f98); font-size: 11px; text-align: right; line-height: 1.3; }
 #addform { display: none; gap: 8px; padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
@@ -159,6 +160,8 @@ details.samples > summary { grid-template-columns: minmax(0, 1fr) 16px; padding:
 <header>
   <h1>claimci <span>claims, checked</span></h1>
   <div class="grow"></div>
+  <small class="why" id="notice"></small>
+  <a class="btn ghost" id="queuelink" href="queue">Queue</a>
   <div class="act"><button class="btn ghost" id="toggleadd">Add a study</button><small class="why" id="addwhy"></small></div>
 </header>
 <div id="addform">
@@ -212,6 +215,8 @@ let whyNot = {};   // action -> why it cannot run here (no API key, no GPU), or 
 async function loadSources() {
   const o = await api("/api/overview");
   whyNot = o.why_not || {};
+  const ql = $("#queuelink"); if (ql && window.CLAIMCI_STATIC) ql.style.display = "none";
+  $("#notice").textContent = o.notice || "";
   const add = $("#toggleadd");
   add.disabled = !!whyNot.ingest;
   add.title = whyNot.ingest || "";
@@ -382,18 +387,19 @@ async function runJob(path, body, title) {
   ["#verify", "#expandbtn", "#expandgo"].forEach((id) => { const b = $(id); if (b) b.disabled = true; });
   $("#log").open = true; $("#logtitle").textContent = title; $("#logtext").textContent = ""; $("#logstate").textContent = "running…";
   try {
-    const {job} = await api(path, body);
+    const {job, status, estimate} = await api(path, body);
+    $("#logtext").textContent = `queued as ${job} (${status}; estimate ${estimate.api_tokens} API tokens, ${estimate.gpu_seconds}s GPU)\n`;
     let n = 0;
     for (;;) {
       const j = await api(`/api/jobs/${job}?since=${n}`);
       n = j.n;
       if (j.lines.length) { $("#logtext").textContent += j.lines.join("\n") + "\n"; $("#logtext").scrollTop = 1e9; }
+      $("#logstate").textContent = j.status === "pending" ? "waiting for approval on the Queue page" : j.status === "approved" ? "queued, waiting for a worker" : j.status + "…";
       if (j.done) {
-        $("#logstate").textContent = j.error ? "failed: " + j.error : "done";
-        if (j.kind === "ingest" && j.result) current = j.result.ref;
+        $("#logstate").textContent = j.status === "done" ? "done" : `${j.status}: ${j.error || ""}`;
         break;
       }
-      await new Promise((r) => setTimeout(r, 1500));
+      await new Promise((r) => setTimeout(r, 2000));
     }
   } catch (e) { $("#logstate").textContent = "failed: " + e.message; }
   busy = false; $("#ingest").disabled = false;
