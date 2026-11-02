@@ -45,8 +45,11 @@ def cmd_queue(args) -> int:
     if args.qcmd == "add":
         recipe = {k: v for k, v in {"source": args.source, "claims": _csv(args.claims), "models": _csv(args.models),
                                     "force": args.force or None}.items() if v}
-        job = q.add(args.kind, recipe, requested_by=args.by, approved=args.approved)
-        print(f"{job.id}  {job.kind}  {job.status}  {json.dumps(job.recipe)}")
+        from .run import budget
+        est = budget.estimate(args.root, args.kind, recipe)
+        ok, why = budget.admit(budget.load(args.root), est, sum(len(q.list(s)) for s in ("pending", "approved", "running")))
+        job = q.add(args.kind, recipe, requested_by=args.by, estimate=est, approved=args.approved or ok)
+        print(f"{job.id}  {job.kind}  {job.status}  {json.dumps(job.recipe)}\n  estimate {est}  ({why})")
     elif args.qcmd in ("approve", "cancel"):
         job = getattr(q, args.qcmd)(args.id)
         print(f"{job.id}  {job.status}")
@@ -55,6 +58,16 @@ def cmd_queue(args) -> int:
             print(f"worker {w['id']}  seen {w['seen']}  job {w['job'] or '-'}")
         for j in q.list(args.status, args.limit):
             print(f"{j.id}  {j.status:9} {j.kind:7} {json.dumps(j.recipe)[:60]:60} {j.created}  {j.error or ''}")
+    return 0
+
+
+def cmd_worker(args) -> int:
+    from .run.worker import Worker
+    from .store.queue import open_queue
+    w = Worker(args.root, open_queue(args.root), poll=args.poll)
+    print(f"worker {w.id}: budget {w.budget['daily']} per day, {w.budget['per_job']} per job")
+    ran = w.run(once=args.once)
+    print(f"worker {w.id}: ran {ran} job{'s' * (ran != 1)}")
     return 0
 
 
@@ -322,6 +335,9 @@ def main(argv: list[str] | None = None) -> int:
     ql.add_argument("--limit", type=int, default=50)
     for name in ("approve", "cancel"):
         qs.add_parser(name).add_argument("id")
+    wk = sub.add_parser("worker", help="run queued jobs under the budget (DESIGN 23)")
+    wk.add_argument("--once", action="store_true", help="run at most one job, then exit")
+    wk.add_argument("--poll", type=float, default=5.0, help="seconds between polls")
     vs = sub.add_parser("versions", help="experiments whose code changed; keep or bump their versions")
     vs.add_argument("--keep", help="comma-separated ids: same computation, keep the version")
     vs.add_argument("--bump", help="comma-separated ids: different computation, next version")
@@ -348,7 +364,7 @@ def main(argv: list[str] | None = None) -> int:
             "throughput": cmd_throughput, "status": cmd_status, "ingest": cmd_ingest,
             "card": cmd_card, "explain": cmd_card,
             "match": cmd_match, "expand": cmd_expand,
-            "search": cmd_agent, "get": cmd_agent, "reverify": cmd_agent, "versions": cmd_versions, "queue": cmd_queue}[args.cmd](args)
+            "search": cmd_agent, "get": cmd_agent, "reverify": cmd_agent, "versions": cmd_versions, "queue": cmd_queue, "worker": cmd_worker}[args.cmd](args)
 
 
 if __name__ == "__main__":
