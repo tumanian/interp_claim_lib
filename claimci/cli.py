@@ -38,6 +38,26 @@ def cmd_validate(args) -> int:
     return 0
 
 
+def cmd_queue(args) -> int:
+    """The job queue: add a recipe, list, approve or cancel (DESIGN 23)."""
+    from .store.queue import open_queue
+    q = open_queue(args.root)
+    if args.qcmd == "add":
+        recipe = {k: v for k, v in {"source": args.source, "claims": _csv(args.claims), "models": _csv(args.models),
+                                    "force": args.force or None}.items() if v}
+        job = q.add(args.kind, recipe, requested_by=args.by, approved=args.approved)
+        print(f"{job.id}  {job.kind}  {job.status}  {json.dumps(job.recipe)}")
+    elif args.qcmd in ("approve", "cancel"):
+        job = getattr(q, args.qcmd)(args.id)
+        print(f"{job.id}  {job.status}")
+    else:
+        for w in q.workers():
+            print(f"worker {w['id']}  seen {w['seen']}  job {w['job'] or '-'}")
+        for j in q.list(args.status, args.limit):
+            print(f"{j.id}  {j.status:9} {j.kind:7} {json.dumps(j.recipe)[:60]:60} {j.created}  {j.error or ''}")
+    return 0
+
+
 def cmd_versions(args) -> int:
     """Show experiments whose code changed since versions.yaml; record keep / bump decisions."""
     from .experiments.versions import drift, write
@@ -287,6 +307,21 @@ def main(argv: list[str] | None = None) -> int:
     es.add_argument("--base", help="URL path the site is served under, e.g. /demo/ (default: the site root)")
     es.add_argument("--verified-only", action="store_true", help="leave out sources with no verified finding yet")
     es.add_argument("--first", help="comma-separated source refs to list first, e.g. arXiv:2507.21509")
+    qu = sub.add_parser("queue", help="the job queue: add, list, approve, cancel (DESIGN 23)")
+    qs = qu.add_subparsers(dest="qcmd", required=True)
+    qa = qs.add_parser("add", help="enqueue a recipe")
+    qa.add_argument("kind", choices=["ingest", "verify", "expand"])
+    qa.add_argument("--source", help="arXiv id or URL (ingest, expand)")
+    qa.add_argument("--claims", help="comma-separated claim ids (verify)")
+    qa.add_argument("--models", help="comma-separated HF ids (expand)")
+    qa.add_argument("--force", action="store_true")
+    qa.add_argument("--by", default=None, help="who asked")
+    qa.add_argument("--approved", action="store_true", help="skip the approval step")
+    ql = qs.add_parser("list")
+    ql.add_argument("--status")
+    ql.add_argument("--limit", type=int, default=50)
+    for name in ("approve", "cancel"):
+        qs.add_parser(name).add_argument("id")
     vs = sub.add_parser("versions", help="experiments whose code changed; keep or bump their versions")
     vs.add_argument("--keep", help="comma-separated ids: same computation, keep the version")
     vs.add_argument("--bump", help="comma-separated ids: different computation, next version")
@@ -313,7 +348,7 @@ def main(argv: list[str] | None = None) -> int:
             "throughput": cmd_throughput, "status": cmd_status, "ingest": cmd_ingest,
             "card": cmd_card, "explain": cmd_card,
             "match": cmd_match, "expand": cmd_expand,
-            "search": cmd_agent, "get": cmd_agent, "reverify": cmd_agent, "versions": cmd_versions}[args.cmd](args)
+            "search": cmd_agent, "get": cmd_agent, "reverify": cmd_agent, "versions": cmd_versions, "queue": cmd_queue}[args.cmd](args)
 
 
 if __name__ == "__main__":
